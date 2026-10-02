@@ -2,8 +2,8 @@ Test project /home/user/winlator/ios/build/host
     Start 1: phase02_unit_tests
 1/2 Test #1: phase02_unit_tests ...............   Passed    0.01 sec
     Start 2: phase02_suite_all
-2/2 Test #2: phase02_suite_all ................   Passed    0.07 sec
+2/2 Test #2: phase02_suite_all ................   Passed    0.03 sec
 
 100% tests passed, 0 tests failed out of 2
 
-Total Test time (real) =   0.08 sec
+Total Test time (real) =   0.04 sec

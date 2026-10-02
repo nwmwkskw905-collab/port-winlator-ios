@@ -160,6 +160,18 @@ jobs:
           mkdir -p "$EVIDENCE_DIR"
           python3 tools/audit_apple_includes.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_include_audit.log"
 
+      # ---- 4c. do we call any Apple API that macOS has and iOS marks unavailable?
+      # Same idea as 4b, for symbols instead of headers: it fails here, naming the file
+      # and the line, instead of inside clang one CI cycle later (run #3 cost exactly
+      # that: 'pthread_jit_write_protect_np' is unavailable: not available on iOS).
+      - name: 4c. Apple API audit (macOS-only symbols)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 tools/audit_apple_apis.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_api_audit.log"
+
       # ---- 5. authoritative gate: the real Xcode parser must accept the project
       - name: 5. GATE — xcodebuild must be able to read the project
         working-directory: ${{ github.workspace }}/ios

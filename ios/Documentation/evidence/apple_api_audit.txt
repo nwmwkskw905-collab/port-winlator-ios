@@ -1,0 +1,18 @@
+== Apple API audit (macOS-only symbols) ==
+files scanned          : 29
+macOS-only symbols     : 8
+guards accepted as safe: RT_APPLE_HAS_JIT_WRITE_PROTECT, TARGET_OS_OSX, !TARGET_OS_IPHONE, !TARGET_OS_SIMULATOR, !defined(__APPLE__)
+
+UNGUARDED_MACOS_ONLY_APIS=0 (every macOS-only symbol sits behind a target-aware guard)
+
+Apple APIs this project uses, and why each is safe for the target:
+  pthread_jit_write_protect_np     macOS only  — call and capability gated by RT_APPLE_HAS_JIT_WRITE_PROTECT
+  MAP_JIT                          both SDKs define it — gated at RUNTIME by entitlements, so it stays a probe
+  sys_icache_invalidate            libkern/OSCacheControl.h — available on macOS and iOS
+  arc4random_buf                   stdlib.h — available on macOS and iOS
+  shm_open / shm_unlink            POSIX — available on both, subject to the iOS sandbox
+  kqueue / kevent                  sys/event.h — available on both
+  mmap/mprotect/munmap             POSIX — available on both
+  sigaction/sigsetjmp              POSIX — available on both
+
+note: static pre-check only — clang's availability annotations remain the authority.

@@ -43,6 +43,32 @@ const char *rt_prot_name(rt_prot_t prot)
 
 /* ---------------------------------------------------------------- platform */
 
+int rt_platform_apple_target(void)
+{
+#if defined(__APPLE__)
+    return RT_APPLE_TARGET;
+#else
+    return RT_APPLE_TARGET_NONE;
+#endif
+}
+
+const char *rt_platform_apple_target_name(void)
+{
+    switch (rt_platform_apple_target()) {
+    case RT_APPLE_TARGET_MACOS:
+        return "macos";
+    case RT_APPLE_TARGET_IPHONE_DEVICE:
+        return "ios-device";
+    case RT_APPLE_TARGET_IPHONE_SIMULATOR:
+        return "ios-simulator";
+    case RT_APPLE_TARGET_UNKNOWN_APPLE:
+        return "apple-unknown";
+    case RT_APPLE_TARGET_NONE:
+    default:
+        return "none";
+    }
+}
+
 int rt_platform_random_bytes(void *buffer, size_t length, int *err_out)
 {
     const rt_platform_t *platform = rt_platform_current();

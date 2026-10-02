@@ -1,0 +1,23 @@
+EVIDENCE_CLASS = SIMULAÇÃO DE MACROS DO SDK EM HOST LINUX (x86-64)
+NOTE           = NÃO é build Apple e NÃO é resultado de iPhone. Aqui só a LÓGICA DE
+                 PREPROCESSADOR de runtime_platform.h é exercitada: as macros que o SDK
+                 da Apple definiria são passadas por -D, e o programa de teste falha em
+                 tempo de compilação (#error) se o alvo derivado ou a barreira da API
+                 estiverem errados. O objetivo é provar, sem toolchain Apple, que:
+                   (a) macOS e iOS produzem alvos DIFERENTES;
+                   (b) pthread_jit_write_protect_np só é chamável no alvo macOS;
+                   (c) um host não-Apple não alega a API;
+                   (d) um build Apple sem TargetConditionals.h cai em "apple-unknown"
+                       (conservador), nunca em macOS.
+                 Quem decide de verdade continua sendo o compilador da Apple.
+FERRAMENTA     = gcc -D__APPLE__ -DTARGET_OS_* sobre /tmp/apple_sim/case.c (ad-hoc)
+
+=== simulação do mapeamento de alvo (macros do SDK) ===
+macOS (TARGET_OS_OSX=1)        OK (RT_APPLE_TARGET=1, RT_APPLE_HAS_JIT_WRITE_PROTECT=1)
+iOS device (TARGET_OS_IPHONE=1) OK (RT_APPLE_TARGET=2, RT_APPLE_HAS_JIT_WRITE_PROTECT=0)
+iOS simulator                  OK (RT_APPLE_TARGET=3, RT_APPLE_HAS_JIT_WRITE_PROTECT=0)
+host Linux (sem __APPLE__)     OK (RT_APPLE_TARGET=0, RT_APPLE_HAS_JIT_WRITE_PROTECT=0)
+Apple sem TargetConditionals.h OK (RT_APPLE_TARGET=4, RT_APPLE_HAS_JIT_WRITE_PROTECT=0)
+
+CONTROLE NEGATIVO: e se iOS pudesse chamar a API? (simulando o defeito da CI #3)
+  o teste de simulação RECUSA corretamente: #error "iOS NAO pode chamar pthread_jit_write_protect_np (a API e' marcada indisponivel)"

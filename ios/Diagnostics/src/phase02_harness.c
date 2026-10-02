@@ -68,6 +68,29 @@ static void phase02_snapshot(const phase02_log_t *log, unsigned before[PHASE02_S
     }
 }
 
+rt_status_t phase02_classify_write_protect(int has_capability, int probe_result,
+                                           int apple_target)
+{
+    if (has_capability != 0) {
+        return (probe_result == 0) ? RT_PASS : RT_BLOCKED;
+    }
+    if (apple_target == RT_APPLE_TARGET_IPHONE_DEVICE ||
+        apple_target == RT_APPLE_TARGET_IPHONE_SIMULATOR) {
+        return RT_NOT_APPLICABLE;
+    }
+    return RT_UNSUPPORTED;
+}
+
+/* True when the binary was built for an iOS target (device or simulator). On such a
+ * target some Darwin APIs are not merely refused at runtime — the SDK marks them
+ * unavailable, so the call cannot be compiled at all. */
+static int phase02_apple_target_is_ios(void)
+{
+    int target = rt_platform_apple_target();
+    return (target == RT_APPLE_TARGET_IPHONE_DEVICE ||
+            target == RT_APPLE_TARGET_IPHONE_SIMULATOR) ? 1 : 0;
+}
+
 static int phase02_platform_has(uint32_t capability)
 {
     return ((rt_platform_capabilities() & capability) != 0u) ? 1 : 0;
@@ -323,25 +346,51 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
     if (phase02_platform_has(RT_CAP_MAP_JIT) != 0) {
         if (rt_jit_probe_map_jit(&map_jit_addr, &err) == 0) {
             phase02_log_record(log, "jit.map_jit_probe", RT_PASS,
-                               "MAP_JIT mapping accepted by the kernel");
+                               "MAP_JIT mapping accepted by the kernel (target=%s). "
+                               "On iOS a simulator accepts it more readily than a device: "
+                               "this line alone never proves device behaviour",
+                               rt_platform_apple_target_name());
         } else {
             phase02_log_record(log, "jit.map_jit_probe", RT_BLOCKED,
-                               "MAP_JIT refused errno=%d (%s)", err, strerror(err));
+                               "MAP_JIT refused errno=%d (%s) (target=%s) — on iOS this is "
+                               "the signature of a missing JIT entitlement, recorded as "
+                               "capability-not-granted, not as a port defect",
+                               err, strerror(err), rt_platform_apple_target_name());
         }
     } else {
         phase02_log_record(log, "jit.map_jit_probe", RT_UNSUPPORTED,
-                           "platform '%s' has no MAP_JIT (capability bit absent)",
-                           rt_platform_name());
+                           "platform '%s' has no MAP_JIT (capability bit absent, target=%s)",
+                           rt_platform_name(), rt_platform_apple_target_name());
     }
 
+    /* Four outcomes, kept apart on purpose:
+     *   PASS           the API exists for this target and the hook answered 0;
+     *   BLOCKED        the API exists but the hook refused (errno reported);
+     *   NOT_APPLICABLE the target cannot call the API at all (iOS: the iPhoneOS SDK
+     *                  marks pthread_jit_write_protect_np unavailable) — a property of
+     *                  the API for this target, not a defect of the port;
+     *   UNSUPPORTED    the platform has no such API (e.g. Linux).
+     * Unavailability is never turned into PASS, and never into FAIL. */
     if (phase02_platform_has(RT_CAP_JIT_WP_NP) != 0) {
+        int probe = rt_jit_probe_write_protect_np();
         phase02_log_record(log, "jit.write_protect_np",
-                           (rt_jit_probe_write_protect_np() == 0) ? RT_PASS : RT_BLOCKED,
-                           "pthread_jit_write_protect_np hook present");
+                           phase02_classify_write_protect(1, probe, rt_platform_apple_target()),
+                           (probe == 0)
+                               ? "pthread_jit_write_protect_np hook present and callable (target=%s)"
+                               : "pthread_jit_write_protect_np hook present but refused (target=%s)",
+                           rt_platform_apple_target_name());
+    } else if (phase02_apple_target_is_ios() != 0) {
+        phase02_log_record(log, "jit.write_protect_np", RT_NOT_APPLICABLE,
+                           "pthread_jit_write_protect_np is unavailable on iOS: the SDK "
+                           "marks it unavailable for this target (%s), so the call cannot "
+                           "be compiled — API property, not a port defect; W^X here must "
+                           "use a single view flipped RW <-> R-X",
+                           rt_platform_apple_target_name());
     } else {
         phase02_log_record(log, "jit.write_protect_np", RT_UNSUPPORTED,
-                           "platform '%s' has no pthread_jit_write_protect_np",
-                           rt_platform_name());
+                           "platform '%s' has no pthread_jit_write_protect_np (target=%s, "
+                           "capability bit absent)", rt_platform_name(),
+                           rt_platform_apple_target_name());
     }
 
     phase02_jit_microtest(log);

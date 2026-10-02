@@ -157,15 +157,17 @@ emissor AArch64 produz instruções corretas; nada além disso.
 2. ~~Aplicar a correção 01~~ e ~~reexecutar o workflow~~ — **feitos**: a execução 02 ocorreu e
    está registrada na §11 (dois bloqueadores novos, corrigidos no pacote
    `phase02-apple-ci-fix-02.tar.gz`).
-3. Aplicar a correção 02 e reexecutar `Actions → iOS Runtime PoC (unsigned IPA) → Run workflow`.
-   Esperado: portão `xcodebuild -list` PASS, auditoria de includes em 0, suíte macOS sem falha de
-   caminho espúria e o build `iphoneos` **ultrapassando** `runtime_dual_mapping.c`. A partir daí o
-   resultado deixa de ser previsível aqui: pode falhar em qualquer arquivo seguinte, e o log dirá
-   qual.
-4. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
-5. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
+3. ~~Aplicar a correção 02~~ e ~~reexecutar~~ — **feitos**: a execução 03 confirmou as correções
+   01 e 02 e trouxe o bloqueador macOS×iOS, corrigido no pacote `phase02-apple-ci-fix-03.tar.gz`
+   (ver §12).
+4. Aplicar a correção 03 e reexecutar o workflow. Esperado: portão PASS, auditorias de headers e
+   de APIs em 0, e o build `iphoneos` **ultrapassando** `darwin_platform.c`. Se aparecer outro
+   erro Apple real, ele será reportado sem mascaramento — não há afirmação antecipada de que a IPA
+   será produzida.
+5. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
+6. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
    (Arquivos › No meu iPhone › Winlator PoC, ou `xcrun devicectl device copy from`).
-6. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
+7. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
 
 ## 9. Como reproduzir (host, sem Apple)
 
@@ -440,3 +442,126 @@ específica de ISA.
 * O `.app`, o `Payload/` e a IPA continuam **não produzidos** neste ambiente.
 * `IPHONE_VALIDATION_PENDING` permanece: nada aqui é validação de iPhone.
 * A auditoria de includes é **estática**: quem decide é o compilador da Apple.
+
+---
+
+## 12. Correção 03 — macOS e iOS são alvos diferentes (execução 03)
+
+A terceira execução real do workflow confirmou as Correções 01 e 02 (o portão passou, a suíte
+macOS rodou, o `sys/random.h` não reincidiu) e trouxe o próximo bloqueador, de outra natureza:
+
+```
+ios/RuntimeCore/src/darwin_platform.c:165:5: error:
+    'pthread_jit_write_protect_np' is unavailable: not available on iOS
+    iPhoneOS17.5.sdk/usr/include/pthread.h: '... has been explicitly marked unavailable here'
+```
+
+### 12.1 Causa raiz
+
+O código tratava **`__APPLE__` como uma única plataforma**. `pthread_jit_write_protect_np` existe
+no `pthread.h` do macOS e é **marcada como indisponível pelo SDK do iPhoneOS**. Três lugares
+carregavam a mesma confusão `__APPLE__ && __aarch64__`:
+
+| # | Lugar | Defeito |
+| --- | --- | --- |
+| 1 | `darwin_jit_write_protect_set()` | a **chamada** — o erro de compilação do CI #3 |
+| 2 | `darwin_capabilities()` | o **bit `RT_CAP_JIT_WP_NP`**, anunciado também no iOS. Como o harness lê exatamente esse bit, o iOS declararia a capacidade **presente** — uma capacidade reivindicada que o alvo não pode exercer legalmente |
+| 3 | `rt_jit_probe_map_jit()` | usa `MAP_JIT`, que **ambos** os SDKs definem; segue sob `defined(MAP_JIT)` (degrada para `ENOTSUP` se algum SDK não o tivesse) e continua sendo **sonda de execução**, porque no iOS quem decide é o entitlement, não o símbolo |
+
+### 12.2 O que foi feito — e o que deliberadamente **não** foi
+
+* **Não** se usou disponibilidade por versão (`@available`, weak linking): a restrição é uma
+  propriedade da API **para aquele target**, não da versão do sistema; nenhum teste de versão
+  torna a chamada legal.
+* **Não** se removeu a chamada: ela continua existindo no macOS, agora gateada por alvo.
+* **Não** se declarou a capacidade onde ela não pode ser chamada.
+* O alvo é derivado de **`<TargetConditionals.h>`** — `TARGET_OS_OSX`, `TARGET_OS_IPHONE`,
+  `TARGET_OS_SIMULATOR` — com queda conservadora: num build Apple sem esse header o alvo é
+  `apple-unknown` e a API **não** é usada (assumir macOS seria recriar o defeito).
+
+```
+RT_APPLE_TARGET_NONE | MACOS | IPHONE_DEVICE | IPHONE_SIMULATOR | UNKNOWN_APPLE
+RT_APPLE_HAS_JIT_WRITE_PROTECT  ==  (RT_APPLE_TARGET == RT_APPLE_TARGET_MACOS)
+```
+
+A chamada e o bit de capacidade são gateados **por essa macro**, e o relatório passa a imprimir
+`apple_target=` no cabeçalho, para que "resultado de macOS", "resultado de iOS" e "resultado de
+host" nunca mais possam ser confundidos na evidência.
+
+### 12.3 Semântica adotada (a que a suíte distingue)
+
+| Alvo / situação | Registro | Por quê |
+| --- | --- | --- |
+| macOS, hook disponível e responde 0 | `PASS` | API existe para o alvo e foi **chamada com sucesso** |
+| macOS, hook existe mas recusa | `BLOCKED` | disponível, porém barrada — errno real no detalhe |
+| **iOS device / iOS simulator** | `NOT_APPLICABLE` | a API é **indisponível para o alvo** (o SDK a marca assim): não é capacidade do port, não é defeito, e **não pode** virar `PASS` |
+| Linux (ou plataforma sem a API) | `UNSUPPORTED` | a plataforma não tem essa API |
+| build Apple de alvo desconhecido | `UNSUPPORTED` | conservador: não alega ser iOS nem macOS |
+
+A distinção é testável **em qualquer host**: `phase02_classify_write_protect(has_capability,
+probe_result, apple_target)` é uma função pura, e os quatro desfechos (mais dois casos de borda)
+são verificados por testes unitários com entradas sintéticas — inclusive os ramos de iOS, que de
+outra forma só seriam exercitados num aparelho.
+
+`jit.map_jit_probe` continua sendo sonda de execução, com o alvo no detalhe e um aviso explícito:
+no iOS um simulador aceita `MAP_JIT` mais facilmente que um aparelho, então **essa linha sozinha
+nunca prova comportamento de dispositivo**, e uma recusa com `EPERM` é registrada como
+capacidade-não-concedida (entitlement), nunca como defeito do port.
+
+### 12.4 Auditoria de APIs Apple (além da de headers)
+
+`tools/audit_apple_apis.py` (novo, roda no CI como passo **4c**, antes do portão) procura
+símbolos **que compilam no macOS e o SDK do iPhoneOS recusa**: `pthread_jit_write_protect_np`,
+`pthread_jit_write_protect_supported_np`, `proc_pidinfo`, `proc_pidpath`, `proc_name`,
+`proc_listpids`, `proc_pid_rusage`, `setiopolicy_np`. Regra: a referência precisa estar sob uma
+guarda que **exclua iOS por alvo** (`RT_APPLE_HAS_JIT_WRITE_PROTECT`, `TARGET_OS_OSX`,
+`!TARGET_OS_IPHONE`, `!TARGET_OS_SIMULATOR`) — `defined(__APPLE__)` **não** conta, porque é
+verdadeiro no iOS também. O auditor ignora literais de string, para não confundir *nomear* uma
+API numa mensagem com *chamá-la*.
+
+| Verificação | Resultado |
+| --- | --- |
+| Estado corrigido | `UNGUARDED_MACOS_ONLY_APIS=0` |
+| Controle negativo (arquivo da CI #3) | acusa **`RuntimeCore/src/darwin_platform.c:165 pthread_jit_write_protect_np`** — a linha exata do erro |
+| Auditoria de headers (Correção 02, preservada) | `UNGUARDED_LINUX_INCLUDES=0` |
+
+Além disso, a lógica de mapeamento de alvo é exercitada por uma **simulação das macros do SDK**
+(`evidence/host_apple_target_mapping_simulation.txt`): para cada conjunto de macros que o SDK
+definiria, o alvo derivado e a barreira da API são verificados em tempo de compilação
+(`#error`), com controle negativo que recusa um iOS capaz de chamar a API. É explicitamente
+rotulado como **simulação de preprocessador em host Linux**, não como build Apple.
+
+### 12.5 Testes acrescentados
+
+| Grupo | Checagens | O que provam |
+| --- | --- | --- |
+| `test_apple_target()` | **+6** | nome não vazio; código e nome concordam; código é um valor documentado; alvo `none` exatamente quando o host não é Apple; a barreira segue o **alvo** e não `__APPLE__`; **a capacidade é anunciada exatamente onde o alvo pode chamar a API** (a invariante que a CI #3 quebrou) |
+| `test_write_protect_semantics()` | **+7** | os quatro desfechos (PASS/BLOCKED/NOT_APPLICABLE/UNSUPPORTED) e dois casos de borda (simulador; Apple de alvo desconhecido), incluindo a garantia de que **nenhuma entrada classifica como PASS sem chamada bem-sucedida** |
+
+Os seis primeiros são **igualdades** entre fatos observáveis, portanto não são vacuosos em
+plataforma alguma; os sete últimos usam entradas sintéticas, então os ramos de iOS são exercitados
+mesmo num host Linux.
+
+### 12.6 Estado da regressão após a Correção 03
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | 0 warnings / 0 errors · ctest **2/2** · **132 checks, 0 falhas** · suíte `records=56 pass=52 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (qemu), rebuild limpo | 0 warnings · **131 checks, 0 falhas** · `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Cabeçalho do relatório | `platform=linux page_size=4096 apple_target=none` (o alvo passa a ser visível) |
+| `jit.write_protect_np` no host | `UNSUPPORTED … (target=none, capability bit absent)` — como antes, agora com o alvo explícito |
+| Correção 01 (pbxproj/portão/evidência/pipefail) | `PLIST_SYNTAX=PASS` (69 objetos) · preflight **62 checagens, 0 falhas** · `EVIDENCE_DIR` absoluto · 6× `mkdir -p` · `pipefail` |
+| Correção 02 (randomness/limites) | `UNGUARDED_LINUX_INCLUDES=0` · `arc4random_buf` no Darwin, `getrandom` no Linux · `fs.deep_paths` medido por bisseção |
+| Fase 04 | 86 arquivos, byte-idênticos fora dos 2 `.txt` de inventário · 0 alterações no git |
+| Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` (esperado aqui) |
+
+### 12.7 O que a Correção 03 **não** prova
+
+* Não prova que o build `iphoneos` completa: ele parou em `darwin_platform.c` na execução 03 e
+  este ambiente não tem toolchain Apple. Prova-se que **a causa demonstrada foi eliminada**, que a
+  classe de erro passou a ser detectada antes do compilador e que o iOS **não** reivindica mais a
+  capacidade de write-protect.
+* Não prova nada sobre o iPhone 13: `IPHONE_VALIDATION_PENDING` permanece. Mesmo com o build
+  completo e a IPA gerada, JIT no aparelho continua dependendo de assinatura/entitlements, e a
+  suíte responde `NOT_APPLICABLE`/`BLOCKED` com o motivo real, nunca `PASS` por otimismo.
+* Um resultado de `MAP_JIT` no **simulador** não vale para o **aparelho**.

@@ -7,6 +7,7 @@
  * a negative one wherever the API can fail, and the numbers they print are observed
  * here, never copied from the lost Phase 02 report.
  */
+#include "phase02_harness.h"
 #include "runtime_context.h"
 #include "runtime_cpu_abi.h"
 #include "runtime_filesystem.h"
@@ -358,6 +359,62 @@ static void test_signals(void)
 
 /* ----------------------------------------------------------------------- fs */
 
+/* ------------------------------------------------------------ apple target */
+
+/* The distinction CI run #3 forced: macOS and iOS are different targets, and an API
+ * that exists on one is marked unavailable by the other's SDK. These checks are
+ * non-vacuous on every platform: each one is an equality between two observable
+ * facts, so a wrong mapping fails on macOS, on iOS and on Linux alike. */
+static void test_apple_target(void)
+{
+    int target = rt_platform_apple_target();
+    const char *name = rt_platform_apple_target_name();
+    uint32_t caps = rt_platform_capabilities();
+
+    CHECK(name != NULL && name[0] != '\0', "apple target has a non-empty name");
+    CHECK((strcmp(name, "none") == 0) == (target == RT_APPLE_TARGET_NONE),
+          "apple target code and name agree");
+    CHECK(target == RT_APPLE_TARGET_NONE || target == RT_APPLE_TARGET_MACOS ||
+          target == RT_APPLE_TARGET_IPHONE_DEVICE ||
+          target == RT_APPLE_TARGET_IPHONE_SIMULATOR ||
+          target == RT_APPLE_TARGET_UNKNOWN_APPLE,
+          "apple target code is one of the documented values");
+    CHECK((target == RT_APPLE_TARGET_NONE) == (rt_platform_is_apple() == 0),
+          "the target is 'none' exactly when the host is not Apple");
+    CHECK(RT_APPLE_HAS_JIT_WRITE_PROTECT == (target == RT_APPLE_TARGET_MACOS),
+          "the write-protect gate follows the Apple target, not plain __APPLE__");
+    /* The invariant CI run #3 broke: the capability bit and the ability to call the
+     * API must agree. Advertised-but-uncallable is what made the iOS build fail. */
+    CHECK(((caps & RT_CAP_JIT_WP_NP) != 0u) ==
+          (RT_APPLE_HAS_JIT_WRITE_PROTECT != 0 && rt_platform_is_apple() != 0),
+          "pthread_jit_write_protect_np is advertised exactly where the target can call it");
+}
+
+/* ------------------------------------------- JIT write-protect semantics */
+
+/* CI run #3 showed why this needs its own classification: on iOS the API cannot be
+ * called at all. The four outcomes must stay distinct, and none of them may be
+ * manufactured from another. Exercised here with synthetic inputs, so the iOS branch
+ * is verified even on a Linux host. */
+static void test_write_protect_semantics(void)
+{
+    CHECK(phase02_classify_write_protect(1, 0, RT_APPLE_TARGET_MACOS) == RT_PASS,
+          "hook present and callable classifies as PASS");
+    CHECK(phase02_classify_write_protect(1, -1, RT_APPLE_TARGET_MACOS) == RT_BLOCKED,
+          "hook present but refusing classifies as BLOCKED");
+    CHECK(phase02_classify_write_protect(0, -1, RT_APPLE_TARGET_IPHONE_DEVICE) == RT_NOT_APPLICABLE,
+          "unavailable on the iOS device target classifies as NOT_APPLICABLE, not PASS");
+    CHECK(phase02_classify_write_protect(0, -1, RT_APPLE_TARGET_IPHONE_SIMULATOR) == RT_NOT_APPLICABLE,
+          "the same holds for the iOS simulator target");
+    CHECK(phase02_classify_write_protect(0, -1, RT_APPLE_TARGET_NONE) == RT_UNSUPPORTED,
+          "a platform without the API classifies as UNSUPPORTED");
+    CHECK(phase02_classify_write_protect(0, -1, RT_APPLE_TARGET_UNKNOWN_APPLE) == RT_UNSUPPORTED,
+          "an Apple build of unknown target does not claim to be iOS (conservative)");
+    CHECK(phase02_classify_write_protect(0, -1, RT_APPLE_TARGET_MACOS) != RT_PASS &&
+          phase02_classify_write_protect(1, -1, RT_APPLE_TARGET_MACOS) != RT_PASS,
+          "no input classifies as PASS without a successful call");
+}
+
 /* --------------------------------------------------------------- platform */
 
 static void test_platform_randomness(void)
@@ -557,6 +614,8 @@ int main(void)
     test_cpu_facts();
     test_threads();
     test_signals();
+    test_write_protect_semantics();
+    test_apple_target();
     test_platform_randomness();
     test_filesystem();
     test_ipc();

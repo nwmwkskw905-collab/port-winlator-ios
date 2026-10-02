@@ -22,6 +22,9 @@ sh "$ROOT/tools/build_aarch64_cross.sh"
 echo "[evidence] Apple SDK include audit (static pre-check)"
 python3 "$ROOT/tools/audit_apple_includes.py" 2>&1 | tee "$EVIDENCE/apple_include_audit.txt"
 
+echo "[evidence] Apple API audit (macOS-only symbols)"
+python3 "$ROOT/tools/audit_apple_apis.py" 2>&1 | tee "$EVIDENCE/apple_api_audit.txt"
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true

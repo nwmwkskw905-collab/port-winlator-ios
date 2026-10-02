@@ -42,7 +42,8 @@ void phase02_log_init(phase02_log_t *log, const char *title)
     }
     memset(log, 0, sizeof(*log));
     phase02_log_line(log, "# %s", (title != NULL) ? title : "PHASE_02_RECONSTRUCTED_POC");
-    phase02_log_line(log, "# platform=%s page_size=%d", rt_platform_name(), rt_platform_page_size());
+    phase02_log_line(log, "# platform=%s page_size=%d apple_target=%s",
+                     rt_platform_name(), rt_platform_page_size(), rt_platform_apple_target_name());
 }
 
 void phase02_log_line(phase02_log_t *log, const char *fmt, ...)

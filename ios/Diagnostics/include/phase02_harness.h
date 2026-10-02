@@ -33,6 +33,18 @@ const phase02_suite_t  *phase02_suite_find(const char *name);
 /* Runs one suite by name ("all" runs every suite). An unknown name is reported as
  * UNSUPPORTED in the log and returns UNSUPPORTED. */
 rt_status_t phase02_run_suite(const char *name, phase02_log_t *log, const char *workdir);
+
+/* Semantic classification of the JIT write-protect capability, as a pure function so it
+ * can be exercised on any host (the iOS branches included):
+ *   capability present and the hook answered 0      -> RT_PASS
+ *   capability present and the hook refused         -> RT_BLOCKED
+ *   capability absent on an iOS target              -> RT_NOT_APPLICABLE
+ *                                                     (the SDK marks the API unavailable
+ *                                                     for that target: not a defect)
+ *   capability absent anywhere else                 -> RT_UNSUPPORTED
+ * Unavailability never becomes RT_PASS. */
+rt_status_t phase02_classify_write_protect(int has_capability, int probe_result,
+                                           int apple_target);
 rt_status_t phase02_run_all(phase02_log_t *log, const char *workdir);
 
 /* Comma-separated list of suite names, for --list and the app. */

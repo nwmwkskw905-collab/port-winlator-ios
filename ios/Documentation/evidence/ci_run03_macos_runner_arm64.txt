@@ -1,0 +1,57 @@
+EVIDENCE_CLASS = MACOS_RUNNER_ARM64 (ambiente de build) + IPHONEOS BUILD (alvo compilado)
+NOTE           = NÃO é IPHONE_PHYSICAL. Um build compilado para iphoneos não é execução
+                 em iPhone. IPHONE_VALIDATION_PENDING permanece.
+
+ORIGEM         = TRANSCRIÇÃO do relato da TERCEIRA execução real do workflow
+                 "iOS Runtime PoC (unsigned IPA)", já com as Correções 01 e 02 na `main`.
+                 Não é log bruto; os textos entre crases são os que a execução reportou.
+                 O log bruto pertence ao GitHub Actions daquela execução.
+
+--------------------------------------------------------------------------------
+O QUE AVANÇOU
+--------------------------------------------------------------------------------
+- O portão `xcodebuild -list` continua verde (Correção 01 preservada).
+- A suíte C/CMake no runner macOS deixou de falhar por caminho (Correção 02
+  preservada); o diretório de evidência funcionou.
+- O bloqueador anterior `'sys/random.h' file not found` NÃO reincidiu.
+- O build `iphoneos` foi executado e avançou até um novo ponto.
+
+--------------------------------------------------------------------------------
+BLOQUEADOR (CI #3) — API Apple indisponível no iOS
+--------------------------------------------------------------------------------
+/Users/runner/work/port-winlator-ios/port-winlator-ios/ios/RuntimeCore/src/darwin_platform.c:165:5:
+    error: 'pthread_jit_write_protect_np' is unavailable: not available on iOS
+
+    pthread_jit_write_protect_np(enable != 0 ? 1 : 0);
+
+SDK: iPhoneOS17.5.sdk/usr/include/pthread.h
+     'pthread_jit_write_protect_np' has been explicitly marked unavailable here
+
+CAUSA RAIZ: o código tratava `__APPLE__` como UMA plataforma. A função existe no
+pthread.h do macOS e é marcada como indisponível pelo SDK do iPhoneOS. O mesmo
+`__APPLE__ && __aarch64__` aparecia em TRÊS lugares e os três estavam errados pelo
+mesmo motivo:
+  1. `darwin_jit_write_protect_set()` — a CHAMADA (o erro de compilação do CI #3);
+  2. `darwin_capabilities()` — o BINÁRIO RT_CAP_JIT_WP_NP, que era anunciado também
+     no iOS; como o harness lê exatamente esse bit, o iOS teria declarado a
+     capacidade como presente — ou seja, uma capacidade reivindicada que o alvo não
+     pode exercer legalmente;
+  3. `rt_jit_probe_map_jit()` / capacidades — usa MAP_JIT, que AMBOS os SDKs definem
+     (fica sob `defined(MAP_JIT)`, portanto degrada para ENOTSUP se algum SDK não o
+     tivesse) e continua sendo sonda de tempo de execução: no iOS quem decide é o
+     entitlement de JIT, não a existência do símbolo.
+
+NÃO foi feito (e por quê):
+  - não foi usada disponibilidade por versão (`@available`/`-weak_framework`): a
+    restrição é uma propriedade da API PARA ESSE TARGET, não da versão do sistema;
+    nenhum teste de versão torna a chamada legal;
+  - a chamada não foi simplesmente removida: ela continua existindo e correta no
+    macOS, gateada por alvo;
+  - a capacidade não foi declarada presente onde não pode ser chamada.
+
+--------------------------------------------------------------------------------
+O QUE A PRÓXIMA EXECUÇÃO DEVE COMPROVAR
+--------------------------------------------------------------------------------
+No mínimo: o build `iphoneos` ULTRAPASSA a linha anteriormente bloqueadora em
+`darwin_platform.c`. Não se afirma que a IPA será produzida: se aparecer outro erro
+Apple real, ele será reportado sem mascaramento, e a correção recomeçará a partir dele.

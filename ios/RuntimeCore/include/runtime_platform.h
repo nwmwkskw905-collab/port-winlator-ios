@@ -49,12 +49,80 @@ const char *rt_prot_name(rt_prot_t prot);
  * strictly runtime question answered by the probes in the jit/memory suites. */
 #define RT_CAP_MMAP_ANON      (1u << 0)
 #define RT_CAP_MAP_JIT       (1u << 1)
+/* Present only when the target can legally call the API: RT_APPLE_HAS_JIT_WRITE_PROTECT
+ * is true on macOS and false on iOS (device or simulator), where the iPhoneOS SDK
+ * marks pthread_jit_write_protect_np unavailable. */
 #define RT_CAP_JIT_WP_NP     (1u << 2)
 #define RT_CAP_ICACHE_FLUSH  (1u << 3)
 #define RT_CAP_KQUEUE        (1u << 4)
 #define RT_CAP_EPOLL         (1u << 5)
 #define RT_CAP_POSIX_SHM     (1u << 6)
 #define RT_CAP_SCM_RIGHTS    (1u << 7)
+
+/* ------------------------------------------------------------------ Apple target
+ *
+ * "__APPLE__" is not one platform: macOS and iOS differ in which APIs exist, and iOS
+ * on a device differs from the simulator. CI run #3 proved it the hard way:
+ *
+ *     darwin_platform.c:165:5: error: 'pthread_jit_write_protect_np' is unavailable:
+ *     not available on iOS
+ *
+ * The function is declared in macOS's pthread.h and marked unavailable by the
+ * iPhoneOS SDK. Treating __APPLE__ as one platform made the iOS build reference an
+ * API it may not legally call — and, worse, made the capability mask advertise it.
+ *
+ * The target is derived from <TargetConditionals.h>, the documented Apple mechanism,
+ * NOT from a version check: no @available and no runtime version test can make an
+ * unavailable API available.
+ */
+#define RT_APPLE_TARGET_NONE             0
+#define RT_APPLE_TARGET_MACOS            1
+#define RT_APPLE_TARGET_IPHONE_DEVICE    2
+#define RT_APPLE_TARGET_IPHONE_SIMULATOR 3
+#define RT_APPLE_TARGET_UNKNOWN_APPLE    4
+
+#if defined(__APPLE__) && defined(__has_include)
+#if __has_include(<TargetConditionals.h>)
+#include <TargetConditionals.h>
+#endif
+#endif
+
+#if defined(__APPLE__) && defined(TARGET_OS_MAC)
+/* TARGET_OS_OSX appeared with the 10.12 SDK. Older headers only have TARGET_OS_MAC,
+ * which is 1 on iOS as well, so the iPhone macro must be consulted first. */
+#if !defined(TARGET_OS_OSX)
+#if defined(TARGET_OS_IPHONE)
+#define TARGET_OS_OSX 0
+#else
+#define TARGET_OS_OSX TARGET_OS_MAC
+#endif
+#endif
+#if TARGET_OS_OSX
+#define RT_APPLE_TARGET RT_APPLE_TARGET_MACOS
+#elif defined(TARGET_OS_SIMULATOR) && TARGET_OS_SIMULATOR
+#define RT_APPLE_TARGET RT_APPLE_TARGET_IPHONE_SIMULATOR
+#elif defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define RT_APPLE_TARGET RT_APPLE_TARGET_IPHONE_DEVICE
+#else
+#define RT_APPLE_TARGET RT_APPLE_TARGET_UNKNOWN_APPLE
+#endif
+#elif defined(__APPLE__)
+/* An Apple build without TargetConditionals.h: assume the most restricted target.
+ * Guessing "macOS" here would re-create exactly the bug this block exists to stop. */
+#define RT_APPLE_TARGET RT_APPLE_TARGET_UNKNOWN_APPLE
+#else
+#define RT_APPLE_TARGET RT_APPLE_TARGET_NONE
+#endif
+
+/* pthread_jit_write_protect_np(3): exists on macOS, marked unavailable by the
+ * iPhoneOS SDK. Both the CALL and the CAPABILITY BIT are gated by this. */
+#define RT_APPLE_HAS_JIT_WRITE_PROTECT (RT_APPLE_TARGET == RT_APPLE_TARGET_MACOS)
+
+/* Which Apple target this binary was built for: RT_APPLE_TARGET_*. On a non-Apple
+ * host this is RT_APPLE_TARGET_NONE. Reporting it keeps "macOS result", "iOS result"
+ * and "host result" from ever being confused in the evidence. */
+int          rt_platform_apple_target(void);
+const char  *rt_platform_apple_target_name(void);
 
 typedef struct rt_platform {
     const char *name;

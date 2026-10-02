@@ -19,6 +19,13 @@
  * Whether the *process* may use any of it (entitlement, sandbox, code signing)
  * is a runtime question: the probes in runtime_jit.c answer that, and the report
  * keeps capability separate from permission.
+ *
+ * macOS and iOS are NOT the same target (see runtime_platform.h). Concretely:
+ *   - pthread_jit_write_protect_np exists on macOS and is marked unavailable by the
+ *     iPhoneOS SDK, so the call below is compiled only for macOS;
+ *   - MAP_JIT is defined by both SDKs but is gated at runtime by entitlements, so it
+ *     stays a runtime probe on both;
+ *   - sys_icache_invalidate (libkern/OSCacheControl.h) is available on both.
  */
 #include "runtime_platform.h"
 
@@ -147,7 +154,9 @@ static uint32_t darwin_capabilities(void)
 #if defined(MAP_JIT)
     caps |= RT_CAP_MAP_JIT;
 #endif
-#if defined(__aarch64__)
+#if defined(__aarch64__) && RT_APPLE_HAS_JIT_WRITE_PROTECT
+    /* macOS only. On iOS the API is unavailable to the target, so advertising the
+     * capability would be a false claim — and the harness reads exactly this bit. */
     caps |= RT_CAP_JIT_WP_NP;
 #endif
     return caps;
@@ -161,13 +170,23 @@ static int darwin_jit_write_protect_set(void *addr, size_t len, int enable, int 
 {
     (void)addr;
     (void)len;
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__APPLE__) && defined(__aarch64__) && RT_APPLE_HAS_JIT_WRITE_PROTECT
+    /* macOS (arm64): the supported W^X pattern on Apple Silicon — open and close the
+     * write window instead of flipping page protections. */
     pthread_jit_write_protect_np(enable != 0 ? 1 : 0);
     if (err_out != NULL) {
         *err_out = 0;
     }
     return 0;
 #else
+    /* iOS (device or simulator): the iPhoneOS SDK marks pthread_jit_write_protect_np
+     * as unavailable, so this target cannot legally call it and this code is not even
+     * compiled here — the call is not "skipped", it is absent. ENOTSUP is the honest
+     * answer: the platform cannot perform the operation. A version check would be
+     * meaningless, because the restriction is a property of the API for this target,
+     * not of the OS version running on the device. Callers must treat -1/ENOTSUP as
+     * "not available here" (the JIT suite reports NOT_APPLICABLE and never PASS), and
+     * W^X on iOS has to use a single view flipped between RW and R-X. */
     (void)enable;
     if (err_out != NULL) {
         *err_out = ENOTSUP;

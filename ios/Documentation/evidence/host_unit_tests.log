@@ -68,6 +68,19 @@ ok   controlled SIGSEGV is caught
 ok   first guard installs
 ok   nested guard is refused with EBUSY
 ok   guard removed
+ok   hook present and callable classifies as PASS
+ok   hook present but refusing classifies as BLOCKED
+ok   unavailable on the iOS device target classifies as NOT_APPLICABLE, not PASS
+ok   the same holds for the iOS simulator target
+ok   a platform without the API classifies as UNSUPPORTED
+ok   an Apple build of unknown target does not claim to be iOS (conservative)
+ok   no input classifies as PASS without a successful call
+ok   apple target has a non-empty name
+ok   apple target code and name agree
+ok   apple target code is one of the documented values
+ok   the target is 'none' exactly when the host is not Apple
+ok   the write-protect gate follows the Apple target, not plain __APPLE__
+ok   pthread_jit_write_protect_np is advertised exactly where the target can call it
 ok   platform random bytes available
 ok   platform random bytes available a second time
 ok   two draws differ (128-bit collision
@@ -119,4 +132,4 @@ ok   module marked as executed
 ok   marking an absent module fails
 ok   context describes itself
 ok   module table refuses to overflow
-== 119 checks, 0 failures ==
+== 132 checks, 0 failures ==

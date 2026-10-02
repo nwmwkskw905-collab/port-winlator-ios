@@ -1,13 +1,13 @@
 # PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics
-# platform=linux page_size=4096
-# host: platform=linux page_size=4096 workdir=/tmp/phase02_BBNmfU
+# platform=linux page_size=4096 apple_target=none
+# host: platform=linux page_size=4096 workdir=/tmp/phase02_IoHCcY
 # note: host results are NOT iOS results; physical-device validation stays pending.
 
 == SUITE memory: memory protection matrix, W^X and dual mapping ==
 [PHASE02] TEST=memory.reserve_rw STATUS=PASS DETAIL=mapped one page read-write (page_size=4096)
 [PHASE02] TEST=memory.read_rw STATUS=PASS DETAIL=read 4096 bytes from the RW mapping
 [PHASE02] TEST=memory.rw_to_r_transition STATUS=PASS DETAIL=mprotect to R accepted
-[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7fc883425000
+[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7ff9f4ce3000
 [PHASE02] TEST=memory.r_to_rw_transition STATUS=PASS DETAIL=write after mprotect(RW) completed
 [PHASE02] TEST=memory.rw_to_rx_transition STATUS=PASS DETAIL=mprotect to R-X accepted (execution is tested by the jit suite)
 [PHASE02] TEST=memory.rx_to_rw_transition STATUS=PASS DETAIL=mprotect back to RW accepted
@@ -16,8 +16,8 @@
 [PHASE02] TEST=memory.dual_mapping_rw_rx STATUS=PASS DETAIL=RW and R-X views are aliasing the same memory (len=4096)
 
 == SUITE jit: MAP_JIT, write-protect hook, generated-code microtest ==
-[PHASE02] TEST=jit.map_jit_probe STATUS=UNSUPPORTED DETAIL=platform 'linux' has no MAP_JIT (capability bit absent)
-[PHASE02] TEST=jit.write_protect_np STATUS=UNSUPPORTED DETAIL=platform 'linux' has no pthread_jit_write_protect_np
+[PHASE02] TEST=jit.map_jit_probe STATUS=UNSUPPORTED DETAIL=platform 'linux' has no MAP_JIT (capability bit absent, target=none)
+[PHASE02] TEST=jit.write_protect_np STATUS=UNSUPPORTED DETAIL=platform 'linux' has no pthread_jit_write_protect_np (target=none, capability bit absent)
 [PHASE02] TEST=jit.emit_payload STATUS=PASS DETAIL=ISA=x86-64 emitted 6 bytes for 'return 42'
 [PHASE02] TEST=jit.alloc STATUS=PASS DETAIL=arena of 6 bytes (MAP_JIT=no)
 [PHASE02] TEST=jit.make_executable STATUS=PASS DETAIL=payload is in executable memory (mprotect R-X)
@@ -49,15 +49,15 @@
 [PHASE02] TEST=signals.suite_survived STATUS=PASS DETAIL=suite continued after the controlled fault
 
 == SUITE fs: POSIX filesystem semantics ==
-[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_BBNmfU
+[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_IoHCcY
 [PHASE02] TEST=fs.deep_paths STATUS=PASS DETAIL=capacity: depth up to 224 (2035 chars) created and removed; ceiling at depth=225 with errno=36 (File name too long) - the platform limit, correctly reported (PATH_MAX=4096[pathconf] cap=2048)
 [PHASE02] TEST=fs.links_and_modes STATUS=PASS DETAIL=symlink followed, chmod 0640 observed
-[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_g21koA
-[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=959713280 bytes on the workdir fs
+[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_WG06Wk
+[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=959778816 bytes on the workdir fs
 
 == SUITE ipc: AF_UNIX, SCM_RIGHTS, pipe, shm, kqueue/epoll ==
 [PHASE02] TEST=ipc.socketpair STATUS=PASS DETAIL=AF_UNIX SOCK_STREAM socketpair round trip (errno=0)
-[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_BBNmfU (errno=0)
+[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_IoHCcY (errno=0)
 [PHASE02] TEST=ipc.scm_rights STATUS=PASS DETAIL=file descriptor passed with SCM_RIGHTS and used (errno=0)
 [PHASE02] TEST=ipc.pipe STATUS=PASS DETAIL=pipe round trip (errno=0)
 [PHASE02] TEST=ipc.posix_shm STATUS=PASS DETAIL=shared memory object mapped twice and compared (errno=0)

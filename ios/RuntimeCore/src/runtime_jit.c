@@ -211,7 +211,13 @@ int rt_jit_probe_write_protect_np(void)
         return -1;
     }
     /* Without a mapping there is nothing to toggle, so the meaningful answer is the
-     * capability bit of the current platform plus the presence of the hook. */
+     * capability bit of the current platform plus the presence of the hook.
+     *
+     * The bit itself is target-aware (runtime_platform.h): macOS advertises it, iOS
+     * never does, because the iPhoneOS SDK marks pthread_jit_write_protect_np
+     * unavailable. A -1 here therefore means "not available to this platform/target"
+     * and says nothing about the port — the JIT suite classifies it as UNSUPPORTED or
+     * NOT_APPLICABLE, never as PASS and never as FAIL. */
     if ((rt_platform_capabilities() & RT_CAP_JIT_WP_NP) == 0u) {
         return -1;
     }
