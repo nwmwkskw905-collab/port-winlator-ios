@@ -1,0 +1,356 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		52639E7641B684B09F079153 /* darwin_platform.c in Sources */ = {isa = PBXBuildFile; fileRef = E5CDB719B7FE09DBFD9F74A4 /* darwin_platform.c */; };
+		BDC46C3216F1BC376F110844 /* linux_platform.c in Sources */ = {isa = PBXBuildFile; fileRef = F78EC6398D38FC277BC860B0 /* linux_platform.c */; };
+		D53CE5AD1A46EA7F40416C9C /* runtime_context.c in Sources */ = {isa = PBXBuildFile; fileRef = CD127F0E0BD546AD5DFFE445 /* runtime_context.c */; };
+		31C5420BDA83A2021C81FA5A /* runtime_cpu_abi.c in Sources */ = {isa = PBXBuildFile; fileRef = 0534E73C881DBC63B5323ABC /* runtime_cpu_abi.c */; };
+		822EF9DDAB19D6B75583B02F /* runtime_dual_mapping.c in Sources */ = {isa = PBXBuildFile; fileRef = 4BCD5D02D6E648F61EE05AE7 /* runtime_dual_mapping.c */; };
+		70772D7C9CBEA9865B58D111 /* runtime_filesystem.c in Sources */ = {isa = PBXBuildFile; fileRef = 522AE1D9C08BCFD793004DBD /* runtime_filesystem.c */; };
+		B7065234583235523755216E /* runtime_ipc.c in Sources */ = {isa = PBXBuildFile; fileRef = E46D1C345AC8A66597DEABFC /* runtime_ipc.c */; };
+		B02CA7AB7BF5BC0D6D599EFC /* runtime_jit.c in Sources */ = {isa = PBXBuildFile; fileRef = AA9B52066635E42A98413880 /* runtime_jit.c */; };
+		02E2E471DD5AFF8E9A574589 /* runtime_loader.c in Sources */ = {isa = PBXBuildFile; fileRef = EC0526D67CB6E88F952AD819 /* runtime_loader.c */; };
+		9B0C14918192C40D0EFEEDD9 /* runtime_memory.c in Sources */ = {isa = PBXBuildFile; fileRef = 2BB2A1BB599226D49ECED81C /* runtime_memory.c */; };
+		34EE6E0DD3CF4D242ED96EA0 /* runtime_signals.c in Sources */ = {isa = PBXBuildFile; fileRef = 0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */; };
+		A46CD2BA12C537E03BA8EC04 /* runtime_threads.c in Sources */ = {isa = PBXBuildFile; fileRef = B42EBCE180E93191C873D458 /* runtime_threads.c */; };
+		1BE6EDF9F0FC1D331A62ACEF /* phase02_harness.c in Sources */ = {isa = PBXBuildFile; fileRef = 681BAF490EB0D0511265A3D9 /* phase02_harness.c */; };
+		AE9B834916293A7DC80997DF /* phase02_log.c in Sources */ = {isa = PBXBuildFile; fileRef = 700EA8348C7FEAB4CAD03BBD /* phase02_log.c */; };
+		60F76107646EFC223FE9A5A4 /* Phase02Bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */; };
+		8E6FADDD289C6D850A44CF94 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7905E6D66FA0DC9949B3105A /* ContentView.swift */; };
+		FF3E5C5E0CD71D6A2E4DC48B /* WinlatorPhase02App.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD28C2EF9F75B5C66A8DC64E /* WinlatorPhase02App.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F5BF48AA40CAD7891EB709FC /* WinlatorPhase02.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WinlatorPhase02.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		54CF3A6540E491833B7EBA31 /* runtime_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_context.h; sourceTree = <group>; };
+		2BCAD6B8E99E9F76564DFF99 /* runtime_cpu_abi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_cpu_abi.h; sourceTree = <group>; };
+		75AE4EC7FBAC54FD6A64A5E8 /* runtime_filesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_filesystem.h; sourceTree = <group>; };
+		6996E673A68ACC60BD7B81C8 /* runtime_ipc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_ipc.h; sourceTree = <group>; };
+		3E5173F4FF46F5ED5D706B22 /* runtime_jit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_jit.h; sourceTree = <group>; };
+		6AFFA686317574BB79AEEF8F /* runtime_loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_loader.h; sourceTree = <group>; };
+		8D363C53876435B8DFF18E8C /* runtime_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_memory.h; sourceTree = <group>; };
+		7EEFAB88992B98C49006FD06 /* runtime_platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_platform.h; sourceTree = <group>; };
+		33F8DB173672EB98B0BE0FA8 /* runtime_signals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_signals.h; sourceTree = <group>; };
+		563B26AED7ABDE0CA7AA016E /* runtime_threads.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_threads.h; sourceTree = <group>; };
+		E5CDB719B7FE09DBFD9F74A4 /* darwin_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = darwin_platform.c; sourceTree = <group>; };
+		F78EC6398D38FC277BC860B0 /* linux_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = linux_platform.c; sourceTree = <group>; };
+		CD127F0E0BD546AD5DFFE445 /* runtime_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_context.c; sourceTree = <group>; };
+		0534E73C881DBC63B5323ABC /* runtime_cpu_abi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_cpu_abi.c; sourceTree = <group>; };
+		4BCD5D02D6E648F61EE05AE7 /* runtime_dual_mapping.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_dual_mapping.c; sourceTree = <group>; };
+		522AE1D9C08BCFD793004DBD /* runtime_filesystem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_filesystem.c; sourceTree = <group>; };
+		E46D1C345AC8A66597DEABFC /* runtime_ipc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_ipc.c; sourceTree = <group>; };
+		AA9B52066635E42A98413880 /* runtime_jit.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_jit.c; sourceTree = <group>; };
+		EC0526D67CB6E88F952AD819 /* runtime_loader.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_loader.c; sourceTree = <group>; };
+		2BB2A1BB599226D49ECED81C /* runtime_memory.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_memory.c; sourceTree = <group>; };
+		0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_signals.c; sourceTree = <group>; };
+		B42EBCE180E93191C873D458 /* runtime_threads.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_threads.c; sourceTree = <group>; };
+		BAB92716C2FCB49617F69946 /* phase02_harness.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_harness.h; sourceTree = <group>; };
+		4C2C65454C6AA064B9F8B027 /* phase02_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_log.h; sourceTree = <group>; };
+		681BAF490EB0D0511265A3D9 /* phase02_harness.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_harness.c; sourceTree = <group>; };
+		700EA8348C7FEAB4CAD03BBD /* phase02_log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_log.c; sourceTree = <group>; };
+		84374A0C4D4FC9FFF9484F4D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = <group>; };
+		9B077181F978A99E03BD4B0A /* Phase02-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Phase02-Bridging-Header.h; sourceTree = <group>; };
+		5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Phase02Bridge.m; sourceTree = <group>; };
+		7905E6D66FA0DC9949B3105A /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = <group>; };
+		AD28C2EF9F75B5C66A8DC64E /* WinlatorPhase02App.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WinlatorPhase02App.swift; sourceTree = <group>; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		424153ED3CD079DB4DB459AF /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		7C641C8D4871D6A48BDE8AC5 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				54CF3A6540E491833B7EBA31 /* child */,
+				2BCAD6B8E99E9F76564DFF99 /* child */,
+				75AE4EC7FBAC54FD6A64A5E8 /* child */,
+				6996E673A68ACC60BD7B81C8 /* child */,
+				3E5173F4FF46F5ED5D706B22 /* child */,
+				6AFFA686317574BB79AEEF8F /* child */,
+				8D363C53876435B8DFF18E8C /* child */,
+				7EEFAB88992B98C49006FD06 /* child */,
+				33F8DB173672EB98B0BE0FA8 /* child */,
+				563B26AED7ABDE0CA7AA016E /* child */,
+			);
+			path = include; name = include;
+			sourceTree = "<group>";
+		};
+		47D5B06889978DF62C48A914 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				E5CDB719B7FE09DBFD9F74A4 /* child */,
+				F78EC6398D38FC277BC860B0 /* child */,
+				CD127F0E0BD546AD5DFFE445 /* child */,
+				0534E73C881DBC63B5323ABC /* child */,
+				4BCD5D02D6E648F61EE05AE7 /* child */,
+				522AE1D9C08BCFD793004DBD /* child */,
+				E46D1C345AC8A66597DEABFC /* child */,
+				AA9B52066635E42A98413880 /* child */,
+				EC0526D67CB6E88F952AD819 /* child */,
+				2BB2A1BB599226D49ECED81C /* child */,
+				0C9DC05A9FA75B867F0AC168 /* child */,
+				B42EBCE180E93191C873D458 /* child */,
+			);
+			path = src; name = src;
+			sourceTree = "<group>";
+		};
+		DB49C73A9524487222E90EF2 /* RuntimeCore */ = {
+			isa = PBXGroup;
+			children = (
+				7C641C8D4871D6A48BDE8AC5 /* child */,
+				47D5B06889978DF62C48A914 /* child */,
+			);
+			path = RuntimeCore; name = RuntimeCore;
+			sourceTree = "<group>";
+		};
+		39BFDABF4CE3DBCC450DD34F /* include */ = {
+			isa = PBXGroup;
+			children = (
+				BAB92716C2FCB49617F69946 /* child */,
+				4C2C65454C6AA064B9F8B027 /* child */,
+			);
+			path = include; name = include;
+			sourceTree = "<group>";
+		};
+		BDFBCCED56E7337A1515901A /* src */ = {
+			isa = PBXGroup;
+			children = (
+				681BAF490EB0D0511265A3D9 /* child */,
+				700EA8348C7FEAB4CAD03BBD /* child */,
+			);
+			path = src; name = src;
+			sourceTree = "<group>";
+		};
+		3545941EF28258A635A946CB /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				39BFDABF4CE3DBCC450DD34F /* child */,
+				BDFBCCED56E7337A1515901A /* child */,
+			);
+			path = Diagnostics; name = Diagnostics;
+			sourceTree = "<group>";
+		};
+		7FF18E09915BE26E0B405591 /* RuntimePoC */ = {
+			isa = PBXGroup;
+			children = (
+				84374A0C4D4FC9FFF9484F4D /* child */,
+				9B077181F978A99E03BD4B0A /* child */,
+				5B10963608EBD08A3881A5C2 /* child */,
+				7905E6D66FA0DC9949B3105A /* child */,
+				AD28C2EF9F75B5C66A8DC64E /* child */,
+			);
+			path = RuntimePoC; name = RuntimePoC;
+			sourceTree = "<group>";
+		};
+		547D009064F7C3F13BEF3460 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F5BF48AA40CAD7891EB709FC /* child */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		518DA81DB9B99529C0C0AEBE /* WinlatorPhase02 */ = {
+			isa = PBXGroup;
+			children = (
+				DB49C73A9524487222E90EF2 /* child */,
+				3545941EF28258A635A946CB /* child */,
+				7FF18E09915BE26E0B405591 /* child */,
+				547D009064F7C3F13BEF3460 /* child */,
+			);
+			name = WinlatorPhase02;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		42AEFBAE01D2DFD981F7DA7D /* WinlatorPhase02 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 354589B28580510B6EC24620 /* Build configuration list for PBXNativeTarget "WinlatorPhase02" */;
+			buildPhases = (
+				7A70D71C385290AF96BF1031 /* phase */,
+				424153ED3CD079DB4DB459AF /* phase */,
+				285BB1C1430063331E9F5DD0 /* phase */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WinlatorPhase02;
+			productName = WinlatorPhase02;
+			productReference = F5BF48AA40CAD7891EB709FC /* WinlatorPhase02.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					42AEFBAE01D2DFD981F7DA7D = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 1F4E3D13C2320EDA50221924 /* Build configuration list for PBXProject "WinlatorPhase02" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 518DA81DB9B99529C0C0AEBE;
+			productRefGroup = 547D009064F7C3F13BEF3460 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				42AEFBAE01D2DFD981F7DA7D /* WinlatorPhase02 */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		285BB1C1430063331E9F5DD0 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7A70D71C385290AF96BF1031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52639E7641B684B09F079153 /* darwin_platform.c in Sources */,
+				BDC46C3216F1BC376F110844 /* linux_platform.c in Sources */,
+				D53CE5AD1A46EA7F40416C9C /* runtime_context.c in Sources */,
+				31C5420BDA83A2021C81FA5A /* runtime_cpu_abi.c in Sources */,
+				822EF9DDAB19D6B75583B02F /* runtime_dual_mapping.c in Sources */,
+				70772D7C9CBEA9865B58D111 /* runtime_filesystem.c in Sources */,
+				B7065234583235523755216E /* runtime_ipc.c in Sources */,
+				B02CA7AB7BF5BC0D6D599EFC /* runtime_jit.c in Sources */,
+				02E2E471DD5AFF8E9A574589 /* runtime_loader.c in Sources */,
+				9B0C14918192C40D0EFEEDD9 /* runtime_memory.c in Sources */,
+				34EE6E0DD3CF4D242ED96EA0 /* runtime_signals.c in Sources */,
+				A46CD2BA12C537E03BA8EC04 /* runtime_threads.c in Sources */,
+				1BE6EDF9F0FC1D331A62ACEF /* phase02_harness.c in Sources */,
+				AE9B834916293A7DC80997DF /* phase02_log.c in Sources */,
+				60F76107646EFC223FE9A5A4 /* Phase02Bridge.m in Sources */,
+				8E6FADDD289C6D850A44CF94 /* ContentView.swift in Sources */,
+				FF3E5C5E0CD71D6A2E4DC48B /* WinlatorPhase02App.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		92E165A9035A603BE73D2E62 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				ONLY_ACTIVE_ARCH = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)");
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E1D3BBA94590957B0374D6E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				ONLY_ACTIVE_ARCH = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		F22D2FFCC45240A8FF5EBE4A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = WinlatorPhase02;
+				PRODUCT_BUNDLE_IDENTIFIER = io.winlator.phase02.reconstructed;
+				INFOPLIST_FILE = RuntimePoC/Info.plist;
+				SWIFT_OBJC_BRIDGING_HEADER = RuntimePoC/Phase02-Bridging-Header.h;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = ("$(SRCROOT)/RuntimeCore/include", "$(SRCROOT)/Diagnostics/include");
+				OTHER_CFLAGS = ("-Wall", "-Wextra", "-Wpedantic", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wpointer-arith", "-Wcast-align", "-Wstrict-prototypes", "-Wmissing-prototypes", "-Wno-unused-parameter");
+				TARGETED_DEVICE_FAMILY = "1,2";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+			};
+			name = Debug;
+		};
+		FE4F802C632EAD717BA35062 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = WinlatorPhase02;
+				PRODUCT_BUNDLE_IDENTIFIER = io.winlator.phase02.reconstructed;
+				INFOPLIST_FILE = RuntimePoC/Info.plist;
+				SWIFT_OBJC_BRIDGING_HEADER = RuntimePoC/Phase02-Bridging-Header.h;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = ("$(SRCROOT)/RuntimeCore/include", "$(SRCROOT)/Diagnostics/include");
+				OTHER_CFLAGS = ("-Wall", "-Wextra", "-Wpedantic", "-Wshadow", "-Wconversion", "-Wsign-conversion", "-Wpointer-arith", "-Wcast-align", "-Wstrict-prototypes", "-Wmissing-prototypes", "-Wno-unused-parameter");
+				TARGETED_DEVICE_FAMILY = "1,2";
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F4E3D13C2320EDA50221924 /* Build configuration list for PBXProject "WinlatorPhase02" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				92E165A9035A603BE73D2E62 /* Debug */,
+				E1D3BBA94590957B0374D6E9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		354589B28580510B6EC24620 /* Build configuration list for PBXNativeTarget "WinlatorPhase02" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F22D2FFCC45240A8FF5EBE4A /* Debug */,
+				FE4F802C632EAD717BA35062 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}

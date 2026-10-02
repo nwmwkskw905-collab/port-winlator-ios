@@ -1,0 +1,4 @@
+generated /home/user/winlator/ios/WinlatorPhase02.xcodeproj/project.pbxproj
+generated /home/user/winlator/ios/WinlatorPhase02.xcodeproj/xcshareddata/xcschemes/WinlatorPhase02.xcscheme
+  target=WinlatorPhase02 bundle_id=io.winlator.phase02.reconstructed deployment=16.0
+  C sources: 12 core + 2 diagnostics; ObjC: 1; Swift: 2

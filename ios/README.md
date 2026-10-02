@@ -1,5 +1,15 @@
 # `ios/` — Fase 02: Runtime iOS PoC
 
+> ## ⚠ Identificação: `PHASE_02_RECONSTRUCTED_POC`
+>
+> Esta árvore é uma **reconstrução** da Runtime PoC da Fase 02, não o código original.
+> A PoC original foi classificada como `PHASE_02_POC_CONFIRMED_LOST` após busca exaustiva
+> (disco, arquivos compactados, objetos Git, snapshots do agente e repositórios remotos).
+> A reconstrução foi autorizada explicitamente e foi guiada pelos artefatos que sobreviveram:
+> este `README.md`, `ios/CMakeLists.txt` e `ios/.gitignore`.
+> Leia `Documentation/RELATORIO_FASE_02_RECONSTRUIDA.md`, que separa **histórico** de
+> **resultados medidos agora**. Nenhum resultado histórico foi reaproveitado.
+
 Base nativa iOS ARM64 + harness de diagnóstico para medir, com evidência, quais mecanismos
 fundamentais do futuro runtime do Winlator sobrevivem ao iOS.
 

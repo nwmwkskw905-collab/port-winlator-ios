@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  PHASE_02_RECONSTRUCTED_POC — REQUESTED_ENTITLEMENT, not GRANTED_ENTITLEMENT.
+
+	  This file records what the PoC would ASK FOR. Nothing here is granted by
+	  existing: an entitlement only exists after a profile that carries it signs the
+	  build, and the free/personal-team path does not carry the JIT entitlement.
+
+	  Consequence for the physical validation: build the IPA unsigned (as the CI
+	  does), sign it however you normally sideload, and let the app REPORT what it
+	  actually got. The jit suite answers with:
+	      jit.map_jit_probe      PASS      -> MAP_JIT was granted
+	      jit.map_jit_probe      BLOCKED   -> refused, with the real errno
+	      jit.execution_allowed  PASS/BLOCKED
+	  A refusal there is a finding about the signing context, not proof that the
+	  port is broken.
+
+	  Deliberately NOT wired into CODE_SIGN_ENTITLEMENTS: attaching an entitlement
+	  you cannot be granted would break sideloading, and the test must measure the
+	  context the build actually runs in.
+	-->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+</dict>
+</plist>

@@ -1,0 +1,5 @@
+HOST_TESTS   = CONFIRMADA NO HARNESS HOST (linux) - never an iOS result
+AARCH64      = AARCH64_QEMU - qemu does not validate iOS
+IOS_BUILD    = see ios_* logs; without a macOS runner it is
+               IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN
+IPHONE       = PHYSICAL_DEVICE_VALIDATION_REQUIRED (iPhone 13 target)
