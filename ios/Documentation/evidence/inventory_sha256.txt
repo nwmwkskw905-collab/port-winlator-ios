@@ -36,7 +36,8 @@ a9e183286a1eb573344571155d1556544d279b9463ef48bf47eaa96d62e7c6f8  /home/user/win
 e9aa7ee99c98b4eefe8bb2c2a904631dd251a206be1abd882d8749f372129dca  /home/user/winlator/ios/tools/aarch64-linux-toolchain.cmake
 4dc2ac41f5cec3ca81cd5b65ef07b492ad2920f8d5a5d16d5168a8fc5832d509  /home/user/winlator/ios/tools/build_aarch64_cross.sh
 bbbf2677e0450556a7974bf5e8b151a243e37ffe8963ab98c331fb9db560b0cd  /home/user/winlator/ios/tools/build_host_harness.sh
-974da67743fb2df20b6a3b21b8f179a1c368ebc6f60f150adc3995be0c8cac94  /home/user/winlator/ios/tools/build_ios.sh
+2cec16700abe5e78b57f15675c475fdaf6353ac0f2ae480c1ee09840c2da2a41  /home/user/winlator/ios/tools/build_ios.sh
 1242ce28762223c69ef4e6cceb973ee4c19b4034b2481e92c738057719599e72  /home/user/winlator/ios/tools/collect_evidence.sh
-a003da443fa9908113a2420e1b17e516560cb23456340114785d4c150b0e50ec  /home/user/winlator/ios/tools/generate_xcodeproj.py
-aa75d66a78249ef535603859ea7993273be7079252fafe6816d455c48bb5a968  /home/user/winlator/ios/tools/validate_xcodeproj.py
+c08f4875679ea77d6f882a9cdcdbe98784ee4edea91e66ca3a20416b9b0ad869  /home/user/winlator/ios/tools/generate_xcodeproj.py
+9f4565ab21eca6627ba78a2a395348381addc4a401f9066a9c084c99ec78d214  /home/user/winlator/ios/tools/openstep_plist.py
+af853665d629b9c59005d9032c4a0de0869d0c7bcf51ce8412b51b2ce2c01aa0  /home/user/winlator/ios/tools/validate_xcodeproj.py

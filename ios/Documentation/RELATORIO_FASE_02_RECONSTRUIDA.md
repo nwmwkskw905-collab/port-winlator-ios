@@ -151,13 +151,16 @@ emissor AArch64 produz instruções corretas; nada além disso.
 
 ## 8. Próximos passos
 
-1. Transferir a reconstrução ao repositório `nwmwkskw905-collab/port-winlator-ios` (pacote
-   `phase02-reconstructed-poc.tar.gz`, sem `.git`).
-2. Executar `Actions → iOS Runtime PoC (unsigned IPA) → Run workflow` (runner macOS).
-3. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
-4. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
+1. ~~Transferir a reconstrução~~ e ~~executar o workflow~~ — **feitos**: a execução 01 do CI Apple
+   ocorreu e está registrada na §10 (dois bloqueadores, corrigidos no pacote
+   `phase02-apple-ci-fix-01.tar.gz`).
+2. Aplicar o pacote de correção 01 ao repositório e reexecutar
+   `Actions → iOS Runtime PoC (unsigned IPA) → Run workflow` (runner macOS).
+3. Conferir no log que o portão `xcodebuild -list` passou e que a IPA não assinada foi gerada.
+4. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
+5. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
    (Arquivos › No meu iPhone › Winlator PoC, ou `xcrun devicectl device copy from`).
-5. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
+6. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
 
 ## 9. Como reproduzir (host, sem Apple)
 
@@ -170,3 +173,109 @@ python3 tools/validate_xcodeproj.py   # validação estrutural (34 checagens)
 sh tools/build_ios.sh both            # tenta o build Apple; sem toolchain: IOS_BUILD=UNTESTED
 sh tools/collect_evidence.sh          # regenera toda a evidência deste relatório
 ```
+
+---
+
+## 10. Correções do primeiro CI Apple real (execução 01)
+
+A primeira execução no runner macOS/Apple ARM64 terminou **vermelha** por **dois bloqueadores
+independentes**. O caminho C/CMake, porém, executou de verdade: `AppleClang 15.0.0.15000309`,
+os três alvos construídos, `warnings: 0`, `platform=darwin`, `page_size=16384`, `isa=aarch64` e
+`== 91 checks, 0 failures ==`. Esses dados são preservados como evidência
+**`MACOS_RUNNER_ARM64`** (transcrição em `evidence/ci_run01_macos_runner_arm64.txt`) e **não** são
+`IPHONE_PHYSICAL`: `page_size` de 16 KiB, x18 reservado e JIT executando no runner **não** provam
+o mesmo no iPhone. `IPHONE_VALIDATION_PENDING` permanece.
+
+### 10.1 Bloqueador A — `project.pbxproj` inválido
+
+`xcodebuild: error: Unable to read project 'WinlatorPhase02.xcodeproj'` /
+`The project 'WinlatorPhase02' is damaged and cannot be opened due to a parse error` /
+`NSCocoaErrorDomain Code=3840` / exit code 74.
+
+**Causa raiz (reproduzida localmente, sem Mac).** O gerador emitia, em **31** `PBXFileReference`:
+
+```
+sourceTree = <group>;          ← sem aspas
+```
+
+Na gramática OpenStep do `pbxproj`, `<...>` é um literal de **dados** (bytes hexadecimais), não
+uma string. O parser consome `<`, tenta ler `group` como hexadecimal e aborta em `g`:
+
+```
+line 31, column 173: invalid character 'g' inside a '<...>' data token
+```
+
+Ou seja: o arquivo **não era um plist válido**, exatamente o "damaged ... parse error" do Xcode.
+O `Code=3840` / `"JSON text did not start with array or object..."` é a tentativa secundária do
+Xcode de ler o mesmo arquivo por outro caminho — sintoma, não causa.
+
+**Correção na causa, no gerador** (nenhuma edição manual do `project.pbxproj`):
+
+* `tools/generate_xcodeproj.py` — `file_ref()` passou a emitir `sourceTree` por `quote()`;
+* `quote()` — passou a citar tudo que não seja estritamente seguro sem aspas
+  (`A-Za-z0-9_$+/:.-`), incluindo `<`, `>`, `=` e string vazia;
+* o gerador agora **parseia o próprio resultado** com `tools/openstep_plist.py` e **se recusa a
+  escrever** um projeto inválido (`PBXPROJ_PARSE=OK` quando passa) — essa classe de defeito não
+  chega mais ao CI.
+
+O arquivo regenerado difere do anterior em **31 linhas**, todas a mesma troca
+`sourceTree = <group>;` → `sourceTree = "<group>";`. Nenhuma outra mudança estrutural: mesmos 69
+identificadores, mesmas 356 linhas.
+
+### 10.2 Bloqueador B — `tee` para diretório de evidências inexistente
+
+`tee: ../Documentation/evidence/ci_macos_unit_tests.log: No such file or directory`, com os
+testes **passando** (`== 91 checks, 0 failures ==`). Causa: o comando
+`(cd build/host && ./phase02_unit_tests) 2>&1 | tee ../Documentation/evidence/...` avaliava o
+caminho relativo **depois** do `cd`, apontando para `ios/build/Documentation/...`, que não existe;
+com `set -o pipefail`, o status do `tee` virou o status do step.
+
+**Correção:** `EVIDENCE_DIR = ${{ github.workspace }}/ios/Documentation/evidence` (derivado do
+workspace), `mkdir -p "$EVIDENCE_DIR"` **antes** de qualquer `tee`, e todos os `tee` com caminho
+absoluto. `set -o pipefail` foi **mantido** (7 ocorrências) e nenhum código de saída é escondido;
+os `|| true` restantes são apenas em `echo` informativos (versões de SDK, contagem de warnings,
+`lipo`/`nm`/`plutil`), nunca em passo crítico.
+
+### 10.3 Validador atualizado (e o que continua sendo o portão)
+
+`tools/validate_xcodeproj.py` passou de 34 para **62 checagens** e agora inclui: parse pela
+gramática OpenStep, ausência de token `<...>` sem aspas, ausência de BOM/marcadores de conflito/
+JSON acidental, `isa` string em todo objeto, resolução de **todas** as referências do grafo
+(`targets`, `mainGroup`, `productRefGroup`, `buildPhases`, `buildConfigurations`, `fileRef`,
+`productReference`, `buildConfigurationList`), filiação de cada fonte à fase `Sources` e coerência
+do `BlueprintIdentifier` do scheme com o alvo.
+
+Controle negativo executado: apontado ao `project.pbxproj` que o Xcode rejeitou, o validador
+**falha** com linha e coluna (`line 31, column 173 ...`), comprovando que a classe de erro passou
+a ser detectada fora do macOS.
+
+**O validador Python não substitui o parser da Apple.** O portão autoritativo continua sendo, no
+macOS:
+
+```
+xcodebuild -project ios/WinlatorPhase02.xcodeproj -list
+```
+
+O CI falha nesse passo **antes** de qualquer build `iphoneos` (passo 5 de 13), e `tools/build_ios.sh`
+foi alinhado ao mesmo comportamento.
+
+### 10.4 Ordem obrigatória do CI (aplicada)
+
+1. checkout · 2. ambiente Apple (logado) · 3. gerar/regenerar `.xcodeproj` · 4. validação
+estrutural · **5. `xcodebuild -list` (portão: reprovar aqui encerra o job)** · 6. build
+`iphoneos` · 7. localizar `.app` · 8. validar bundle (Info.plist, executável, arquitetura,
+bundle id, `UIDeviceFamily`) · 9. `Payload/` · 10. IPA não assinada · 11. inspecionar IPA ·
+12. SHA-256 · 13. upload do artifact.
+
+### 10.5 Estado da regressão após as correções
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64 (rebuild limpo) | 0 warnings / 0 errors · ctest 2/2 · **91 checks, 0 falhas** · suíte `pass=52 fail=0 blocked=0 unsupported=2 not_applicable=2 summary=PASS` |
+| AArch64 (qemu) | 0 warnings · **90 checks, 0 falhas** · suíte `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Preflight do `.xcodeproj` | **62 checagens, 0 falhas** (+ controle negativo detectando o arquivo antigo) |
+| Parse OpenStep do `pbxproj` | `PLIST_SYNTAX=PASS` (69 objetos) |
+| Fase 04 | 86 arquivos antes / 86 depois, byte-idênticos fora dos 2 `.txt` de inventário |
+| Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` (esperado) |
+
+Nenhum teste foi alterado para forçar `PASS`; nenhuma capacidade foi declarada sem execução.

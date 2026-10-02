@@ -102,10 +102,13 @@ def build_objects(files: dict) -> str:
     target_release_uid = uid("config:target:release")
 
     def file_ref(uid_value: str, name: str, path: str, filetype: str, source_tree: str = "<group>") -> str:
+        # NOTE: source_tree must go through quote(): "<group>" written bare would be
+        # read by the OpenStep parser as a *data* token, which is exactly what made
+        # the first Apple CI run report "The project is damaged ... parse error".
         return (
             f"\t\t{uid_value} /* {name} */ = {{isa = PBXFileReference; "
             f"fileEncoding = 4; lastKnownFileType = {filetype}; path = {quote(path)}; "
-            f"sourceTree = {source_tree}; }};"
+            f"sourceTree = {quote(source_tree)}; }};"
         )
 
     def build_file(uid_value: str, ref_uid: str, name: str) -> str:
@@ -113,9 +116,17 @@ def build_objects(files: dict) -> str:
                 f"fileRef = {ref_uid} /* {name} */; }};")
 
     def quote(value: str) -> str:
-        if value and all(c.isalnum() or c in "._/-" for c in value):
+        """Render a string for the OpenStep dialect used by pbxproj.
+
+        Only the characters CoreFoundation accepts in an unquoted string are allowed
+        through; everything else — including '<', '>', '=' and the empty string — is
+        quoted. See tools/openstep_plist.py for the grammar this must satisfy.
+        """
+        unquoted_safe = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                            "0123456789_$+/:.-")
+        if value and all(c in unquoted_safe for c in value):
             return value
-        return '"' + value.replace('"', '\\"') + '"'
+        return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
     file_refs = []
     group_children = {}
@@ -425,9 +436,33 @@ def main() -> int:
     scheme_dir = project_dir / "xcshareddata" / "xcschemes"
     scheme_dir.mkdir(parents=True, exist_ok=True)
 
-    (project_dir / "project.pbxproj").write_text(build_objects(files), encoding="utf-8")
-    (scheme_dir / f"{TARGET_NAME}.xcscheme").write_text(scheme_xml(), encoding="utf-8")
+    pbxproj = build_objects(files)
+    scheme = scheme_xml()
 
+    # Self-check: a generated project that the OpenStep parser rejects would only be
+    # discovered by a real Apple runner (this happened once — see BLOCKER A of the
+    # first Apple CI run). Parse it here, with the same grammar, before writing.
+    sys.dont_write_bytecode = True  # keep __pycache__ out of the repository
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from openstep_plist import PlistSyntaxError, parse  # noqa: E402
+
+    try:
+        parsed = parse(pbxproj)
+    except PlistSyntaxError as error:
+        print("generate_xcodeproj: ERROR: the generated project.pbxproj is not a "
+              "valid OpenStep plist; refusing to write it.", file=sys.stderr)
+        print(str(error), file=sys.stderr)
+        return 3
+
+    if parsed.get("rootObject") not in parsed.get("objects", {}):
+        print("generate_xcodeproj: ERROR: rootObject does not resolve inside objects",
+              file=sys.stderr)
+        return 3
+
+    (project_dir / "project.pbxproj").write_text(pbxproj, encoding="utf-8")
+    (scheme_dir / f"{TARGET_NAME}.xcscheme").write_text(scheme, encoding="utf-8")
+
+    print("PBXPROJ_PARSE=OK (OpenStep grammar, objects={})".format(len(parsed["objects"])))
     print(f"generated {project_dir}/project.pbxproj")
     print(f"generated {scheme_dir}/{TARGET_NAME}.xcscheme")
     print(f"  target={TARGET_NAME} bundle_id={BUNDLE_IDENTIFIER} deployment={DEPLOYMENT_TARGET}")

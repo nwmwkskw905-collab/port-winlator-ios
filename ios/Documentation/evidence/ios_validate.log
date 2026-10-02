@@ -1,11 +1,25 @@
-== structural validation ==
+== structural validation (preflight; `xcodebuild -list` remains authoritative) ==
 ok   project.pbxproj exists
 ok   shared scheme exists
 ok   file starts with the required comment header
+ok   no UTF-8 BOM
+ok   top-level object starts on the line after the header
+ok   file ends with the closing brace and a newline
 ok   braces are balanced
+ok   parentheses are balanced
+ok   indentation is tabs (informational)
+ok   no non-ASCII characters
+ok   no source-control conflict markers
+ok   no accidental JSON structure
+ok   no JSON-style quoted keys
+ok   file parses as a valid OpenStep/NeXTSTEP ASCII plist
+ok   no unquoted '<...>' token anywhere (must be "<group>")
+ok   rootObject resolves inside objects
 ok   object table is populated
+ok   every object key is a string
+ok   every object has a string 'isa'
 ok   every referenced identifier is defined
-ok   rootObject resolves to a defined object
+ok   no object references a missing object
 ok   section PBXProject present
 ok   section PBXNativeTarget present
 ok   section PBXSourcesBuildPhase present
@@ -13,10 +27,25 @@ ok   section PBXFileReference present
 ok   section PBXGroup present
 ok   section XCBuildConfiguration present
 ok   section XCConfigurationList present
+ok   exactly one PBXProject
+ok   exactly one PBXNativeTarget
+ok   PBXProject.targets lists the target
+ok   mainGroup resolves
+ok   productRefGroup is a PBXGroup
+ok   every build phase of the target exists and is a phase
+ok   sources phase entries are build files (informational)
+ok   a PBXSourcesBuildPhase exists
+ok   every entry of the Sources phase is a PBXBuildFile
+ok   every PBXBuildFile.fileRef is a PBXFileReference
+ok   productReference is a PBXFileReference
+ok   target buildConfigurationList is an XCConfigurationList
+ok   every buildConfigurations entry is an XCBuildConfiguration
+ok   every configuration is named Debug or Release
+ok   every buildConfigurations entry is an XCBuildConfiguration
+ok   every configuration is named Debug or Release
 ok   every file reference resolves on disk
 ok   every compilable source is a member of Sources
 ok   Sources phase has exactly one entry per source file
-ok   Sources phase is not empty
 ok   Info.plist is wired through INFOPLIST_FILE
 ok   bridging header is wired through SWIFT_OBJC_BRIDGING_HEADER
 ok   Info.plist exists on disk
@@ -25,12 +54,13 @@ ok   bundle identifier is the documented reconstruction identifier
 ok   deployment target is present (NEW_RECONSTRUCTED_DEPLOYMENT_TARGET)
 ok   SDKROOT is iphoneos
 ok   product name is set
-ok   native target carries the expected name
-ok   product reference names the .app bundle
+ok   entitlements are NOT attached to signing (REQUESTED != GRANTED)
 ok   Debug and Release exist for project and target
 ok   scheme points at the target
 ok   scheme points at the product
 ok   scheme container is the generated project
+ok   scheme BlueprintIdentifier matches the target identifier
 ok   entitlements file documents the requested capability
-ok   entitlements are NOT attached to signing (REQUESTED != GRANTED)
-== 34 checks, 0 failures ==
+== 62 checks, 0 failures ==
+   NOTE: authoritative gate is `xcodebuild -project ios/WinlatorPhase02.xcodeproj -list`
+         on Apple hardware; this preflight cannot replace Apple's parser.

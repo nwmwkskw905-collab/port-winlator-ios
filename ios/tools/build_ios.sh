@@ -3,6 +3,9 @@
 #
 # PHASE_02_RECONSTRUCTED_POC.
 #
+# Order (same as CI): generate -> structural preflight -> `xcodebuild -list` gate ->
+# build. The iphoneos build only starts when the real Xcode parser reads the project.
+#
 #   sh tools/build_ios.sh both        # iphonesimulator + iphoneos
 #   sh tools/build_ios.sh device      # iphoneos only, unsigned (CODE_SIGNING_ALLOWED=NO)
 #   sh tools/build_ios.sh simulator
@@ -35,9 +38,15 @@ echo "[ios] toolchain"
   > "$EVIDENCE/ios_toolchain.txt" 2>&1 || true
 cat "$EVIDENCE/ios_toolchain.txt"
 
-echo "[ios] xcodebuild -list"
-xcodebuild -project "$PROJECT" -list > "$EVIDENCE/ios_xcodebuild_list.log" 2>&1 || true
+echo "[ios] gate: xcodebuild -list (authoritative parser)"
+if ! xcodebuild -project "$PROJECT" -list > "$EVIDENCE/ios_xcodebuild_list.log" 2>&1; then
+    echo "xcodebuild cannot read the project; the iphoneos build will NOT start."
+    cat "$EVIDENCE/ios_xcodebuild_list.log"
+    exit 1
+fi
 cat "$EVIDENCE/ios_xcodebuild_list.log"
+grep -q "WinlatorPhase02" "$EVIDENCE/ios_xcodebuild_list.log" || \
+    { echo "FAIL: target missing from -list output"; exit 1; }
 
 case "$MODE" in
     simulator|both)

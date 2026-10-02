@@ -1,0 +1,96 @@
+EVIDENCE_CLASS = MACOS_RUNNER_ARM64
+NOTE           = runner macOS/Apple ARM64. NÃO é IPHONE_PHYSICAL.
+                 page_size=16384, x18 reservado e execução de JIT aqui NÃO provam
+                 que essas capacidades funcionarão no iPhone. IPHONE_VALIDATION_PENDING.
+
+ORIGEM         = TRANSCRIÇÃO do relato da PRIMEIRA execução real do workflow
+                 "iOS Runtime PoC (unsigned IPA)". Este arquivo NÃO é um log bruto:
+                 o log bruto pertence ao GitHub Actions daquela execução. Nada aqui
+                 foi inventado — cada linha corresponde ao que a execução reportou.
+                 Os logs brutos das execuções seguintes são gravados pelo próprio
+                 workflow como ci_macos_arm64_*.log / ci_ipa_*.log.
+
+--------------------------------------------------------------------------------
+AMBIENTE APPLE (execução 01)
+--------------------------------------------------------------------------------
+compiler        AppleClang 15.0.0.15000309
+runner          macOS / Apple ARM64
+
+--------------------------------------------------------------------------------
+BUILD C/CMAKE NO RUNNER APPLE (execução 01)
+--------------------------------------------------------------------------------
+phase02_runtime_core   construído
+phase02_unit_tests     construído
+phase02_poc            construído
+warnings               0
+errors                 0
+
+--------------------------------------------------------------------------------
+RUNTIME (execução 01)
+--------------------------------------------------------------------------------
+platform   = darwin
+page_size  = 16384
+isa        = aarch64
+
+--------------------------------------------------------------------------------
+TESTES (execução 01)
+--------------------------------------------------------------------------------
+== 91 checks, 0 failures ==
+
+Ou seja: o caminho C/CMake executou de verdade em Apple ARM64 e o backend Darwin
+foi exercitado. Esses resultados devem ser preservados COMO ESTÃO e rotulados
+MACOS_RUNNER_ARM64 — nunca como resultado de iPhone.
+
+--------------------------------------------------------------------------------
+BLOQUEADOR A (execução 01) — project.pbxproj inválido
+--------------------------------------------------------------------------------
+xcodebuild: error: Unable to read project 'WinlatorPhase02.xcodeproj'.
+The project 'WinlatorPhase02' is damaged and cannot be opened due to a parse error.
+NSCocoaErrorDomain Code=3840
+"JSON text did not start with array or object..."
+exit code 74
+
+CAUSA RAIZ (reproduzida localmente com parser OpenStep estrito, sem Mac):
+  O gerador escrevia, em 31 PBXFileReference,
+      sourceTree = <group>;
+  SEM aspas. Na gramática OpenStep usada pelo pbxproj, '<...>' é um literal de
+  DADOS (bytes hexadecimais), não uma string. O parser lê '<', tenta interpretar
+  'group' como hexadecimal e aborta em 'g':
+      line 31, column 173: invalid character 'g' inside a '<...>' data token
+  Logo o arquivo não era um plist válido — exatamente "damaged ... parse error".
+  (O Code=3840/"JSON text did not start..." é a tentativa secundária do Xcode de ler
+  o mesmo arquivo por outro caminho; a causa primária é a sintaxe OpenStep acima.)
+
+CORREÇÃO (na causa, no gerador — não por edição manual do projeto):
+  ios/tools/generate_xcodeproj.py
+    - file_ref(): o sourceTree passa a ser emitido por quote();
+    - quote(): passa a citar tudo que não seja estritamente seguro sem aspas
+      (letras, dígitos, _ $ + / : . -), incluindo '<', '>', '=' e string vazia;
+    - o gerador agora PARSEIA o próprio resultado com o parser OpenStep estrito
+      (tools/openstep_plist.py) e se RECUSA a escrever um projeto inválido,
+      imprimindo PBXPROJ_PARSE=OK quando passa.
+  Resultado no arquivo regenerado: PLIST_SYNTAX=PASS, objects=69,
+  diff = 31 linhas, todas 'sourceTree = <group>;' → 'sourceTree = "<group>";',
+  sem nenhuma outra mudança estrutural (mesmos 69 identificadores, 356 linhas).
+
+--------------------------------------------------------------------------------
+BLOQUEADOR B (execução 01) — tee / caminho da evidência
+--------------------------------------------------------------------------------
+tee: ../Documentation/evidence/ci_macos_unit_tests.log: No such file or directory
+step vermelho com os testes PASSANDO (== 91 checks, 0 failures ==)
+
+CAUSA RAIZ:
+  O comando era  (cd build/host && ./phase02_unit_tests) 2>&1 | tee ../Documentation/evidence/...
+  O subshell muda para ios/build/host, então o caminho relativo '../Documentation/...'
+  resolvia para ios/build/Documentation/... (inexistente). Com 'set -o pipefail' o
+  status do tee virou o status do step.
+
+CORREÇÃO:
+  .github/workflows/ios-runtime-poc.yml
+    - EVIDENCE_DIR = ${{ github.workspace }}/ios/Documentation/evidence (derivado do
+      workspace, não relativo);
+    - mkdir -p "$EVIDENCE_DIR" antes de qualquer tee (5 pontos);
+    - todos os tee passam a usar caminhos absolutos "$EVIDENCE_DIR/...";
+    - 'set -o pipefail' MANTIDO (7 ocorrências) e nenhum código de saída é escondido.
+  Además: a ordem obrigatória do CI passou a ser explícita e numerada, com
+  'xcodebuild -list' como PORTÃO: se ele falhar, o build iphoneos NÃO começa.

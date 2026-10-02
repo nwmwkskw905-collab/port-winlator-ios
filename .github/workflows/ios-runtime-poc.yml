@@ -1,11 +1,23 @@
 # ios-runtime-poc.yml — build the reconstructed Phase 02 Runtime PoC for iOS.
 #
-# PHASE_02_RECONSTRUCTED_POC / PHASE_02 stage: this workflow produces an UNSIGNED
-# IPA for later signing/sideloading. It never signs anything, never uses an Apple
-# ID, certificate or provisioning profile, and never claims that JIT or Box64 works
-# on an iPhone: compiling for iphoneos proves compilation only.
+# PHASE_02_RECONSTRUCTED_POC. This workflow produces an UNSIGNED IPA for later
+# signing/sideloading. It never signs, never uses an Apple ID, certificate or
+# provisioning profile, and never claims that JIT or Box64 works on an iPhone.
 #
 # Manual run: Actions -> "iOS Runtime PoC (unsigned IPA)" -> Run workflow.
+#
+# Corrections after the first real Apple CI run (both blockers are documented in
+# ios/Documentation/RELATORIO_FASE_02_RECONSTRUIDA.md §10):
+#   A) project.pbxproj was invalid (unquoted `sourceTree = <group>;`), fixed in the
+#      generator (tools/generate_xcodeproj.py) — not by hand-editing the project.
+#   B) `tee ../Documentation/evidence/...` ran inside a `cd build/host` subshell, so
+#      the evidence directory did not exist at that relative path. Every evidence
+#      path is now derived from $GITHUB_WORKSPACE and created with mkdir -p first.
+#
+# Mandatory order (do not reorder): checkout -> Apple environment -> generate ->
+# structural validation -> xcodebuild -list (hard gate) -> iphoneos build -> locate
+# .app -> validate bundle -> Payload -> unsigned IPA -> inspect IPA -> SHA-256 ->
+# upload artifact.
 name: iOS Runtime PoC (unsigned IPA)
 
 on:
@@ -14,94 +26,152 @@ on:
 permissions:
   contents: read
 
+env:
+  EVIDENCE_DIR: ${{ github.workspace }}/ios/Documentation/evidence
+
 jobs:
-  # Job 1 — run the same suites on the macOS runner. This exercises the Darwin
-  # backend (MAP_JIT, pthread_jit_write_protect_np, sys_icache_invalidate) for real.
-  # macOS is NOT iOS: the results are MACOS_RUNNER evidence, and the report says so.
+  # Job 1 — run the same suites on the macOS runner. This exercises the Darwin backend
+  # (MAP_JIT, pthread_jit_write_protect_np, sys_icache_invalidate) for real, under the
+  # macOS security model. These results are MACOS_RUNNER_ARM64 evidence and are NOT
+  # IPHONE_PHYSICAL evidence.
   darwin-host-harness:
-    name: Darwin backend on the macOS runner
+    name: Darwin backend on the macOS runner (MACOS_RUNNER_ARM64)
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - name: 1. Checkout
+        uses: actions/checkout@v4
 
-      - name: Log the Apple toolchain
+      - name: 2. Apple environment
         run: |
+          set -eu
+          mkdir -p "$EVIDENCE_DIR"
           {
-            echo "sw_vers:";                sw_vers
-            echo "uname -m:";               uname -m
-            echo "xcodebuild -version:";    xcodebuild -version
-            echo "xcode-select -p:";        xcode-select -p
-            echo "iphoneos sdk:";           xcrun --sdk iphoneos --show-sdk-version
-            echo "clang --version:";        clang --version
-            echo "swift --version:";        swift --version
-            echo "cmake --version:";        cmake --version
-          } | tee ios/Documentation/evidence/ci_toolchain.txt
+            echo "EVIDENCE_CLASS=MACOS_RUNNER_ARM64"
+            echo "NOTE=runner macOS, NOT iPhone; these results never prove iOS behaviour"
+            echo "--- sw_vers";              sw_vers
+            echo "--- uname -m";             uname -m
+            echo "--- xcodebuild -version";  xcodebuild -version
+            echo "--- xcode-select -p";      xcode-select -p
+            echo "--- iphonesimulator sdk";  xcrun --sdk iphonesimulator --show-sdk-version 2>/dev/null || true
+            echo "--- iphoneos sdk";        xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || true
+            echo "--- clang --version";      clang --version
+            echo "--- swift --version";      swift --version
+            echo "--- cmake --version";      cmake --version
+          } | tee "$EVIDENCE_DIR/ci_macos_arm64_environment.txt"
 
-      - name: Build and run the harness (host = macOS/arm64)
-        working-directory: ios
+      - name: 3. Build the C harness with CMake
+        working-directory: ${{ github.workspace }}/ios
         run: |
+          set -eu
           set -o pipefail
-          cmake -S . -B build/host -DCMAKE_BUILD_TYPE=Debug 2>&1 | tee Documentation/evidence/ci_macos_configure.log
-          cmake --build build/host -j3 2>&1 | tee Documentation/evidence/ci_macos_build.log
-          echo "warnings: $(grep -c 'warning:' Documentation/evidence/ci_macos_build.log || true)"
-          (cd build/host && ./phase02_unit_tests) 2>&1 | tee ../Documentation/evidence/ci_macos_unit_tests.log
-          (cd build/host && ./phase02_poc --suite all --export ../Documentation/evidence/ci_macos_phase02_report.txt) \
-            2>&1 | tail -1
+          mkdir -p "$EVIDENCE_DIR"
+          echo "EVIDENCE_DIR=$EVIDENCE_DIR"
+          cmake -S . -B build/host -DCMAKE_BUILD_TYPE=Debug 2>&1 \
+            | tee "$EVIDENCE_DIR/ci_macos_arm64_configure.log"
+          cmake --build build/host -j3 2>&1 | tee "$EVIDENCE_DIR/ci_macos_arm64_build.log"
+          echo "warnings=$(grep -c 'warning:' "$EVIDENCE_DIR/ci_macos_arm64_build.log" || true)" \
+            | tee "$EVIDENCE_DIR/ci_macos_arm64_warning_count.txt"
+          echo "errors=$(grep -c 'error:' "$EVIDENCE_DIR/ci_macos_arm64_build.log" || true)" \
+            | tee -a "$EVIDENCE_DIR/ci_macos_arm64_warning_count.txt"
 
-      - name: Report the Darwin-only results
-        working-directory: ios
+      - name: 4. Run the unit tests and the full suite
+        working-directory: ${{ github.workspace }}/ios
         run: |
-          echo "--- results that only exist on a Darwin host ---"
-          grep -E "TEST=(jit|memory|ipc)\.(map_jit|write_protect|dual_mapping|mux)" \
-               Documentation/evidence/ci_macos_phase02_report.txt || true
-          echo "--- summary ---"
-          tail -1 Documentation/evidence/ci_macos_phase02_report.txt
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test -x build/host/phase02_unit_tests
+          test -x build/host/phase02_poc
+          (cd build/host && ./phase02_unit_tests) 2>&1 \
+            | tee "$EVIDENCE_DIR/ci_macos_arm64_unit_tests.log"
+          (cd build/host && ./phase02_poc --suite all \
+              --export "$EVIDENCE_DIR/ci_macos_arm64_phase02_report.txt") 2>&1 \
+            | tee "$EVIDENCE_DIR/ci_macos_arm64_suite_stdout.log"
+          tail -1 "$EVIDENCE_DIR/ci_macos_arm64_suite_stdout.log"
 
-      - name: Upload the macOS-runner evidence
+      - name: 5. Report the Darwin-only results
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          {
+            echo "=== MACOS_RUNNER_ARM64 evidence (NOT IPHONE_PHYSICAL) ==="
+            grep -E "TEST=(jit|memory|ipc)\." "$EVIDENCE_DIR/ci_macos_arm64_phase02_report.txt" || true
+            echo "=== summary ==="
+            tail -1 "$EVIDENCE_DIR/ci_macos_arm64_phase02_report.txt"
+          } | tee "$EVIDENCE_DIR/ci_macos_arm64_darwin_results.txt"
+
+      - name: 6. Upload the macOS-runner evidence
         uses: actions/upload-artifact@v4
         with:
-          name: Winlator-RuntimePoC-macos-evidence
-          path: |
-            ios/Documentation/evidence/ci_macos_*.txt
-            ios/Documentation/evidence/ci_macos_*.log
-          if-no-files-found: warn
+          name: Winlator-RuntimePoC-macos-runner-arm64-evidence
+          path: ${{ env.EVIDENCE_DIR }}/ci_macos_arm64_*
+          if-no-files-found: error
 
   # Job 2 — the deliverable: an unsigned IPA built for iphoneos.
   unsigned-ipa:
     name: Build WinlatorPhase02 for iphoneos and package an unsigned IPA
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - name: 1. Checkout
+        uses: actions/checkout@v4
 
-      - name: Log the Apple toolchain (evidence of the real build environment)
+      - name: 2. Apple environment
         run: |
+          set -eu
+          mkdir -p "$EVIDENCE_DIR"
           {
-            echo "## environment"
-            echo "sw_vers:";              sw_vers
-            echo "uname -m:";             uname -m
-            echo "xcodebuild -version:";  xcodebuild -version
-            echo "xcode-select -p:";      xcode-select -p
-            echo "iphoneos sdk:";         xcrun --sdk iphoneos --show-sdk-version
-            echo "clang --version:";      clang --version
-            echo "swift --version:";      swift --version
-          } | tee ios/Documentation/evidence/ci_ipa_toolchain.txt
+            echo "EVIDENCE_CLASS=MACOS_RUNNER_ARM64 (build host) / artifact = UNSIGNED_IPA"
+            echo "--- sw_vers";             sw_vers
+            echo "--- uname -m";            uname -m
+            echo "--- xcodebuild -version"; xcodebuild -version
+            echo "--- xcode-select -p";     xcode-select -p
+            echo "--- iphoneos sdk";        xcrun --sdk iphoneos --show-sdk-version
+            echo "--- clang --version";     clang --version
+            echo "--- swift --version";     swift --version
+          } | tee "$EVIDENCE_DIR/ci_ipa_environment.txt"
 
-      - name: Regenerate and structurally validate the Xcode project
-        working-directory: ios
+      # ---- 3. generate / regenerate the Xcode project
+      - name: 3. Regenerate the Xcode project
+        working-directory: ${{ github.workspace }}/ios
         run: |
-          python3 tools/generate_xcodeproj.py | tee Documentation/evidence/ci_ipa_generate.log
-          python3 tools/validate_xcodeproj.py | tee Documentation/evidence/ci_ipa_validate.log
-          # the validator exits non-zero on a structural failure, which fails the step
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 tools/generate_xcodeproj.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_generate.log"
+          git --no-pager diff --stat -- WinlatorPhase02.xcodeproj | tee "$EVIDENCE_DIR/ci_ipa_generate_diff.txt"
 
-      - name: xcodebuild -list (schemes, targets, configurations)
-        working-directory: ios
+      # ---- 4. structural preflight (fast, but NOT the authoritative parser)
+      - name: 4. Structural validation (preflight)
+        working-directory: ${{ github.workspace }}/ios
         run: |
-          xcodebuild -project WinlatorPhase02.xcodeproj -list \
-            2>&1 | tee Documentation/evidence/ci_ipa_xcodebuild_list.log
+          set -eu
+          set -o pipefail
+          python3 tools/validate_xcodeproj.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_validate.log"
 
-      - name: Build for iphoneos (unsigned, deterministic DerivedData)
-        working-directory: ios
+      # ---- 5. authoritative gate: the real Xcode parser must accept the project
+      - name: 5. GATE — xcodebuild must be able to read the project
+        working-directory: ${{ github.workspace }}/ios
         run: |
+          set -eu
+          set -o pipefail
+          if ! xcodebuild -project WinlatorPhase02.xcodeproj -list \
+                 > "$EVIDENCE_DIR/ci_ipa_xcodebuild_list.log" 2>&1; then
+              echo "xcodebuild FAILED to read the project — the iphoneos build will NOT start."
+              cat "$EVIDENCE_DIR/ci_ipa_xcodebuild_list.log"
+              exit 1
+          fi
+          cat "$EVIDENCE_DIR/ci_ipa_xcodebuild_list.log"
+          grep -q "WinlatorPhase02" "$EVIDENCE_DIR/ci_ipa_xcodebuild_list.log" \
+            || { echo "FAIL: target 'WinlatorPhase02' missing from -list output"; exit 1; }
+          grep -A2 "Schemes:" "$EVIDENCE_DIR/ci_ipa_xcodebuild_list.log" | grep -q "WinlatorPhase02" \
+            || { echo "FAIL: shared scheme 'WinlatorPhase02' not visible to xcodebuild"; exit 1; }
+          echo "GATE_PASS=xcodebuild -list read the project and its scheme"
+
+      # ---- 6. iphoneos build (only reached when the gate passed)
+      - name: 6. Build for iphoneos (unsigned, deterministic DerivedData)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
           set -o pipefail
           xcodebuild \
             -project WinlatorPhase02.xcodeproj \
@@ -109,42 +179,51 @@ jobs:
             -configuration Debug \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build/DerivedData \
+            -derivedDataPath "${{ github.workspace }}/ios/build/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee Documentation/evidence/ci_ipa_xcodebuild.log
+            build 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_xcodebuild.log"
 
-      - name: Locate and verify the .app
-        working-directory: ios
+      # ---- 7. locate the .app and 8. validate the bundle
+      - name: 7-8. Locate and validate the .app bundle
+        working-directory: ${{ github.workspace }}/ios
         run: |
           set -eu
           APP=$(find build/DerivedData/Build/Products -maxdepth 2 -name "*.app" -type d | head -1)
           if [ -z "$APP" ]; then echo "FAIL: no .app produced"; exit 1; fi
-          echo "APP=$APP" | tee Documentation/evidence/ci_ipa_app_path.txt
-          test -f "$APP/Info.plist"  || { echo "FAIL: Info.plist missing"; exit 1; }
+          echo "$APP" > "$EVIDENCE_DIR/ci_ipa_app_path.txt"
+          test -f "$APP/Info.plist" || { echo "FAIL: Info.plist missing"; exit 1; }
           EXEC=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
-          test -f "$APP/$EXEC"       || { echo "FAIL: executable missing"; exit 1; }
+          test -f "$APP/$EXEC"      || { echo "FAIL: executable missing"; exit 1; }
+          case "$(file "$APP/$EXEC")" in
+            *arm64*) : ;;
+            *) echo "FAIL: unexpected architecture"; exit 1 ;;
+          esac
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP/Info.plist")
+          if [ "$BUNDLE_ID" != "io.winlator.phase02.reconstructed" ]; then
+              echo "FAIL: unexpected bundle identifier '$BUNDLE_ID'"
+              exit 1
+          fi
           {
             echo "app=$APP"
             echo "executable=$EXEC"
             echo "bundle_identifier=$BUNDLE_ID"
-            echo "file: $(file "$APP/$EXEC")"
-            echo "lipo: $(lipo -info "$APP/$EXEC" 2>&1 || true)"
-            echo "size_bytes: $(du -sk "$APP" | cut -f1)"
-            echo "--- requested entitlements (NOT granted: the build is unsigned) ---"
+            echo "minimum_os_version=$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$APP/Info.plist" 2>/dev/null || echo '(absent)')"
+            echo "device_family=$(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$APP/Info.plist" 2>/dev/null || echo '(absent)')"
+            echo "file=$(file "$APP/$EXEC")"
+            echo "lipo=$(lipo -info "$APP/$EXEC" 2>&1 || true)"
+            echo "bridge_symbols=$(nm "$APP/$EXEC" 2>/dev/null | grep -c Phase02Bridge || true)"
+            echo "size_kb=$(du -sk "$APP" | cut -f1)"
+            echo "--- requested entitlements (NOT granted: unsigned build) ---"
             plutil -p RuntimePoC/WinlatorPhase02.entitlements || true
-            echo "--- entitlements actually carried by the binary (expected: none) ---"
+            echo "--- entitlements carried by the binary (expected: none) ---"
             codesign -d --entitlements :- "$APP" 2>&1 || echo "(not signed)"
-          } | tee Documentation/evidence/ci_ipa_app_check.txt
-          case "$(file "$APP/$EXEC")" in
-            *arm64*) echo "architecture: arm64 confirmed" ;;
-            *) echo "FAIL: unexpected architecture"; exit 1 ;;
-          esac
+          } | tee "$EVIDENCE_DIR/ci_ipa_app_check.txt"
 
-      - name: Package the IPA (Payload/<real name>.app)
-        working-directory: ios
+      # ---- 9. Payload/ and 10. unsigned IPA
+      - name: 9-10. Package the unsigned IPA (Payload/<real name>.app)
+        working-directory: ${{ github.workspace }}/ios
         run: |
           set -eu
           APP=$(find build/DerivedData/Build/Products -maxdepth 2 -name "*.app" -type d | head -1)
@@ -153,26 +232,32 @@ jobs:
           cp -R "$APP" "build/ipa/Payload/$APP_NAME"
           (cd build/ipa && zip -qry Winlator-iOS-RuntimePoC-unsigned.ipa Payload)
           cp build/ipa/Winlator-iOS-RuntimePoC-unsigned.ipa .
-          echo "IPA_NAME=$APP_NAME" | tee Documentation/evidence/ci_ipa_packaging.txt
-          ls -l Winlator-iOS-RuntimePoC-unsigned.ipa | tee -a Documentation/evidence/ci_ipa_packaging.txt
+          {
+            echo "IPA_NAME=$APP_NAME"
+            echo "IPA_PATH=$(pwd)/Winlator-iOS-RuntimePoC-unsigned.ipa"
+            echo "SIGNING=none (UNSIGNED_IPA)"
+          } | tee "$EVIDENCE_DIR/ci_ipa_packaging.txt"
+          ls -l Winlator-iOS-RuntimePoC-unsigned.ipa | tee -a "$EVIDENCE_DIR/ci_ipa_packaging.txt"
 
-      - name: Inspect the IPA and record its hash
-        working-directory: ios
+      # ---- 11. inspect the IPA and 12. SHA-256
+      - name: 11-12. Inspect the IPA and record its SHA-256
+        working-directory: ${{ github.workspace }}/ios
         run: |
           set -eu
+          set -o pipefail
           IPA=Winlator-iOS-RuntimePoC-unsigned.ipa
-          unzip -l "$IPA" | tee Documentation/evidence/ci_ipa_unzip_list.txt
-          unzip -l "$IPA" | grep -q "Payload/.*\.app/" || { echo "FAIL: no Payload/*.app"; exit 1; }
-          unzip -l "$IPA" | grep -q "Payload/.*\.app/Info.plist" || { echo "FAIL: no Info.plist"; exit 1; }
-          shasum -a 256 "$IPA" | tee Documentation/evidence/ci_ipa_sha256.txt
-          echo "size_bytes: $(stat -f%z "$IPA")" | tee -a Documentation/evidence/ci_ipa_sha256.txt
+          unzip -l "$IPA" | tee "$EVIDENCE_DIR/ci_ipa_unzip_list.txt"
+          unzip -l "$IPA" | grep -q "Payload/.*\.app/"          || { echo "FAIL: no Payload/*.app"; exit 1; }
+          unzip -l "$IPA" | grep -q "Payload/.*\.app/Info.plist" || { echo "FAIL: no Info.plist in Payload"; exit 1; }
+          shasum -a 256 "$IPA" | tee "$EVIDENCE_DIR/ci_ipa_sha256.txt"
+          echo "size_bytes=$(stat -f%z "$IPA")" | tee -a "$EVIDENCE_DIR/ci_ipa_sha256.txt"
 
-      - name: Upload the artifact (IPA + logs + manifest)
+      # ---- 13. upload the artifact
+      - name: 13. Upload the artifact (IPA + logs + manifest)
         uses: actions/upload-artifact@v4
         with:
           name: Winlator-iOS-RuntimePoC
           path: |
             ios/Winlator-iOS-RuntimePoC-unsigned.ipa
-            ios/Documentation/evidence/ci_ipa_*.txt
-            ios/Documentation/evidence/ci_ipa_*.log
+            ios/Documentation/evidence/ci_ipa_*
           if-no-files-found: error

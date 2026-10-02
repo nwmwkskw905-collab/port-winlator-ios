@@ -28,37 +28,37 @@
 
 /* Begin PBXFileReference section */
 		F5BF48AA40CAD7891EB709FC /* WinlatorPhase02.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WinlatorPhase02.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		54CF3A6540E491833B7EBA31 /* runtime_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_context.h; sourceTree = <group>; };
-		2BCAD6B8E99E9F76564DFF99 /* runtime_cpu_abi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_cpu_abi.h; sourceTree = <group>; };
-		75AE4EC7FBAC54FD6A64A5E8 /* runtime_filesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_filesystem.h; sourceTree = <group>; };
-		6996E673A68ACC60BD7B81C8 /* runtime_ipc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_ipc.h; sourceTree = <group>; };
-		3E5173F4FF46F5ED5D706B22 /* runtime_jit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_jit.h; sourceTree = <group>; };
-		6AFFA686317574BB79AEEF8F /* runtime_loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_loader.h; sourceTree = <group>; };
-		8D363C53876435B8DFF18E8C /* runtime_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_memory.h; sourceTree = <group>; };
-		7EEFAB88992B98C49006FD06 /* runtime_platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_platform.h; sourceTree = <group>; };
-		33F8DB173672EB98B0BE0FA8 /* runtime_signals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_signals.h; sourceTree = <group>; };
-		563B26AED7ABDE0CA7AA016E /* runtime_threads.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_threads.h; sourceTree = <group>; };
-		E5CDB719B7FE09DBFD9F74A4 /* darwin_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = darwin_platform.c; sourceTree = <group>; };
-		F78EC6398D38FC277BC860B0 /* linux_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = linux_platform.c; sourceTree = <group>; };
-		CD127F0E0BD546AD5DFFE445 /* runtime_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_context.c; sourceTree = <group>; };
-		0534E73C881DBC63B5323ABC /* runtime_cpu_abi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_cpu_abi.c; sourceTree = <group>; };
-		4BCD5D02D6E648F61EE05AE7 /* runtime_dual_mapping.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_dual_mapping.c; sourceTree = <group>; };
-		522AE1D9C08BCFD793004DBD /* runtime_filesystem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_filesystem.c; sourceTree = <group>; };
-		E46D1C345AC8A66597DEABFC /* runtime_ipc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_ipc.c; sourceTree = <group>; };
-		AA9B52066635E42A98413880 /* runtime_jit.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_jit.c; sourceTree = <group>; };
-		EC0526D67CB6E88F952AD819 /* runtime_loader.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_loader.c; sourceTree = <group>; };
-		2BB2A1BB599226D49ECED81C /* runtime_memory.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_memory.c; sourceTree = <group>; };
-		0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_signals.c; sourceTree = <group>; };
-		B42EBCE180E93191C873D458 /* runtime_threads.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_threads.c; sourceTree = <group>; };
-		BAB92716C2FCB49617F69946 /* phase02_harness.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_harness.h; sourceTree = <group>; };
-		4C2C65454C6AA064B9F8B027 /* phase02_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_log.h; sourceTree = <group>; };
-		681BAF490EB0D0511265A3D9 /* phase02_harness.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_harness.c; sourceTree = <group>; };
-		700EA8348C7FEAB4CAD03BBD /* phase02_log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_log.c; sourceTree = <group>; };
-		84374A0C4D4FC9FFF9484F4D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = <group>; };
-		9B077181F978A99E03BD4B0A /* Phase02-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Phase02-Bridging-Header.h; sourceTree = <group>; };
-		5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Phase02Bridge.m; sourceTree = <group>; };
-		7905E6D66FA0DC9949B3105A /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = <group>; };
-		AD28C2EF9F75B5C66A8DC64E /* WinlatorPhase02App.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WinlatorPhase02App.swift; sourceTree = <group>; };
+		54CF3A6540E491833B7EBA31 /* runtime_context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_context.h; sourceTree = "<group>"; };
+		2BCAD6B8E99E9F76564DFF99 /* runtime_cpu_abi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_cpu_abi.h; sourceTree = "<group>"; };
+		75AE4EC7FBAC54FD6A64A5E8 /* runtime_filesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_filesystem.h; sourceTree = "<group>"; };
+		6996E673A68ACC60BD7B81C8 /* runtime_ipc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_ipc.h; sourceTree = "<group>"; };
+		3E5173F4FF46F5ED5D706B22 /* runtime_jit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_jit.h; sourceTree = "<group>"; };
+		6AFFA686317574BB79AEEF8F /* runtime_loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_loader.h; sourceTree = "<group>"; };
+		8D363C53876435B8DFF18E8C /* runtime_memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_memory.h; sourceTree = "<group>"; };
+		7EEFAB88992B98C49006FD06 /* runtime_platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_platform.h; sourceTree = "<group>"; };
+		33F8DB173672EB98B0BE0FA8 /* runtime_signals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_signals.h; sourceTree = "<group>"; };
+		563B26AED7ABDE0CA7AA016E /* runtime_threads.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = runtime_threads.h; sourceTree = "<group>"; };
+		E5CDB719B7FE09DBFD9F74A4 /* darwin_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = darwin_platform.c; sourceTree = "<group>"; };
+		F78EC6398D38FC277BC860B0 /* linux_platform.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = linux_platform.c; sourceTree = "<group>"; };
+		CD127F0E0BD546AD5DFFE445 /* runtime_context.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_context.c; sourceTree = "<group>"; };
+		0534E73C881DBC63B5323ABC /* runtime_cpu_abi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_cpu_abi.c; sourceTree = "<group>"; };
+		4BCD5D02D6E648F61EE05AE7 /* runtime_dual_mapping.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_dual_mapping.c; sourceTree = "<group>"; };
+		522AE1D9C08BCFD793004DBD /* runtime_filesystem.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_filesystem.c; sourceTree = "<group>"; };
+		E46D1C345AC8A66597DEABFC /* runtime_ipc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_ipc.c; sourceTree = "<group>"; };
+		AA9B52066635E42A98413880 /* runtime_jit.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_jit.c; sourceTree = "<group>"; };
+		EC0526D67CB6E88F952AD819 /* runtime_loader.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_loader.c; sourceTree = "<group>"; };
+		2BB2A1BB599226D49ECED81C /* runtime_memory.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_memory.c; sourceTree = "<group>"; };
+		0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_signals.c; sourceTree = "<group>"; };
+		B42EBCE180E93191C873D458 /* runtime_threads.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_threads.c; sourceTree = "<group>"; };
+		BAB92716C2FCB49617F69946 /* phase02_harness.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_harness.h; sourceTree = "<group>"; };
+		4C2C65454C6AA064B9F8B027 /* phase02_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_log.h; sourceTree = "<group>"; };
+		681BAF490EB0D0511265A3D9 /* phase02_harness.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_harness.c; sourceTree = "<group>"; };
+		700EA8348C7FEAB4CAD03BBD /* phase02_log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_log.c; sourceTree = "<group>"; };
+		84374A0C4D4FC9FFF9484F4D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9B077181F978A99E03BD4B0A /* Phase02-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Phase02-Bridging-Header.h; sourceTree = "<group>"; };
+		5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Phase02Bridge.m; sourceTree = "<group>"; };
+		7905E6D66FA0DC9949B3105A /* ContentView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AD28C2EF9F75B5C66A8DC64E /* WinlatorPhase02App.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WinlatorPhase02App.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
