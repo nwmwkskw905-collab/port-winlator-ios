@@ -1,0 +1,16 @@
+
+artifacts/orig/t7_boundary_spilled.bin:     file format binary
+
+
+Disassembly of section .data:
+
+0000000000000000 <.data>:
+   0:	f900541e 	str	x30, [x0, #168]
+   4:	f9402012 	ldr	x18, [x0, #64]
+   8:	f9002012 	str	x18, [x0, #64]
+   c:	f9404803 	ldr	x3, [x0, #144]
+  10:	d63f0060 	blr	x3
+  14:	f9402012 	ldr	x18, [x0, #64]
+  18:	f9004c12 	str	x18, [x0, #152]
+  1c:	f940541e 	ldr	x30, [x0, #168]
+  20:	d65f03c0 	ret

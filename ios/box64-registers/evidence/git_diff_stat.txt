@@ -1,0 +1,9 @@
+ src/dynarec/arm64/arm64_epilog.S            |  2 +-
+ src/dynarec/arm64/arm64_mapping.h           | 42 ++++++++++++++++++++++++++---
+ src/dynarec/arm64/arm64_next.S              |  8 +++---
+ src/dynarec/arm64/arm64_printer.c           |  8 +++---
+ src/dynarec/arm64/arm64_prolog.S            |  2 +-
+ src/dynarec/arm64/dynarec_arm64_functions.c |  8 +++---
+ src/dynarec/arm64/dynarec_arm64_helper.c    | 17 ++++++++++--
+ src/dynarec/arm64/dynarec_arm64_helper.h    |  6 +++++
+ 8 files changed, 73 insertions(+), 20 deletions(-)

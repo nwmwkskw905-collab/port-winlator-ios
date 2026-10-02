@@ -1,0 +1,133 @@
+### FASE 04 pre-commit review
+### box64 reference tree: /tmp/box64-ref
+### date: 2026-10-02T00:34:33Z
+
+== 1. working tree state (nothing unexpected may be pending) ==
+ M src/dynarec/arm64/arm64_epilog.S
+ M src/dynarec/arm64/arm64_mapping.h
+ M src/dynarec/arm64/arm64_next.S
+ M src/dynarec/arm64/arm64_printer.c
+ M src/dynarec/arm64/arm64_prolog.S
+ M src/dynarec/arm64/dynarec_arm64_functions.c
+ M src/dynarec/arm64/dynarec_arm64_helper.c
+ M src/dynarec/arm64/dynarec_arm64_helper.h
+revision under test: 2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a
+
+== 2. the change set, by size (a mass substitution would be huge) ==
+ src/dynarec/arm64/arm64_epilog.S            |  2 +-
+ src/dynarec/arm64/arm64_mapping.h           | 42 ++++++++++++++++++++++++++---
+ src/dynarec/arm64/arm64_next.S              |  8 +++---
+ src/dynarec/arm64/arm64_printer.c           |  8 +++---
+ src/dynarec/arm64/arm64_prolog.S            |  2 +-
+ src/dynarec/arm64/dynarec_arm64_functions.c |  8 +++---
+ src/dynarec/arm64/dynarec_arm64_helper.c    | 17 ++++++++++--
+ src/dynarec/arm64/dynarec_arm64_helper.h    |  6 +++++
+ 8 files changed, 73 insertions(+), 20 deletions(-)
+
+== 3. is the durable patch in the workspace byte-identical to the applied diff? ==
+OK: patch/0001-*.patch == the applied diff (250 lines)
+
+== 4. every changed line that mentions x18 or x9, in context ==
+   1:-    stp     x18, x19, [x0, (8 *  8)]
+   2:+    stp     x9, x19, [x0, (8 *  8)]      // guest R8 is in x9 (Strategy A)
+   4:+// Guest R8 lives in x9, NOT in x18 (Fase 04 / Darwin).
+   5:+// AAPCS64 calls x18 "The Platform Register, if needed; otherwise a Caller-saved
+   7:+// reserves it outright ("The platforms reserve register x18. Don't use this
+   8:+// register.").  x9 is a plain caller-saved temporary this backend never used for
+   11:+// Because x9 is caller-saved, guest R8 is now spilled/reloaded explicitly at every
+   16:+// ONE register model (no per-platform #ifdef); x18 is simply unused except as the
+   22:+// Host platform register.  NOT a guest register: x18 holds the Windows TEB under
+   45:-    stp     x18, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+   46:+    stp     x9, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+   47:-    ldp     x18, x27, [sp, (8 * 10)]
+   48:+    ldp     x9, x27, [sp, (8 * 10)]
+   49:-    stp     x18, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+   50:+    stp     x9, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+   51:-    ldp     x18, x27, [sp, (8 * 10)]
+   52:+    ldp     x9, x27, [sp, (8 * 10)]
+   53:-static const char* Xt[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xR8", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "xZR"};
+   54:-static const char* XtSp[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xR8", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "SP"};
+   55:-static const char* Wt[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wR8", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wZR"};
+   56:-static const char* WtSp[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wR8", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wSP"};
+   61:-    ldp     x18, x19, [x0, (8 *  8)]
+   62:+    ldp     x9, x19, [x0, (8 *  8)]      // guest R8 is in x9 (Strategy A); x18 stays the platform register
+   63:-    { "r8", "x18" },
+   65:-    { "r8w", "x18" },
+   66:-    { "r8b", "x18" },
+   67:+    { "r8", "x9" },
+   68:+    { "r8d", "w9" },
+   69:+    { "r8w", "x9" },
+   70:+    { "r8b", "x9" },
+   72:+    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
+   75:+    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
+   82:+    // guest R8 is in a caller-saved host register (x9) and the crc/hash helpers are
+   88:+        /* defensive spill: guest R8 is in caller-saved x9 */ \
+   91:+        /* defensive spill: guest R8 is in caller-saved x9 */ \
+
+== 5. x18 occurrence census: upstream vs patched, per changed file ==
+   file                                   upstream  patched
+   arm64_prolog.S                                1        1
+   arm64_epilog.S                                2        1
+   arm64_next.S                                  6        2
+   arm64_mapping.h                               0        5
+   arm64_printer.c                               0        0
+   dynarec_arm64_functions.c                     3        0
+   dynarec_arm64_helper.c                        4        6
+   dynarec_arm64_helper.h                        0        0
+
+   the surviving x18 uses must be exactly the Windows TEB paths and comments:
+      arm64/dynarec_arm64_helper.c:555:        STPx_S7_offset(xRAX, xRCX, xEmu, offsetof(x64emu_t, regs[_AX]));    // x9..x15, x16,x17,x18 those needs to be saved by caller
+      arm64/dynarec_arm64_helper.c:556:        STPx_S7_offset(xRDX, xRBX, xEmu, offsetof(x64emu_t, regs[_DX]));    // but x18 is R8 wich is lost, so it's fine to not save it?
+      arm64/dynarec_arm64_helper.c:563:    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
+      arm64/dynarec_arm64_helper.c:608:    STPx_S7_offset(xRAX, xRCX, xEmu, offsetof(x64emu_t, regs[_AX]));    // x9..x15, x16,x17,x18 those needs to be saved by caller
+      arm64/dynarec_arm64_helper.c:617:    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
+      arm64/dynarec_arm64_helper.c:653:    // x9..x15, x16,x17,x18 those needs to be saved by caller
+      arm64/arm64_prolog.S:29:    ldp     x9, x19, [x0, (8 *  8)]      // guest R8 is in x9 (Strategy A); x18 stays the platform register
+      arm64/arm64_next.S:26:    ldr     x18, [x0, 3104]
+      arm64/arm64_next.S:59:    ldr     x18, [x0, 3104]
+      arm64/arm64_mapping.h:49:// Guest R8 lives in x9, NOT in x18 (Fase 04 / Darwin).
+      arm64/arm64_mapping.h:50:// AAPCS64 calls x18 "The Platform Register, if needed; otherwise a Caller-saved
+      arm64/arm64_mapping.h:52:// reserves it outright ("The platforms reserve register x18. Don't use this
+      arm64/arm64_mapping.h:61:// ONE register model (no per-platform #ifdef); x18 is simply unused except as the
+      arm64/arm64_mapping.h:75:// Host platform register.  NOT a guest register: x18 holds the Windows TEB under
+      arm64/arm64_epilog.S:23:    ldr     x18, [x0, 3104]
+
+== 6. _WIN32 / TEB precedent preserved (win64_teb site count) ==
+   patched: /tmp/box64-ref/src/dynarec/arm64/dynarec_arm64_helper.c:2 
+   upstream: "arm64_epilog.S:0 ""arm64_next.S:0 ""dynarec_arm64_helper.c:2 ""dynarec_arm64_helper.h:0 "
+   _WIN32 blocks that load the TEB into x18: 3
+
+== 7. no per-platform #ifdef smuggled into the register model ==
+   __APPLE__ in the patch:  0
+   __APPLE__ in arm64 dir:  0 files
+   (the mapping must stay platform independent: one register model everywhere)
+
+== 8. no warning suppression added by the patch ==
+   pragma/Wno- in added lines: 0
+
+== 9. the affine-function assumptions that the move breaks ==
+   upstream TO_NAT:  #define TO_NAT(A) (xRAX + (A))
+   upstream IS_GPR:  #define IS_GPR(A) ((A)>=xRAX && (A)<=xRIP)
+   product use sites of IS_GPR (arm64): 2
+   product use sites of TO_NAT (arm64): 161
+
+== 10. dead code / fake fallback hunt in the added lines ==
+   none: no conditional, fallback or TODO marker was added (comment-only matches ignored)
+
+== 11. tests must exercise the real code, not a copy ==
+   codegen harness includes: #include"arm64_mapping.h"/*-Iinclude/new|include/orig*/ #include"arm64_emitter.h"/*-Iinclude/upstream*/ 
+   (include/new is the patched arm64_mapping.h: identical)
+   frame harness assembles: patched/arm64_epilog.S patched/arm64_next.S patched/arm64_prolog.S 
+   (the frame tests link the real patched prolog/epilog/next, and the upstream ones for the
+    differential build; the mutation build uses upstream next.S on purpose)
+
+== 12. headers under test vs headers in the reference tree ==
+   arm64_mapping.h              tree == mirror: yes
+   dynarec_arm64_helper.h       tree == mirror: yes
+   arm64_prolog.S               tree == mirror: yes
+   arm64_epilog.S               tree == mirror: yes
+   arm64_next.S                 tree == mirror: yes
+   dynarec_arm64_helper.c       tree == mirror: yes
+   dynarec_arm64_functions.c    tree == mirror: yes
+   arm64_printer.c              tree == mirror: yes
+   arm64_emitter.h (untouched)  tree == mirror: yes

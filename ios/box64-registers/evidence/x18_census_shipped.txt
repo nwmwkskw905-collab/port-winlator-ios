@@ -1,0 +1,45 @@
+X18 CENSUS - /tmp/p04/usr/local/bin/box64
+tools: aarch64-linux-gnu-objdump, aarch64-linux-gnu-readelf
+==========================================================================
+instructions disassembled              : 3534632
+instructions referencing x18 (word)    : 9609
+instructions referencing w18 (word)    : 157
+x18+w18 references (union of lines)    : 9766
+instructions where "x18" is only part of a hex literal: 9700
+
+functions containing x18               : 606
+functions containing w18               : 12
+functions containing x18 or w18        : 615
+
+-- x18 references grouped by translation unit (top 14) --
+    8568  gtkclass.c                                      (515 functions)
+     630  crtstuff.c                                      (47 functions)
+     136  wrappedlibx11.c                                 (12 functions)
+     133  wrappedgobject2.c                               (13 functions)
+     104  wrappedgtkx112.c                                (8 functions)
+      13  threads.c                                       (1 functions)
+       6  <unknown>                                       (4 functions)
+       6  dynarec_arm64_helper.c                          (1 functions)
+       3  vulkanoverlay.c                                 (1 functions)
+       3  wrappedglib2.c                                  (1 functions)
+       3  wrappedpulse.c                                  (1 functions)
+       2  alternate.c                                     (1 functions)
+       2  wrappedd3dadapter9.c                            (1 functions)
+
+-- functions with the most x18 references (top 14) --
+     113  unwrapGtkEntry2Class
+     113  dynarec64_AVX_66_0F3A1
+     105  unwrapGTKInterface
+      99  find_signal16_Fct
+      91  unwrapGtkMenuShell2Class
+      91  unwrapGtkContainer3Class
+      91  unwrapGObjectClass
+      81  unwrapGtkContainer2Class
+      80  unwrapGInitiallyUnownedClass
+      78  unwrapGstPadInstance
+      78  unwrapGtkWidget2Class
+      78  unwrapGtkWindow2Class
+      78  unwrapGtkButton3Class
+      78  unwrapGtkTextView3Class
+
+json written to evidence/x18_census_shipped.json

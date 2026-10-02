@@ -1,0 +1,29 @@
+### cross-compile check, patched tree, commit 2f130fab1d6e1a4ee8a71dc60cfdfcc839ad192a, branch ios-phase-04-box64-registers
+### compiler: aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+STEP=0 dynarec_arm64_helper.c ... OK (37176 bytes)
+STEP=1 dynarec_arm64_helper.c ... OK (27680 bytes)
+STEP=2 dynarec_arm64_helper.c ... OK (42984 bytes)
+STEP=3 dynarec_arm64_helper.c ... OK (143960 bytes)
+dynarec_arm64_functions.c    ... OK (35928 bytes)
+arm64_printer.c              ... OK (155016 bytes)
+arm64_prolog.S               ... OK
+arm64_epilog.S               ... OK
+arm64_next.S                 ... OK
+arm64_lock.S                 ... FAIL
+src/dynarec/arm64/arm64_lock.S: Assembler messages:
+src/dynarec/arm64/arm64_lock.S:127: Error: selected processor does not support `swpal x1,x0,[x0]'
+src/dynarec/arm64/arm64_lock.S:147: Error: selected processor does not support `swpal w1,w0,[x0]'
+src/dynarec/arm64/arm64_lock.S:167: Error: selected processor does not support `swpalh w1,w0,[x0]'
+src/dynarec/arm64/arm64_lock.S:187: Error: selected processor does not support `swpalb w1,w0,[x0]'
+src/dynarec/arm64/arm64_lock.S:210: Error: selected processor does not support `casal x2,x1,[x0]'
+src/dynarec/arm64/arm64_lock.S:236: Error: selected processor does not support `casal w2,w1,[x0]'
+src/dynarec/arm64/arm64_lock.S:263: Error: selected processor does not support `casal x2,x1,[x0]'
+
+### EXTENDED per-TU compile check (FASE 04, final): 4 opcode-emitter TUs
+### command: aarch64-linux-gnu-gcc -c -O2 -std=gnu11 -funwind-tables -fvisibility=hidden -Isrc/include -Isrc -Isrc/dynarec/arm64 -DDYNAREC -DARM64 <tu>.c
+dynarec_arm64_emit_tests.c     ... OK (11344 bytes)
+dynarec_arm64_emit_math.c      ... OK (22352 bytes)
+dynarec_arm64_emit_logic.c     ... OK (14512 bytes)
+dynarec_arm64_emit_shift.c     ... OK (30408 bytes)
+### total arm64 TUs compiled on the patched tree: helper.c (STEP=0..3), functions.c, printer.c, emit_tests, emit_math, emit_logic, emit_shift
+### and dynarec_native_pass.c STEP=0/STEP=3 (OK, /tmp/p04/np{0,3}.o)

@@ -1,0 +1,14 @@
+
+artifacts/new/t2_r8_ops.bin:     file format binary
+
+
+Disassembly of section .data:
+
+0000000000000000 <.data>:
+   0:	aa0003e9 	mov	x9, x0
+   4:	f9002009 	str	x9, [x0, #64]
+   8:	f9402009 	ldr	x9, [x0, #64]
+   c:	a9044c09 	stp	x9, x19, [x0, #64]
+  10:	a9444c09 	ldp	x9, x19, [x0, #64]
+  14:	2a0003e9 	mov	w9, w0
+  18:	8b010129 	add	x9, x9, x1

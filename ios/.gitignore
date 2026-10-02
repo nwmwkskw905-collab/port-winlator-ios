@@ -1,0 +1,15 @@
+build/
+*.o
+*.a
+
+# Compiled test binaries: build products of
+#   box64-registers/scripts/build_codegen_tests.sh
+#   box64-registers/scripts/build_frame_tests.sh
+# Regenerable from the committed sources; the run logs and the .bin/.dis
+# dumps they produce ARE committed (they are the audit evidence).
+box64-registers/harness/artifacts/t_codegen_new
+box64-registers/harness/artifacts/t_codegen_orig
+box64-registers/harness/artifacts/frame/new/t_frame_new
+box64-registers/harness/artifacts/frame/orig/t_frame_orig
+box64-registers/harness/artifacts/frame/mutant/t_frame_mutant
+box64-registers/harness/out/

@@ -1,0 +1,18 @@
+### [1] arm64_lock.S failure is orthogonal to the patch
+unpatched arm64_lock.S, default -march      ... FAIL (same error)
+/tmp/orig_lock.S:127: Error: selected processor does not support `swpal x1,x0,[x0]'
+patched   arm64_lock.S, -march=armv8.1-a      ... OK
+git diff --stat for arm64_lock.S: 0 lines (0 = unmodified by this phase)
+
+### [2] DISASSEMBLY AUDIT of the patched frame/trampoline code
+--- non-Windows build (the Linux/Android/Darwin path) ---
+total instructions : 85
+x18 occurrences    : 0
+x9 occurrences     : 6
+
+--- _WIN32 build (TEB path must still use x18) ---
+x18 occurrences    : 3
+the _WIN32 x18 sites:
+    24:	f9461012 	ldr	x18, [x0, #3104]
+    24:	f9461012 	ldr	x18, [x0, #3104]
+    78:	f9461012 	ldr	x18, [x0, #3104]

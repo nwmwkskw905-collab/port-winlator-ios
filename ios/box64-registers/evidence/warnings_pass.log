@@ -1,0 +1,1297 @@
+### warnings pass, differential (upstream HEAD vs patched worktree)
+### aarch64-linux-gnu-gcc -c -O2 -std=gnu11 -funwind-tables -fvisibility=hidden -Wall -Wextra -Wpedantic -Wshadow -Wconversion -DDYNAREC -DARM64 -Isrc/include -Isrc -Isrc/dynarec/arm64
+
+### per-TU warning counts (upstream -> patched)
+helper0    179 -> 179
+helper1    183 -> 183
+helper2    191 -> 191
+helper3    4487 -> 4531
+functions   82 ->  82
+printer    173 -> 173
+dynarec_arm64_emit_tests  22 ->  22
+dynarec_arm64_emit_math  53 ->  53
+dynarec_arm64_emit_logic  24 ->  24
+dynarec_arm64_emit_shift  47 ->  47
+
+### warnings present ONLY in the patched build (must be none, or classified)
+helper0    new warnings: 0
+helper1    new warnings: 0
+helper2    new warnings: 0
+helper3    new warnings: 44
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: binary constants are a C23 feature or GCC extension
+    warning: pointer of type 'void *' used in arithmetic [-Wpointer-arith]
+    warning: pointer of type 'void *' used in arithmetic [-Wpointer-arith]
+    warning: pointer of type 'void *' used in arithmetic [-Wpointer-arith]
+    warning: pointer of type 'void *' used in arithmetic [-Wpointer-arith]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+    warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+functions  new warnings: 0
+printer    new warnings: 0
+dynarec_arm64_emit_tests new warnings: 0
+dynarec_arm64_emit_math new warnings: 0
+dynarec_arm64_emit_logic new warnings: 0
+dynarec_arm64_emit_shift new warnings: 0
+
+### raw patched-build warning text (all of it, for classification)
+--- helper0 ---
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:36: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:947:26: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int16_t' {aka 'short int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:74: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:893:12: warning: 'x87_is_stcached' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:88:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:87:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:870:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:816:34: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:772:20: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:771:23: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:79: warning: unused parameter 'segment' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:70: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:59: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:541:68: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:519:15: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:518:22: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:453:9: warning: unused variable 'dest' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:401:9: warning: variable 'dest' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:357:18: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:306:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2993:39: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2984:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2979:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2924:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:89: warning: unused parameter 'd2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:81: warning: unused parameter 'd1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2910:20: warning: unsigned conversion from 'int' to 'uint32_t' {aka 'unsigned int'} changes value from '-1' to '4294967295' [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2854:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2844:52: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2836:32: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:63: warning: unused parameter 'last' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:52: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2703:70: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2693:44: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2683:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2603:39: warning: conversion from 'uint64_t' {aka 'long unsigned int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:54: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:43: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2540:76: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2506:17: warning: unused variable 'nat_flags' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2475:13: warning: unused variable 'nc_before' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2471:67: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2376:9: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:77: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:69: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2355:19: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2318:9: warning: variable 'j64' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:91: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:83: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:75: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:49: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:100: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2066:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2065:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:98: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:89: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:81: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1947:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:20: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:11: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:41: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:43: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:55: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:44: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1753:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1739:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1733:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1723:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1710:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1702:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:13: warning: 'sse_reflectcache' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1590:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1534:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1517:32: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1515:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:41: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:54: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:45: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1466:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1453:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:60: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:54: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:96: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:92: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:58: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:52: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:102: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:43: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:23: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1390:30: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1383:27: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1372:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:136:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion from 'long unsigned int' to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:36: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:31: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:66: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:58: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:50: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:130:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1297:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1296:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:127:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1260:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:122:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:118:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1169:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1168:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1154:76: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:113:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1134:70: warning: unused parameter 't' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:112:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:68: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:60: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:49: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:109:33: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:81: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:73: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:628:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:622:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:620:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:618:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+--- helper1 ---
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:36: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:947:26: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int16_t' {aka 'short int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:74: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:893:12: warning: 'x87_is_stcached' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:88:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:87:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:870:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:816:34: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:772:20: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:771:23: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:79: warning: unused parameter 'segment' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:70: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:59: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:34: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:541:68: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:519:15: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:518:22: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:453:9: warning: unused variable 'dest' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:401:9: warning: variable 'dest' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:357:18: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:306:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2993:39: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2984:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2979:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2924:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:89: warning: unused parameter 'd2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:81: warning: unused parameter 'd1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2910:20: warning: unsigned conversion from 'int' to 'uint32_t' {aka 'unsigned int'} changes value from '-1' to '4294967295' [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2854:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2844:52: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2836:32: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:63: warning: unused parameter 'last' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:52: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2703:70: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2693:44: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2683:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2635:46: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2603:39: warning: conversion from 'uint64_t' {aka 'long unsigned int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:54: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:43: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:34: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2540:76: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2506:17: warning: unused variable 'nat_flags' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2475:13: warning: unused variable 'nc_before' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2471:67: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2376:9: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:77: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:69: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2355:19: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2318:9: warning: variable 'j64' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:91: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:83: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:75: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:49: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:100: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2066:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2065:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:98: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:89: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:81: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1947:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1947:38: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:20: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:11: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:41: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:43: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:55: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:44: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1753:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1739:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1733:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1723:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1710:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1702:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:13: warning: 'sse_reflectcache' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1590:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1534:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1517:32: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1515:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:41: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:54: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:45: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1466:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1453:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:60: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:54: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:96: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:92: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:58: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:52: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:102: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:43: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:23: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1390:30: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1383:27: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1372:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:136:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion from 'long unsigned int' to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:36: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:31: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:66: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:58: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:50: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:130:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1297:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1296:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:127:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1260:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:122:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:118:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1169:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1168:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1154:76: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:113:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:112:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:68: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:60: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:49: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:109:33: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:81: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:73: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:628:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:622:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:620:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:618:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:1546:21: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+--- helper2 ---
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:136:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:130:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:127:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:122:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:118:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:36: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:947:26: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int16_t' {aka 'short int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:74: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:900:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:893:12: warning: 'x87_is_stcached' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:88:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:87:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:870:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:816:34: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:772:20: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:771:23: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:79: warning: unused parameter 'segment' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:698:70: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:541:68: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:519:15: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:518:22: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:453:9: warning: unused variable 'dest' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:401:9: warning: variable 'dest' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:357:18: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:306:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2984:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2979:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2924:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:89: warning: unused parameter 'd2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:81: warning: unused parameter 'd1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2921:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2910:20: warning: unsigned conversion from 'int' to 'uint32_t' {aka 'unsigned int'} changes value from '-1' to '4294967295' [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2901:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:9: warning: unused variable 'delta' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2878:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2854:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2836:32: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:63: warning: unused parameter 'last' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2763:31: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2762:31: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2754:39: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:88: warning: unused parameter 'k3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:80: warning: unused parameter 'k2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:72: warning: unused parameter 'k1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2703:70: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2693:44: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2683:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2635:57: warning: unused parameter 'reset_n' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2603:39: warning: conversion from 'uint64_t' {aka 'long unsigned int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2558:54: warning: unused parameter 'reg' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2540:76: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2506:17: warning: unused variable 'nat_flags' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2475:13: warning: unused variable 'nc_before' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2471:67: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2376:9: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:77: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2374:69: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2355:19: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2318:9: warning: variable 'j64' set but not used [-Wunused-but-set-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:91: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:83: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:75: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:100: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2066:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2065:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:98: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:89: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:81: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:20: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:11: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:41: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:55: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1753:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1739:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1733:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1723:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1710:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1702:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:13: warning: 'sse_reflectcache' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1590:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1534:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1517:32: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1515:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1466:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1453:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:60: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:54: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:96: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:92: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:58: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:52: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:102: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:43: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:23: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1390:30: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1383:27: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1372:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion from 'long unsigned int' to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:36: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:31: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:66: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:58: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:50: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1297:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1296:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1260:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1211:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1169:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1168:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1154:76: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:113:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1134:70: warning: unused parameter 't' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:112:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:68: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1100:60: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:109:33: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:81: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:73: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1041:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1006:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:628:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:622:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:620:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:618:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:1556:21: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+--- helper3 ---
+    565 src/dynarec/arm64/../arm64/dynarec_arm64_pass3.h:11:20: warning: pointer of type 'void *' used in arithmetic [-Wpointer-arith]
+    188 src/dynarec/arm64/../arm64/arm64_emitter.h:65:93: warning: binary constants are a C23 feature or GCC extension
+    116 src/dynarec/arm64/../arm64/arm64_emitter.h:173:87: warning: binary constants are a C23 feature or GCC extension
+    116 src/dynarec/arm64/../arm64/arm64_emitter.h:173:63: warning: binary constants are a C23 feature or GCC extension
+    106 src/dynarec/arm64/../arm64/arm64_emitter.h:263:87: warning: binary constants are a C23 feature or GCC extension
+    106 src/dynarec/arm64/../arm64/arm64_emitter.h:263:63: warning: binary constants are a C23 feature or GCC extension
+     86 src/dynarec/arm64/../arm64/arm64_emitter.h:505:87: warning: binary constants are a C23 feature or GCC extension
+     76 src/dynarec/arm64/../arm64/arm64_emitter.h:300:71: warning: binary constants are a C23 feature or GCC extension
+     76 src/dynarec/arm64/../arm64/arm64_emitter.h:300:103: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-2147483648' [-Wsign-conversion]
+     72 src/dynarec/arm64/../arm64/arm64_emitter.h:265:61: warning: binary constants are a C23 feature or GCC extension
+     72 src/dynarec/arm64/../arm64/arm64_emitter.h:265:55: warning: binary constants are a C23 feature or GCC extension
+     72 src/dynarec/arm64/../arm64/arm64_emitter.h:263:96: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-2147483648' [-Wsign-conversion]
+     70 src/dynarec/arm64/../arm64/arm64_emitter.h:173:120: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+     62 src/dynarec/arm64/../arm64/arm64_emitter.h:175:61: warning: binary constants are a C23 feature or GCC extension
+     62 src/dynarec/arm64/../arm64/arm64_emitter.h:175:55: warning: binary constants are a C23 feature or GCC extension
+     62 src/dynarec/arm64/../arm64/arm64_emitter.h:173:96: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-2147483648' [-Wsign-conversion]
+     60 src/dynarec/arm64/../arm64/arm64_emitter.h:789:79: warning: binary constants are a C23 feature or GCC extension
+     60 src/dynarec/arm64/../arm64/arm64_emitter.h:789:59: warning: binary constants are a C23 feature or GCC extension
+     58 src/dynarec/arm64/../arm64/arm64_emitter.h:66:66: warning: binary constants are a C23 feature or GCC extension
+     58 src/dynarec/arm64/../arm64/arm64_emitter.h:487:76: warning: binary constants are a C23 feature or GCC extension
+     52 src/dynarec/arm64/../arm64/arm64_emitter.h:68:66: warning: binary constants are a C23 feature or GCC extension
+     48 src/dynarec/arm64/../arm64/arm64_emitter.h:108:66: warning: binary constants are a C23 feature or GCC extension
+     46 src/dynarec/arm64/../arm64/arm64_emitter.h:789:124: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+     44 src/dynarec/arm64/../arm64/arm64_emitter.h:47:93: warning: binary constants are a C23 feature or GCC extension
+     42 src/dynarec/arm64/../arm64/arm64_emitter.h:263:120: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+     40 src/dynarec/arm64/../arm64/arm64_emitter.h:588:73: warning: binary constants are a C23 feature or GCC extension
+     40 src/dynarec/arm64/../arm64/arm64_emitter.h:215:57: warning: binary constants are a C23 feature or GCC extension
+     40 src/dynarec/arm64/../arm64/arm64_emitter.h:214:54: warning: binary constants are a C23 feature or GCC extension
+     38 src/dynarec/arm64/../arm64/arm64_emitter.h:514:69: warning: binary constants are a C23 feature or GCC extension
+     38 src/dynarec/arm64/../arm64/arm64_emitter.h:514:63: warning: binary constants are a C23 feature or GCC extension
+     38 src/dynarec/arm64/../arm64/arm64_emitter.h:174:61: warning: binary constants are a C23 feature or GCC extension
+     38 src/dynarec/arm64/../arm64/arm64_emitter.h:174:55: warning: binary constants are a C23 feature or GCC extension
+     38 src/dynarec/arm64/../arm64/arm64_emitter.h:173:96: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+     36 src/dynarec/arm64/../arm64/arm64_emitter.h:490:63: warning: binary constants are a C23 feature or GCC extension
+     36 src/dynarec/arm64/../arm64/arm64_emitter.h:318:80: warning: binary constants are a C23 feature or GCC extension
+     34 src/dynarec/arm64/../arm64/arm64_emitter.h:803:65: warning: binary constants are a C23 feature or GCC extension
+     34 src/dynarec/arm64/../arm64/arm64_emitter.h:803:59: warning: binary constants are a C23 feature or GCC extension
+     32 src/dynarec/arm64/../arm64/arm64_emitter.h:851:71: warning: binary constants are a C23 feature or GCC extension
+     32 src/dynarec/arm64/../arm64/arm64_emitter.h:851:147: warning: binary constants are a C23 feature or GCC extension
+     28 src/dynarec/arm64/../arm64/arm64_emitter.h:742:50: warning: binary constants are a C23 feature or GCC extension
+     28 src/dynarec/arm64/../arm64/arm64_emitter.h:65:119: warning: unsigned conversion from 'int' to 'uint64_t' {aka 'long unsigned int'} changes the value of '-2147483648' [-Wsign-conversion]
+     28 src/dynarec/arm64/../arm64/arm64_emitter.h:608:71: warning: binary constants are a C23 feature or GCC extension
+     28 src/dynarec/arm64/../arm64/arm64_emitter.h:608:60: warning: binary constants are a C23 feature or GCC extension
+     26 src/dynarec/arm64/../arm64/arm64_emitter.h:454:57: warning: binary constants are a C23 feature or GCC extension
+     26 src/dynarec/arm64/../arm64/arm64_emitter.h:15:33: warning: binary constants are a C23 feature or GCC extension
+     24 src/dynarec/arm64/../arm64/arm64_emitter.h:867:79: warning: binary constants are a C23 feature or GCC extension
+     24 src/dynarec/arm64/../arm64/arm64_emitter.h:867:69: warning: binary constants are a C23 feature or GCC extension
+     24 src/dynarec/arm64/../arm64/arm64_emitter.h:867:63: warning: binary constants are a C23 feature or GCC extension
+     24 src/dynarec/arm64/../arm64/arm64_emitter.h:590:57: warning: binary constants are a C23 feature or GCC extension
+     22 src/dynarec/arm64/../arm64/arm64_emitter.h:420:81: warning: binary constants are a C23 feature or GCC extension
+     22 src/dynarec/arm64/../arm64/arm64_emitter.h:420:44: warning: binary constants are a C23 feature or GCC extension
+     22 src/dynarec/arm64/../arm64/arm64_emitter.h:308:80: warning: binary constants are a C23 feature or GCC extension
+     20 src/dynarec/arm64/../arm64/arm64_emitter.h:157:88: warning: binary constants are a C23 feature or GCC extension
+     20 src/dynarec/arm64/../arm64/arm64_emitter.h:157:64: warning: binary constants are a C23 feature or GCC extension
+     20 src/dynarec/arm64/../arm64/arm64_emitter.h:106:66: warning: binary constants are a C23 feature or GCC extension
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:264:61: warning: binary constants are a C23 feature or GCC extension
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:264:55: warning: binary constants are a C23 feature or GCC extension
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:263:96: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:1374:81: warning: binary constants are a C23 feature or GCC extension
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:1374:46: warning: binary constants are a C23 feature or GCC extension
+     18 src/dynarec/arm64/../arm64/arm64_emitter.h:1374:106: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:901:64: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:901:110: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:797:65: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:797:59: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:425:53: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:395:73: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:395:61: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:395:42: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:395:114: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:395:104: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:267:61: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:267:55: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:177:61: warning: binary constants are a C23 feature or GCC extension
+     16 src/dynarec/arm64/../arm64/arm64_emitter.h:177:55: warning: binary constants are a C23 feature or GCC extension
+     14 src/dynarec/arm64/../arm64/arm64_emitter.h:589:57: warning: binary constants are a C23 feature or GCC extension
+     14 src/dynarec/arm64/../arm64/arm64_emitter.h:496:63: warning: binary constants are a C23 feature or GCC extension
+     14 src/dynarec/arm64/../arm64/arm64_emitter.h:422:58: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:522:69: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:522:63: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1414:91: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1414:66: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1414:119: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1414:105: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1375:63: warning: binary constants are a C23 feature or GCC extension
+     12 src/dynarec/arm64/../arm64/arm64_emitter.h:1375:57: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_mapping.h:162:13: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:902:64: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:789:100: warning: unsigned conversion from 'int' to 'unsigned int' changes the value of '-1073741824' [-Wsign-conversion]
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:54:74: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:53:103: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:519:69: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:519:63: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:516:69: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:516:63: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:302:80: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:300:128: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:18:68: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:18:57: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:160:82: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:160:62: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:160:56: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:158:82: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:158:62: warning: binary constants are a C23 feature or GCC extension
+     10 src/dynarec/arm64/../arm64/arm64_emitter.h:158:56: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_mapping.h:146:13: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:858:79: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:858:69: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:858:63: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:61:103: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:398:54: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:396:54: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:342:59: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:342:103: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:315:80: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:300:116: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:1093:92: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:1093:62: warning: binary constants are a C23 feature or GCC extension
+      8 src/dynarec/arm64/../arm64/arm64_emitter.h:1093:48: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_mapping.h:158:13: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:903:64: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:89:103: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:801:65: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:801:59: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:534:69: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:534:63: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:48:74: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:421:58: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:32:68: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:32:57: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:25:68: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:25:57: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:188:68: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:188:58: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:186:79: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:186:67: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:186:135: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1376:63: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1376:57: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1345:75: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1345:149: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1345:125: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1345:111: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1051:64: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1049:81: warning: binary constants are a C23 feature or GCC extension
+      6 src/dynarec/arm64/../arm64/arm64_emitter.h:1049:46: warning: binary constants are a C23 feature or GCC extension
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:136:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:130:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:127:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:122:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      5 src/dynarec/arm64/dynarec_arm64_helper.c:118:31: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      4 src/dynarec/arm64/../arm64/arm64_mapping.h:164:13: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_mapping.h:154:13: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_mapping.h:150:13: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:795:65: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:795:59: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:73:95: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:562:69: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:562:63: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:498:63: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:495:63: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:473:57: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:348:56: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:347:56: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:300:138: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:2092:84: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:2092:73: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:2092:57: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:2086:63: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:1225:54: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:1225:117: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:1218:88: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:1218:42: warning: binary constants are a C23 feature or GCC extension
+      4 src/dynarec/arm64/../arm64/arm64_emitter.h:112:95: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:937:41: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:937:31: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:489:26: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:2964:32: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:2962:32: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:2307:41: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:2307:31: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:133:36: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1125:41: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1125:31: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1068:41: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1068:31: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1034:41: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/dynarec_arm64_helper.c:1034:31: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:79:74: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:75:74: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:724:61: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:603:57: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:524:69: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:524:63: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:518:69: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:518:63: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:506:69: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:506:63: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:439:42: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:435:53: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:423:58: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:263:110: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:2280:89: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:2280:78: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:2280:65: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:2280:46: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:173:110: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:143:66: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:132:93: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1227:55: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1226:55: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1220:68: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1220:54: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1219:68: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:1219:54: warning: binary constants are a C23 feature or GCC extension
+      2 src/dynarec/arm64/../arm64/arm64_emitter.h:109:66: warning: binary constants are a C23 feature or GCC extension
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:947:26: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int16_t' {aka 'short int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:893:12: warning: 'x87_is_stcached' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:88:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:87:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:870:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:85:37: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:816:34: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:772:20: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:771:23: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:701:13: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:59:41: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:519:15: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:518:22: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:306:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2996:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2984:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2979:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2924:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2910:20: warning: unsigned conversion from 'int' to 'uint32_t' {aka 'unsigned int'} changes value from '-1' to '4294967295' [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2905:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2882:17: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2854:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2836:32: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2834:63: warning: unused parameter 'last' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2763:31: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2762:31: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2754:39: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:88: warning: unused parameter 'k3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:80: warning: unused parameter 'k2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2740:72: warning: unused parameter 'k1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2693:44: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2683:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2603:39: warning: conversion from 'uint64_t' {aka 'long unsigned int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2540:76: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2506:17: warning: unused variable 'nat_flags' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2475:13: warning: unused variable 'nc_before' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2376:9: warning: unused variable 'j64' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2355:19: warning: conversion from 'long unsigned int' to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:75: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2069:100: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2066:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:2065:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:98: warning: unused parameter 's1_val' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1987:73: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:190:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:20: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1852:11: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1849:41: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1810:54: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1780:55: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1753:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1739:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1733:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1723:24: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1710:28: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1702:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1645:13: warning: 'sse_reflectcache' defined but not used [-Wunused-function]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1568:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1534:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1522:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1517:32: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1515:30: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1505:52: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1494:65: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1470:66: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1466:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1453:36: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:60: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:142:54: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:96: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:92: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:58: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:52: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:141:102: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:43: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1393:23: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1390:30: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1383:27: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1372:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:135:33: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:133:41: warning: conversion from 'long unsigned int' to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:36: warning: conversion to 'long unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:132:31: warning: conversion to 'long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1311:66: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1297:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1296:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:66: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1188:58: warning: unused parameter 's1' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1169:26: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1168:28: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:113:50: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:1134:70: warning: unused parameter 't' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:112:48: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_helper.c:109:33: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:628:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:622:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:620:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:618:21: warning: conversion to 'int64_t' {aka 'long int'} from 'long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/../arm64/dynarec_arm64_helper.h:1556:21: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+--- functions ---
+     10 src/emu/x87emu_private.h:24:39: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      7 src/emu/x87emu_private.h:22:33: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      2 src/dynarec/arm64/dynarec_arm64_functions.c:894:143: warning: non-ISO-standard escape sequence, '\e'
+      1 src/emu/x87emu_private.h:86:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/emu/x87emu_private.h:76:9: warning: unused variable 'curtop' [-Wunused-variable]
+      1 src/emu/x87emu_private.h:70:16: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/emu/x87emu_private.h:313:24: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x87emu_private.h:248:46: warning: binary constants are a C23 feature or GCC extension
+      1 src/emu/x87emu_private.h:247:24: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x87emu_private.h:18:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:982:26: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:980:48: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:92:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:91:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:917:46: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:914:14: warning: comparison of integer expressions of different signedness: 'int' and 'long unsigned int' [-Wsign-compare]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:912:120: warning: conversion to 'size_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:899:46: warning: '%s' directive writing up to 4095 bytes into a region of size between 477 and 496 [-Wformat-overflow=]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:865:82: warning: non-ISO-standard escape sequence, '\e'
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:859:90: warning: non-ISO-standard escape sequence, '\e'
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:672:22: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:648:23: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:633:43: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:617:44: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:616:42: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:615:43: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:597:45: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:586:66: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:581:62: warning: conversion from 'int' to 'int8_t' {aka 'signed char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:558:27: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:549:28: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:542:44: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:522:37: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:417:22: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:416:22: warning: conversion from 'int' to 'uint8_t' {aka 'unsigned char'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:167:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:166:33: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:161:41: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1591:59: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1575:55: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1573:56: warning: conversion from 'int' to 'unsigned char:7' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1532:9: warning: unused variable 'start' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1523:63: warning: unused parameter 'last' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1523:52: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1523:43: warning: unused parameter 'dyn' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1517:50: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1511:26: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1508:47: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1503:41: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:149:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1497:44: warning: unused parameter 'ninst' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:148:29: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1437:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1436:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1401:38: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:133:31: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1174:38: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:4' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1156:59: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:113:29: warning: conversion to 'long long unsigned int' from 'long long int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1139:52: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_functions.c:1126:67: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+--- printer ---
+     34 src/dynarec/arm64/arm64_printer.c:116:18: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:843:27: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:843:18: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:835:42: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:835:33: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:833:37: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:833:28: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:825:42: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:825:33: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:823:37: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:823:28: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:818:121: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:817:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:813:120: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:812:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:808:104: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:807:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:803:103: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:802:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:798:79: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:797:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:793:95: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:792:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:727:40: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:725:34: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:723:34: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:721:30: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:719:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:703:34: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:701:34: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:699:30: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:697:29: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:695:30: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:693:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:434:37: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:434:20: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:40:17: warning: conversion to 'long long unsigned int' from 'long long int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:36:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long long int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:345:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:339:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:324:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:318:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:29:50: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:29:39: warning: conversion to 'unsigned int' from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:298:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:294:65: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:292:71: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:289:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:285:70: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:284:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:283:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:279:69: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:278:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:277:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:267:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:263:94: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:261:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:257:91: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:256:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:252:106: warning: conversion to 'uintptr_t' {aka 'long unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:251:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:246:65: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:244:71: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:241:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:236:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:231:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:227:70: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:226:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:225:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:220:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:215:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:210:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:205:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:200:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:196:70: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:195:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:194:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:190:71: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:189:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:188:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:1880:19: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1870:19: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:184:70: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:183:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:182:20: warning: conversion to 'int' from 'uint32_t' {aka 'unsigned int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:1773:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1773:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1772:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1772:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1771:26: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1771:17: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1760:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1760:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1759:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1759:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1758:26: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1758:17: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:174:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:1737:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1737:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1736:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1736:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1735:26: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1735:17: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1732:74: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1722:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1722:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1721:31: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1721:22: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1720:26: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1720:17: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:169:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:1684:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:1660:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:164:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:1617:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1615:23: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1614:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1612:23: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1611:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1609:23: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1608:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1606:16: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:156:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:151:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:146:22: warning: conversion from 'int64_t' {aka 'long int'} to 'int' may change value [-Wconversion]
+      1 src/dynarec/arm64/arm64_printer.c:1399:41: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1399:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1392:41: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1392:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1132:83: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:1103:33: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1103:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1102:33: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1102:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1101:33: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1101:24: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:1100:19: warning: binary constants are a C23 feature or GCC extension
+      1 src/dynarec/arm64/arm64_printer.c:100:16: warning: conversion to 'int64_t' {aka 'long int'} from 'long long unsigned int' may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/arm64_printer.c:100:13: warning: conversion to 'long long unsigned int' from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+--- dynarec_arm64_emit_tests ---
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:80:73: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:512:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:405:69: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:381:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:381:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:23:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:220:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_tests.c:127:68: warning: unused parameter 's3' [-Wunused-parameter]
+--- dynarec_arm64_emit_math ---
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:982:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:95:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:95:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:940:60: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:89:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:898:59: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:850:71: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:822:60: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:794:59: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:747:71: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:639:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:506:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:456:71: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:412:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:369:71: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:303:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:254:47: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:254:47: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:243:42: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:243:42: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:23:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:236:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:236:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:229:25: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:229:25: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:221:83: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1759:59: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1703:60: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1650:71: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:160:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1526:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1461:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1312:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1189:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:114:47: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:114:47: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:1125:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:103:42: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_math.c:103:42: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+--- dynarec_arm64_emit_logic ---
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:76:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:76:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:284:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:284:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:23:78: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:233:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:179:21: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'int64_t' {aka 'long int'} may change the sign of the result [-Wsign-conversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:179:21: warning: conversion from 'int64_t' {aka 'long int'} to 'uint32_t' {aka 'unsigned int'} may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:178:61: warning: comparison of integer expressions of different signedness: 'int64_t' {aka 'long int'} and 'long long unsigned int' [-Wsign-compare]
+      1 src/dynarec/arm64/dynarec_arm64_emit_logic.c:126:79: warning: unused parameter 's3' [-Wunused-parameter]
+--- dynarec_arm64_emit_shift ---
+      1 src/include/../emu/x64primop.h:640:43: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:640:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:35: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:588:33: warning: conversion to '__int128 unsigned' from '__int128' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:588:18: warning: ISO C does not support '__int128' types [-Wpedantic]
+      1 src/include/../emu/x64primop.h:560:24: warning: conversion to 'uint64_t' {aka 'long unsigned int'} from 'long int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:554:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:545:24: warning: conversion to 'uint32_t' {aka 'unsigned int'} from 'int' may change the sign of the result [-Wsign-conversion]
+      1 src/include/../emu/x64primop.h:538:31: warning: conversion from 'int' to 'uint16_t' {aka 'short unsigned int'} may change value [-Wconversion]
+      1 src/emu/x64run_private.h:91:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:5' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:90:14: warning: conversion from 'int' to 'unsigned char:4' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:89:14: warning: conversion from 'uint8_t' {aka 'unsigned char'} to 'unsigned char:1' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:88:14: warning: conversion from 'int' to 'unsigned char:2' may change value [-Wconversion]
+      1 src/emu/x64run_private.h:87:18: warning: conversion from 'int' to 'unsigned char:1' may change value [-Wconversion]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:985:13: warning: unused variable 'rc' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:947:55: warning: unused parameter 'rex' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:854:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:854:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:770:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:770:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:664:68: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:664:60: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:580:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:580:59: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:493:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:386:67: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:282:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:23:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1777:13: warning: unused variable 'mask' [-Wunused-variable]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1768:69: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1768:61: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1712:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1664:77: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1664:69: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1664:61: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:164:79: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1620:62: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1550:80: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1487:88: warning: unused parameter 's3' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1487:80: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1426:73: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1373:73: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1329:95: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1329:71: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1277:95: warning: unused parameter 's5' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1277:71: warning: unused parameter 's2' [-Wunused-parameter]
+      1 src/dynarec/arm64/dynarec_arm64_emit_shift.c:1040:13: warning: unused variable 'rc' [-Wunused-variable]

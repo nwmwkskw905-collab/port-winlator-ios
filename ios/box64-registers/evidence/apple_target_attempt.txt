@@ -1,0 +1,105 @@
+### item (k): arm64-apple-ios17.0 target checks
+date: 2026-10-02T00:32:48Z
+
+$ clang --version
+Debian clang version 19.1.7 (3+b1)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+
+### Apple SDK present?
+clang builtin headers: /usr/lib/llvm-19/lib/clang/19/include
+xcrun: NOT PRESENT
+AppleSDK headers (stdio.h under any SDK): 
+
+### syntax-only attempt on a C TU of the patched tree
+$ clang -target arm64-apple-ios17.0 -fsyntax-only t.c
+In file included from /tmp/apple_probe.c:1:
+In file included from /usr/lib/llvm-19/lib/clang/19/include/stdint.h:56:
+/usr/include/stdint.h:26:10: fatal error: 'bits/libc-header-start.h' file not found
+   26 | #include <bits/libc-header-start.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=0
+
+### assembling the patched dynarec asm for the Apple target
+patched/arm64_prolog.S       ASSEMBLED
+patched/arm64_epilog.S       ASSEMBLED
+patched/arm64_next.S         FAILED:
+    patched/arm64_next.S:78:1: error: assembler local symbol 'LinkNext' not defined
+    
+    ^
+    patched/arm64_next.S:78:1: error: assembler local symbol 'LinkNextInvalid' not defined
+    
+    ^
+
+### conclusion
+No Apple SDK / Xcode / libSystem in this environment: no link, no runtime, no device.
+IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN
+
+### is the Mach-O assembly failure of next.S pre-existing?
+include/upstream/arm64_next.S    FAILED (2 errors): include/upstream/arm64_next.S:78:1: error: assembler local symbol 'LinkNext' not defined include/upstream/arm64_next.S:78:1: error: assembler local symbol 'LinkNextInvalid' not defined 
+patched/arm64_next.S             FAILED (2 errors): patched/arm64_next.S:78:1: error: assembler local symbol 'LinkNext' not defined patched/arm64_next.S:78:1: error: assembler local symbol 'LinkNextInvalid' not defined 
+  -> the .extern directives are byte-identical upstream vs patched:
+     IDENTICAL (failure is upstream's, not introduced by the patch)
+
+### can the CHANGED HEADER be syntax-checked for arm64-apple-ios17.0?
+  (clang builtin-only include path; no libc for the Apple target)
+
+### is the Apple-target header syntax check real (non-vacuous)?
+/tmp/hdr_pos.c:2:37: error: expected expression
+    2 | int probe(void){ return (int)(xR8 + TO_NAT(8) + IS_GPR(8)); }
+      |                                     ^
+include/new/arm64_mapping.h:86:30: note: expanded from macro 'TO_NAT'
+   86 | #define TO_NAT(A) (((uint8_t[]) { xRAX, xRCX, xRDX, xRBX, xRSP, xRBP, xRSI, xRDI, xR8, xR9, xR10, xR11, xR12, xR13, xR14, xR15 })[(A)])
+      |                              ^
+/tmp/hdr_pos.c:2:37: error: use of undeclared identifier 'uint8_t'
+include/new/arm64_mapping.h:86:22: note: expanded from macro 'TO_NAT'
+   86 | #define TO_NAT(A) (((uint8_t[]) { xRAX, xRCX, xRDX, xRBX, xRSP, xRBP, xRSI, xRDI, xR8, xR9, xR10, xR11, xR12, xR13, xR14, xR15 })[(A)])
+      |                      ^
+/tmp/hdr_pos.c:2:49: error: expected expression
+    2 | int probe(void){ return (int)(xR8 + TO_NAT(8) + IS_GPR(8)); }
+      |                                                 ^
+include/new/arm64_mapping.h:92:30: note: expanded from macro 'IS_GPR'
+   92 | #define IS_GPR(A) (((uint8_t[]) { \
+      |                              ^
+/tmp/hdr_pos.c:2:49: error: use of undeclared identifier 'uint8_t'
+include/new/arm64_mapping.h:92:22: note: expanded from macro 'IS_GPR'
+   92 | #define IS_GPR(A) (((uint8_t[]) { \
+      |                      ^
+4 errors generated.
+positive probe (uses xR8, TO_NAT, IS_GPR): rc=1
+negative probe (xR8_TYPO must fail): rc=1 -> /tmp/hdr_neg.c:2:31: error: use of undeclared identifier 'xR8_TYPO'
+
+### upstream header under the same Apple target
+upstream mapping header: rc=0
+
+### what the Apple target actually accepts (clang defaults for arm64-apple-ios17.0)
+#define __APPLE__ 1
+#define __MACH__ 1
+#define __arm64__ 1
+
+### header syntax check with a labelled stub <stdint.h> (no Apple SDK present)
+include/new  pos  rc=1 /tmp/hdr_pos.c:2:37: error: expected expression
+include/new  neg  rc=1 /tmp/hdr_neg.c:2:31: error: use of undeclared identifier 'xR8_TYPO'
+include/orig pos  rc=0 
+include/orig neg  rc=1 /tmp/hdr_neg.c:2:31: error: use of undeclared identifier 'xR8_TYPO'
+
+### the same probes for the host target (control that the probes are valid C)
+host pos  rc=1 /tmp/hdr_pos.c:2:37: error: expected expression
+host neg  rc=1 /tmp/hdr_neg.c:2:31: error: use of undeclared identifier 'xR8_TYPO'
+
+### CORRECTION of the section above: the previous failure was my probe's fault
+### (arm64_mapping.h intentionally does not include <stdint.h>; the probe must, and
+###  clang's builtin include dir shadowed the stub).  Probe re-done properly:
+apple include/new pos  rc=0 
+apple include/new neg  rc=1 /tmp/hdr_neg.c:3:31: error: use of undeclared identifier 'xR8_TYPO'
+apple include/orig pos  rc=0 
+apple include/orig neg  rc=1 /tmp/hdr_neg.c:3:31: error: use of undeclared identifier 'xR8_TYPO'
+host  include/new pos  rc=0 
+host  include/new neg  rc=1 /tmp/hdr_neg.c:3:31: error: use of undeclared identifier 'xR8_TYPO'
+
+### reading of the result:
+  positive probe = uses xR8, TO_NAT and IS_GPR from the generated header
+  negative probe = must be rejected (proves the check is not vacuous)
+  => the changed header parses for -target arm64-apple-ios17.0 with clang 19.1.7.
+  Stub <stdint.h> stands in for the missing Apple SDK: this is a SYNTAX datum only.
+  No Apple SDK / libSystem / runtime / device => IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN

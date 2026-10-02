@@ -1,0 +1,44 @@
+000000000000008c <hf_c_poison>:
+  8c:	d299bde1 	mov	x1, #0xcdef                	// #52719
+  90:	f2b13561 	movk	x1, #0x89ab, lsl #16
+  94:	f2c8ace1 	movk	x1, #0x4567, lsl #32
+  98:	f2e02461 	movk	x1, #0x123, lsl #48
+  9c:	ca010001 	eor	x1, x0, x1
+  a0:	d28fe5a3 	mov	x3, #0x7f2d                	// #32557
+  a4:	f2a992a3 	movk	x3, #0x4c95, lsl #16
+  a8:	f2de85a3 	movk	x3, #0xf42d, lsl #32
+  ac:	f2eb0a23 	movk	x3, #0x5851, lsl #48
+  b0:	d29029e2 	mov	x2, #0x814f                	// #33103
+  b4:	f2beece2 	movk	x2, #0xf767, lsl #16
+  b8:	f2cf6fc2 	movk	x2, #0x7b7e, lsl #32
+  bc:	f2e280a2 	movk	x2, #0x1405, lsl #48
+  c0:	9b030803 	madd	x3, x0, x3, x2
+  c4:	d375d062 	lsl	x2, x3, #11
+  c8:	aa411c42 	orr	x2, x2, x1, lsr #7
+  cc:	8b020446 	add	x6, x2, x2, lsl #1
+  d0:	8b0100c6 	add	x6, x6, x1
+  d4:	ca060064 	eor	x4, x3, x6
+  d8:	8b011484 	add	x4, x4, x1, lsl #5
+  dc:	8b040885 	add	x5, x4, x4, lsl #2
+  e0:	d200f040 	eor	x0, x2, #0x5555555555555555
+  e4:	8b0000a5 	add	x5, x5, x0
+  e8:	8b0500c7 	add	x7, x6, x5
+  ec:	8b040060 	add	x0, x3, x4
+  f0:	ca473407 	eor	x7, x0, x7, lsr #13
+  f4:	d343fca8 	lsr	x8, x5, #3
+  f8:	d289cda0 	mov	x0, #0x4e6d                	// #20077
+  fc:	f2a838c0 	movk	x0, #0x41c6, lsl #16
+ 100:	9b0020e0 	madd	x0, x7, x0, x8
+ 104:	ca030021 	eor	x1, x1, x3
+ 108:	ca040021 	eor	x1, x1, x4
+ 10c:	ca070021 	eor	x1, x1, x7
+ 110:	ca060042 	eor	x2, x2, x6
+ 114:	ca050042 	eor	x2, x2, x5
+ 118:	ca000042 	eor	x2, x2, x0
+ 11c:	ca020021 	eor	x1, x1, x2
+ 120:	90000002 	adrp	x2, 0 <check>
+ 124:	91000042 	add	x2, x2, #0x0
+ 128:	f9002841 	str	x1, [x2, #80]
+ 12c:	91000400 	add	x0, x0, #0x1
+ 130:	d65f03c0 	ret
+

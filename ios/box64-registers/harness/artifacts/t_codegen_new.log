@@ -1,0 +1,64 @@
+=== FASE 04 harness: codegen tests ===
+mapping under test: Strategy A / patched (xR8=9, TO_NAT(8)=9)
+[T1] register-map invariants
+  PASS  TO_NAT() maps the 16 guest GPRs to 16 DISTINCT host registers
+  PASS  x18 is not the home of ANY guest GPR
+  PASS  xR8 == 9 (expected 9)
+  PASS  TO_NAT(8) == xR8 (9)
+  PASS  xPLATFORM == 18 (expected 18)
+  PASS  IS_GPR(): the R8 slot, RAX and RIP are guest registers
+  PASS  IS_GPR(18): xPLATFORM is NOT a guest register
+  PASS  IS_GPR(): x8 / xSavedSP are NOT guest registers
+  PASS  TO_NAT's image is exactly the 16 guest GPR homes: x8/x18/xFlags/xRIP/xSavedSP excluded
+  PASS  no guest GPR home aliases xEmu, the scratch set, xLP/xLR or SP/ZR
+[T2] static codegen audit: every R8 access must encode host reg 9
+  PASS  MOVx_REG(xR8,xEmu)         -> x9 <- x0 (expect 9 <- 0)
+  PASS  STRx_U12(xR8,xEmu,64)      -> str x9,[x0,#64]
+  PASS  LDRx_U12(xR8,xEmu,64)      -> ldr x9,[x0,#64]
+  PASS  STPx_S7_offset(xR8,xR9,..) -> stp x9,x19,[x0,#64] (pair stays ONE instruction)
+  PASS  LDPx_S7_offset(xR8,xR9,..) -> ldp x9,x19 (pair stays ONE instruction)
+  PASS  MOVw_REG(wR8,xEmu)         -> w9
+  PASS  ADDx_REG(xR8,xR8,x1)       -> add x9,x9,x1
+  PASS  no operand of the 7 emitted R8 instructions encodes register 18
+  ....  dumped t2_r8_ops                  7 instructions -> ./t2_r8_ops.bin
+[T3] guest R8 values (0, 1, -1, 0x0123456789ABCDEF, mixed) round-trip
+  PASS  MOV R8 = 0 -> read back 0
+  PASS  MOV32 R8 = 0 -> read back 0
+  PASS  MOV R8 = 0x1 -> read back 0x1
+  PASS  MOV32 R8 = 0x1 -> read back 0x1
+  PASS  MOV R8 = 0xffffffffffffffff -> read back 0xffffffffffffffff
+  PASS  MOV32 R8 = 0xffffffffffffffff -> read back 0xffffffff
+  PASS  MOV R8 = 0x123456789abcdef -> read back 0x123456789abcdef
+  PASS  MOV32 R8 = 0x123456789abcdef -> read back 0x89abcdef
+  PASS  MOV R8 = 0xdeadbeefcafebabe -> read back 0xdeadbeefcafebabe
+  PASS  MOV32 R8 = 0xdeadbeefcafebabe -> read back 0xcafebabe
+  PASS  MOV R8 = 0x8000000080000000 -> read back 0x8000000080000000
+  PASS  MOV32 R8 = 0x8000000080000000 -> read back 0x80000000
+  PASS  MOV R8 = 0xffffffff -> read back 0xffffffff
+  PASS  MOV32 R8 = 0xffffffff -> read back 0xffffffff
+  PASS  MOV R8 = 0xffffffff00000000 -> read back 0xffffffff00000000
+  PASS  MOV32 R8 = 0xffffffff00000000 -> read back 0
+[T4] arithmetic/logic on R8 (64- and 32-bit) vs reference model
+  PASS  128 ALU cases executed, 0 mismatches vs reference model
+[T5] the other 15 guest registers are not disturbed by R8 traffic
+  PASS  regs[0..7,9..15] unchanged while regs[8] was modified (0 disturbed)
+[T6] register pressure: all 16 guest GPRs live at once, each in its own home
+  PASS  round 0: 16 GPRs loaded, incremented, stored back (0 wrong)
+  PASS  round 1: 16 GPRs loaded, incremented, stored back (0 wrong)
+  PASS  round 2: 16 GPRs loaded, incremented, stored back (0 wrong)
+[T7] helper-call preservation across a platform-ABI host call
+  ....  dumped t7_boundary_spilled        9 instructions -> ./t7_boundary_spilled.bin
+  ....  dumped t7_boundary_nospill        7 instructions -> ./t7_boundary_nospill.bin
+  PASS  WITH the spill (Strategy A): R8 survives a host call that clobbers its home register
+  PASS  WITH the spill: R8 = 0 survives too
+  PASS  WITH the spill: R8 = 0xffffffffffffffff survives too
+  PASS  NEGATIVE CONTROL, no spill: R8 is lost (so the test can detect a missing spill)
+[T8] cross-block persistence A->B->C->D through indirect jumps (dispatch shape)
+  ....  after block A: R8 = 0x100000011 (expected 0x100000011)
+  ....  after block B: R8 = 0x100002211 (expected 0x100002211)
+  ....  after block C: R8 = 0x100332211 (expected 0x100332211)
+  ....  after block D: R8 = 0x144332211 (expected 0x144332211)
+  PASS  R8 survives A->B->C->D through indirect jumps (0 wrong hops)
+[T9] deterministic fuzz vs reference model (seed=0x5eedf04, 2000 iterations)
+  PASS  2000 fuzz iterations, 0 divergences from the reference model
+=== 45 checks passed, 0 failed ===

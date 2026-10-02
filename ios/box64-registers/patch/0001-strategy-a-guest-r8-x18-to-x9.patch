@@ -1,0 +1,250 @@
+diff --git a/src/dynarec/arm64/arm64_epilog.S b/src/dynarec/arm64/arm64_epilog.S
+index 685a3e734..4c2507e93 100644
+--- a/src/dynarec/arm64/arm64_epilog.S
++++ b/src/dynarec/arm64/arm64_epilog.S
+@@ -13,7 +13,7 @@ arm64_epilog:
+     stp     x12, x13, [x0, (8 *  2)]
+     stp     x14, x15, [x0, (8 *  4)]
+     stp     x16, x17, [x0, (8 *  6)]
+-    stp     x18, x19, [x0, (8 *  8)]
++    stp     x9, x19, [x0, (8 *  8)]      // guest R8 is in x9 (Strategy A)
+     stp     x20, x21, [x0, (8 * 10)]
+     stp     x22, x23, [x0, (8 * 12)]
+     stp     x24, x25, [x0, (8 * 14)]
+diff --git a/src/dynarec/arm64/arm64_mapping.h b/src/dynarec/arm64/arm64_mapping.h
+index 084bb26ba..a27ee173d 100644
+--- a/src/dynarec/arm64/arm64_mapping.h
++++ b/src/dynarec/arm64/arm64_mapping.h
+@@ -46,7 +46,21 @@ p0-p3 are used to pass scalable predicate arguments to a subroutine and to retur
+ #define xRBP    15
+ #define xRSI    16
+ #define xRDI    17
+-#define xR8     18
++// Guest R8 lives in x9, NOT in x18 (Fase 04 / Darwin).
++// AAPCS64 calls x18 "The Platform Register, if needed; otherwise a Caller-saved
++// register" and advises platform-independent code to avoid it; arm64-apple-ios
++// reserves it outright ("The platforms reserve register x18. Don't use this
++// register.").  x9 is a plain caller-saved temporary this backend never used for
++// anything else, so no guest register loses its home and x8 stays free as an
++// emergency scratch.
++// Because x9 is caller-saved, guest R8 is now spilled/reloaded explicitly at every
++// boundary that can reach code without a "preserves guest registers" contract:
++// call_c/call_d already do it for every guest GPR, and READFLAGS/GRABFLAGS,
++// flagsCacheTransform and checkCRC now do it for R8.
++// This mapping is platform independent on purpose: Linux, Android and Darwin keep
++// ONE register model (no per-platform #ifdef); x18 is simply unused except as the
++// Windows TEB in the _WIN32 paths (see xPLATFORM below).
++#define xR8     9
+ #define xR9     19
+ #define xR10    20
+ #define xR11    21
+@@ -58,9 +72,29 @@ p0-p3 are used to pass scalable predicate arguments to a subroutine and to retur
+ #define xRIP    27
+ #define xSavedSP 28
+ 
+-// convert a x86 register to native according to the register mapping
+-#define TO_NAT(A) (xRAX + (A))
+-#define IS_GPR(A) ((A)>=xRAX && (A)<=xRIP)
++// Host platform register.  NOT a guest register: x18 holds the Windows TEB under
++// _WIN32 (win64_teb), is unused on Linux/Android, and is reserved by
++// arm64-apple-ios.
++#define xPLATFORM 18
++
++// convert a x86 register to native according to the register mapping.
++// Table form, like the RV64/LA64 backends: with guest R8 moved out of the
++// xRAX..xRIP range the mapping is no longer an affine function of the guest
++// register number, so xRAX+(A) cannot express it any more.  Unchanged entries are
++// spelled with their names so the table stays readable and checkable entry by
++// entry.  (Generated from the #defines above - do not hand-edit.)
++#define TO_NAT(A) (((uint8_t[]) { xRAX, xRCX, xRDX, xRBX, xRSP, xRBP, xRSI, xRDI, xR8, xR9, xR10, xR11, xR12, xR13, xR14, xR15 })[(A)])
++// Guest GPR slots by host register number (bitmap, same reason as TO_NAT).
++// Generated from the same data, so it cannot drift:
++//    0.. 8 = 0 (not guest)      9 = 1 (xR8, moved here by Strategy A)
++//   10..17 = 1 (xRAX..xRDI)    18 = 0 (xPLATFORM, NOT a guest register)
++//   19..25 = 1 (xR9..xR15)     26,27 = 1 (xFlags, xRIP)   28..31 = 0
++#define IS_GPR(A) (((uint8_t[]) { \
++    /*  0.. 7 */ 0, 0, 0, 0, 0, 0, 0, 0, \
++    /*  8..15 */ 0, 1, 1, 1, 1, 1, 1, 1, \
++    /* 16..23 */ 1, 1, 0, 1, 1, 1, 1, 1, \
++    /* 24..31 */ 1, 1, 1, 1, 0, 0, 0, 0, \
++    })[(A)])
+ 
+ // 32bits version
+ #define wEAX    xRAX
+diff --git a/src/dynarec/arm64/arm64_next.S b/src/dynarec/arm64/arm64_next.S
+index e946ed4db..f8df04aa6 100644
+--- a/src/dynarec/arm64/arm64_next.S
++++ b/src/dynarec/arm64/arm64_next.S
+@@ -20,7 +20,7 @@ arm64_next:
+     stp     x12, x13, [sp, (8 *  4)]
+     stp     x14, x15, [sp, (8 *  6)]
+     stp     x16, x17, [sp, (8 *  8)]
+-    stp     x18, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
++    stp     x9, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+ 
+ #ifdef _WIN32
+     ldr     x18, [x0, 3104]
+@@ -38,7 +38,7 @@ arm64_next:
+     ldp     x12, x13, [sp, (8 *  4)]
+     ldp     x14, x15, [sp, (8 *  6)]
+     ldp     x16, x17, [sp, (8 *  8)]
+-    ldp     x18, x27, [sp, (8 * 10)]
++    ldp     x9, x27, [sp, (8 * 10)]
+     add     sp,  sp, (8 * 12)
+     // return offset is jump address
+     br      x3
+@@ -53,7 +53,7 @@ arm64_next_invalid:
+     stp     x12, x13, [sp, (8 *  4)]
+     stp     x14, x15, [sp, (8 *  6)]
+     stp     x16, x17, [sp, (8 *  8)]
+-    stp     x18, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
++    stp     x9, x27, [sp, (8 * 10)]    // also save x27(rip) to allow change in LinkNext
+ 
+ #ifdef _WIN32
+     ldr     x18, [x0, 3104]
+@@ -71,7 +71,7 @@ arm64_next_invalid:
+     ldp     x12, x13, [sp, (8 *  4)]
+     ldp     x14, x15, [sp, (8 *  6)]
+     ldp     x16, x17, [sp, (8 *  8)]
+-    ldp     x18, x27, [sp, (8 * 10)]
++    ldp     x9, x27, [sp, (8 * 10)]
+     add     sp,  sp, (8 * 12)
+     // return offset is jump address
+     br      x3
+diff --git a/src/dynarec/arm64/arm64_printer.c b/src/dynarec/arm64/arm64_printer.c
+index b57f0f31e..fc5a2eefc 100644
+--- a/src/dynarec/arm64/arm64_printer.c
++++ b/src/dynarec/arm64/arm64_printer.c
+@@ -7,10 +7,10 @@
+ #include "arm64_printer.h"
+ #include "debug.h"
+ 
+-static const char* Xt[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xR8", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "xZR"};
+-static const char* XtSp[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xR8", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "SP"};
+-static const char* Wt[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wR8", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wZR"};
+-static const char* WtSp[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wR8", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wSP"};
++static const char* Xt[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "xR8", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xPLATFORM", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "xZR"};
++static const char* XtSp[] = {"xEmu", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "xR8", "xRAX", "xRCX", "xRDX", "xRBX", "xRSP", "xRBP", "xRSI", "xRDI", "xPLATFORM", "xR9", "xR10", "xR11", "xR12", "xR13", "xR14", "xR15", "xFlags", "xRIP", "x28", "FP", "LR", "SP"};
++static const char* Wt[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "wR8", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wPLATFORM", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wZR"};
++static const char* WtSp[] = {"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "wR8", "wEAX", "wECX", "wEDX", "wEBX", "wESP", "wEBP", "wESI", "wEDI", "wPLATFORM", "wR9", "wR10", "wR11", "wR12", "wR13", "wR14", "wR15", "wFlags", "w27", "w28", "w29", "w30", "wSP"};
+ 
+ static const char* conds[] = {"cEQ", "cNE", "cCS", "cCC", "cMI", "cPL", "cVS", "cVC", "cHI", "cLS", "cGE", "cLT", "cGT", "cLE", "c__", "inv"};
+ 
+diff --git a/src/dynarec/arm64/arm64_prolog.S b/src/dynarec/arm64/arm64_prolog.S
+index eaee127fe..8925ad057 100644
+--- a/src/dynarec/arm64/arm64_prolog.S
++++ b/src/dynarec/arm64/arm64_prolog.S
+@@ -26,7 +26,7 @@ arm64_prolog:
+     ldp     x12, x13, [x0, (8 *  2)]
+     ldp     x14, x15, [x0, (8 *  4)]
+     ldp     x16, x17, [x0, (8 *  6)]
+-    ldp     x18, x19, [x0, (8 *  8)]
++    ldp     x9, x19, [x0, (8 *  8)]      // guest R8 is in x9 (Strategy A); x18 stays the platform register
+     ldp     x20, x21, [x0, (8 * 10)]
+     ldp     x22, x23, [x0, (8 * 12)]
+     ldp     x24, x25, [x0, (8 * 14)]
+diff --git a/src/dynarec/arm64/dynarec_arm64_functions.c b/src/dynarec/arm64/dynarec_arm64_functions.c
+index 91d6c7229..0fe5d3178 100644
+--- a/src/dynarec/arm64/dynarec_arm64_functions.c
++++ b/src/dynarec/arm64/dynarec_arm64_functions.c
+@@ -736,10 +736,10 @@ static register_mapping_t register_mappings[] = {
+     { "ebp", "w17" },
+     { "bp", "x17" },
+     { "bpl", "x17" },
+-    { "r8", "x18" },
+-    { "r8d", "w18" },
+-    { "r8w", "x18" },
+-    { "r8b", "x18" },
++    { "r8", "x9" },
++    { "r8d", "w9" },
++    { "r8w", "x9" },
++    { "r8b", "x9" },
+     { "r9", "x19" },
+     { "r9d", "w19" },
+     { "r9w", "x19" },
+diff --git a/src/dynarec/arm64/dynarec_arm64_helper.c b/src/dynarec/arm64/dynarec_arm64_helper.c
+index 8b57be576..48a52f761 100644
+--- a/src/dynarec/arm64/dynarec_arm64_helper.c
++++ b/src/dynarec/arm64/dynarec_arm64_helper.c
+@@ -560,7 +560,8 @@ void call_c(dynarec_arm_t* dyn, int ninst, arm64_consts_t fnc, int reg, int ret,
+         fpu_pushcache(dyn, ninst, savereg, 0);
+     }
+     #ifdef _WIN32
+-    LDRx_U12(xR8, xEmu, offsetof(x64emu_t, win64_teb));
++    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
++    LDRx_U12(xPLATFORM, xEmu, offsetof(x64emu_t, win64_teb));
+     #endif
+     TABLE64C(reg, fnc);
+     BLR(reg);
+@@ -613,7 +614,8 @@ void call_d(dynarec_arm_t* dyn, int ninst, arm64_consts_t fnc, int ret, int arg1
+     fpu_pushcache(dyn, ninst, x87pc, 0);
+ 
+     #ifdef _WIN32
+-    LDRx_U12(xR8, xEmu, offsetof(x64emu_t, win64_teb));
++    // x18 is the platform register here (Windows TEB), not guest R8: use xPLATFORM
++    LDRx_U12(xPLATFORM, xEmu, offsetof(x64emu_t, win64_teb));
+     #endif
+     if(arg1!=-1)
+         FMOVD(0, arg1);
+@@ -2355,8 +2357,13 @@ static void flagsCacheTransform(dynarec_arm_t* dyn, int ninst)
+         }
+         if(dyn->insts[ninst].need_nat_flags)
+             MRS_nzcv(x6);
++        // defensive spill (Strategy A): keeps the invariant "guest R8 is explicit at
++        // every cross-code-unit boundary" even though the generated flags block
++        // measurably only writes x1..x5/xFlags
++        STRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8]));
+         TABLE64C(x1, const_updateflags_arm64);
+         BLR(x1);
++        LDRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8]));
+         if(dyn->insts[ninst].need_nat_flags)
+             MSR_nzcv(x6);
+         MARKF2;
+@@ -2990,6 +2997,10 @@ void checkCRC(dynarec_arm_t* dyn, int ninst)
+     LDRx_literal(x5, delta);
+     // move away xEMU to X6, should be safe there
+     MOVx_REG(x6, xEmu);
++    // guest R8 is in a caller-saved host register (x9) and the crc/hash helpers are
++    // reached through the platform ABI, so spill it before xEmu is reused as the
++    // first argument, and reload it once xEmu is back (Strategy A, mandatory)
++    STRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8]));
+     // prepare and call the crc function
+     TABLE64C(x3, cpuext.crc32?const_native_crc32:const_native_x31);
+     LDRx_U12(xEmu, x5, offsetof(dynablock_t, x64_addr));
+@@ -2998,6 +3009,8 @@ void checkCRC(dynarec_arm_t* dyn, int ninst)
+     // done, move away result and restore xEmu
+     MOVw_REG(x1, xEmu);
+     MOVx_REG(xEmu, x6);
++    // restore guest R8 now that xEmu is valid again (Strategy A, mandatory)
++    LDRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8]));
+     LDRw_U12(x2, x5, offsetof(dynablock_t, hash));
+     SUBw_REG(x1, x1, x2);
+     CBZw(x1, 4+2*4);
+diff --git a/src/dynarec/arm64/dynarec_arm64_helper.h b/src/dynarec/arm64/dynarec_arm64_helper.h
+index 7586592f6..410adb5d3 100644
+--- a/src/dynarec/arm64/dynarec_arm64_helper.h
++++ b/src/dynarec/arm64/dynarec_arm64_helper.h
+@@ -1002,8 +1002,11 @@
+ #define READFLAGS(A) \
+     if((A)!=X_PEND                                          \
+     && (dyn->f==status_unk)) {                              \
++        /* defensive spill: guest R8 is in caller-saved x9 */ \
++        STRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8])); \
+         TABLE64C(x6, const_updateflags_arm64);              \
+         BLR(x6);                                            \
++        LDRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8])); \
+         dyn->f = status_none;                               \
+     } else if((A)==X_ALL) flushNative(dyn, ninst);
+ #endif
+@@ -1011,8 +1014,11 @@
+ #define GRABFLAGS(A) \
+     if((A)!=X_PEND                                          \
+     && ((dyn->f==status_unk) || (dyn->f==status_set))) {    \
++        /* defensive spill: guest R8 is in caller-saved x9 */ \
++        STRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8])); \
+         TABLE64C(x6, const_updateflags_arm64);              \
+         BLR(x6);                                            \
++        LDRx_U12(xR8, xEmu, offsetof(x64emu_t, regs[_R8])); \
+         dyn->f = status_none;                               \
+     }
+ 
