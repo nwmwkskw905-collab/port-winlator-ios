@@ -68,6 +68,10 @@ typedef struct rt_platform {
      * control; callers must treat that as UNSUPPORTED, not as success. */
     int       (*jit_write_protect_set)(void *addr, size_t len, int enable, int *err_out);
     int       (*icache_flush)(void *addr, size_t len);
+    /* Cryptographically strong random bytes. The two backends are both compiled into
+     * the same library (in the struct) because the harness must be able to say what a
+     * platform *would* do; a free function per backend would collide at link time. */
+    int       (*random_bytes)(void *buffer, size_t length, int *err_out);
 } rt_platform_t;
 
 /* Backends are always compiled, so the harness can report what a platform would do
@@ -83,6 +87,28 @@ uint64_t rt_linux_arm64_hwcap(void);
 
 const rt_platform_t *rt_platform_current(void);
 const char          *rt_platform_name(void);
+
+/* Fill buffer with cryptographically strong random bytes.
+ *
+ * Linux : getrandom(2); if the running kernel predates it (ENOSYS) the backend
+ *         falls back to reading /dev/urandom, and says so through err_out = 0.
+ * Apple : arc4random_buf(3) — the platform CSPRNG, present on every Apple OS and
+ *         requiring neither entitlement nor an extra header. <sys/random.h> does
+ *         NOT exist in the iphoneos SDK, which is what broke the first iphoneos
+ *         build of runtime_dual_mapping.c; the Darwin backend must not reach for
+ *         the Linux/glibc API.
+ *
+ * Returns 0 on success. If no acceptable source exists the call FAILS with -1 and
+ * the real errno: there is no silent fallback to a weak source (a predictable name
+ * is a real collision hazard, not a cosmetic detail).
+ */
+int rt_platform_random_bytes(void *buffer, size_t length, int *err_out);
+
+/* Compose a unique, unpredictable POSIX shared-memory object name of the form
+ * "<prefix>_<pid>_<16 hex digits>". Returns 0, or -1 with *err_out (ENAMETOOLONG
+ * when out is too small, or the errno of the random source). No fallback to a
+ * deterministic name: on failure the caller must fail, not proceed with a guess. */
+int rt_platform_unique_shm_name(char *out, size_t capacity, const char *prefix, int *err_out);
 int                  rt_platform_page_size(void);
 uint32_t             rt_platform_capabilities(void);
 int                  rt_platform_is_darwin(void);

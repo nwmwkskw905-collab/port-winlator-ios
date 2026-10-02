@@ -154,9 +154,14 @@ emissor AArch64 produz instruções corretas; nada além disso.
 1. ~~Transferir a reconstrução~~ e ~~executar o workflow~~ — **feitos**: a execução 01 do CI Apple
    ocorreu e está registrada na §10 (dois bloqueadores, corrigidos no pacote
    `phase02-apple-ci-fix-01.tar.gz`).
-2. Aplicar o pacote de correção 01 ao repositório e reexecutar
-   `Actions → iOS Runtime PoC (unsigned IPA) → Run workflow` (runner macOS).
-3. Conferir no log que o portão `xcodebuild -list` passou e que a IPA não assinada foi gerada.
+2. ~~Aplicar a correção 01~~ e ~~reexecutar o workflow~~ — **feitos**: a execução 02 ocorreu e
+   está registrada na §11 (dois bloqueadores novos, corrigidos no pacote
+   `phase02-apple-ci-fix-02.tar.gz`).
+3. Aplicar a correção 02 e reexecutar `Actions → iOS Runtime PoC (unsigned IPA) → Run workflow`.
+   Esperado: portão `xcodebuild -list` PASS, auditoria de includes em 0, suíte macOS sem falha de
+   caminho espúria e o build `iphoneos` **ultrapassando** `runtime_dual_mapping.c`. A partir daí o
+   resultado deixa de ser previsível aqui: pode falhar em qualquer arquivo seguinte, e o log dirá
+   qual.
 4. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
 5. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
    (Arquivos › No meu iPhone › Winlator PoC, ou `xcrun devicectl device copy from`).
@@ -279,3 +284,159 @@ bundle id, `UIDeviceFamily`) · 9. `Payload/` · 10. IPA não assinada · 11. in
 | Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` (esperado) |
 
 Nenhum teste foi alterado para forçar `PASS`; nenhuma capacidade foi declarada sem execução.
+
+---
+
+## 11. Correção 02 — bloqueadores do segundo CI Apple (execução 02)
+
+A segunda execução real do workflow **confirmou a Correção 01** (o Xcode leu o projeto, o portão
+`xcodebuild -list` passou, o `tee` da evidência funcionou) e trouxe **dois bloqueadores novos**:
+um no compile do `iphoneos` e um limite de plataforma reportado como falha. Duas coisas mais
+importantes aconteceram no mesmo passo: o caminho C/CMake **executou de verdade em Apple ARM64**
+(`AppleClang 15.0.0.15000309`, `platform=darwin`, `page_size=16384`, `isa=aarch64`,
+`91 checks, 0 failures`, `warnings: 0`) e **nenhum registro de RuntimeCore falhou** — a única
+falha foi o teste de caminho profundo descrito em §11.2. Transcrição em
+`evidence/ci_run02_macos_runner_arm64.txt`, rotulada **`MACOS_RUNNER_ARM64`**, nunca
+`IPHONE_PHYSICAL`.
+
+### 11.1 Bloqueador C — `'sys/random.h' file not found` no SDK iphoneos
+
+```
+ios/RuntimeCore/src/runtime_dual_mapping.c:31:10: fatal error: 'sys/random.h' file not found
+    #include <sys/random.h>
+```
+
+**Causa raiz.** O include estava sob `#if defined(__APPLE__)` — isto é, o header Linux/glibc era
+puxado **exatamente na plataforma que não o possui** — e o arquivo **não usava nenhuma função
+dele**: `<sys/random.h>` era um include morto de uma revisão anterior, em que a geração do nome
+do objeto de memória compartilhada ainda não existia. O SDK `iphoneos` não traz `sys/random.h`;
+a API correta no Darwin/iOS é **`arc4random_buf(3)`, declarada em `<stdlib.h>`**, que existe em
+todas as plataformas Apple, não exige entitlement e é o CSPRNG recomendado.
+
+**Correção — na camada de plataforma, como pede a arquitetura:**
+
+| Arquivo | Mudança |
+| --- | --- |
+| `RuntimeCore/include/runtime_platform.h` | `rt_platform_t` ganhou o membro `random_bytes`; declaradas `rt_platform_random_bytes()` e `rt_platform_unique_shm_name()` |
+| `RuntimeCore/src/linux_platform.c` | `linux_random_bytes()`: `getrandom(2)` (com laço em `EINTR`) e fallback **apenas em `ENOSYS`** para `/dev/urandom`; qualquer outro erro é reportado |
+| `RuntimeCore/src/darwin_platform.c` | `darwin_random_bytes()`: **`arc4random_buf`**; fora do Apple devolve `ENOTSUP` (o backend não finge) |
+| `RuntimeCore/src/runtime_memory.c` | despacho (`rt_platform_random_bytes`) e o compositor de nome **único**, usado pelos dois backends |
+| `RuntimeCore/src/runtime_dual_mapping.c` | include morto removido; o objeto passa a se chamar `/rt_dual_<pid>_<16 hex>` |
+| `RuntimeCore/src/runtime_ipc.c` | o mesmo defeito existia aqui (`/rt_shm_<pid>`, previsível e sobrevivente a um crash): agora `/rt_shm_<pid>_<16 hex>` |
+
+O nome do objeto era `pid` + contador **previsível**: mesmo com `O_EXCL`, outro processo pode
+pré-criar o nome, e um objeto deixado por um `crash` transforma um `EEXIST` em falha espúria.
+Agora são 64 bits do CSPRNG da plataforma, e **se não houver fonte aceitável a função falha com o
+errno real** — não existe fallback silencioso para um nome adivinhável. Um retorno só de zeros
+(probabilidade 2⁻⁶⁴) é tratado como fonte inválida, não como sucesso.
+
+**Auditoria de includes (§ pedido).** `tools/audit_apple_includes.py` varre os 17 arquivos que
+entram no alvo Apple e reporta headers que o SDK `iphoneos` **comprovável e especificamente** não
+possui quando não estão sob guarda de plataforma. Resultado no estado corrigido:
+
+```
+UNGUARDED_LINUX_INCLUDES=0 (no Linux-only header reaches the Apple build)
+```
+
+O controle negativo foi executado: apontado ao arquivo da execução 02, o auditor acusa
+`RuntimeCore/src/runtime_dual_mapping.c:31 sys/random.h` — a mesma linha que quebrou o build.
+
+Tabela completa da revisão (includes de sistema por arquivo):
+
+| Header | Onde | Situação no alvo Apple |
+| --- | --- | --- |
+| `sys/random.h` | `runtime_dual_mapping.c` | **ausente no SDK iphoneos** — era o defeito; removido |
+| `sys/auxv.h`, `sys/epoll.h` | `linux_platform.c`, `runtime_ipc.c` | corretamente sob `__linux__` / `#if defined(__linux__)` |
+| `sys/event.h` (kqueue) | `runtime_ipc.c` | existe em todas as plataformas Apple; sob `__APPLE__` |
+| `libkern/OSCacheControl.h` | `darwin_platform.c` | existe; já protegido por `__has_include` |
+| `sys/statvfs.h` | `runtime_filesystem.c` | presente no SDK macOS (compilou no runner). Passou a ter `__has_include` com fallback `statfs`/`sys/mount.h` para SDKs que não o tragam — o caminho testado continua o mesmo |
+| `sys/mman.h`, `pthread.h`, `unistd.h`, `errno.h`, `fcntl.h`, `signal.h`, `setjmp.h`, `stdatomic.h`, `sys/stat.h`, `sys/socket.h`, `sys/un.h`, `sys/time.h` | vários | POSIX/BSD comuns às duas plataformas |
+
+**Conclusão da auditoria:** nenhum outro header **específico de Linux** chega ao build Apple; o
+único problema dessa classe era o include morto, e a auditoria agora roda no CI (passo 4b) antes
+do portão, para que a próxima ocorrência falhe em segundos com arquivo e linha em vez de dentro do
+`clang`.
+
+### 11.2 Bloqueador D — `fs.deep_paths` no runner macOS: limite lido como falha
+
+```
+TEST=fs.deep_paths STATUS=FAIL DETAIL=errno=63 (File name too long) at depth=110
+records=56 pass=53 fail=1 blocked=0 unsupported=0 not_applicable=2 summary=FAIL
+```
+
+**Causa raiz.** O teste pedia uma profundidade **fixa de 110 níveis** — número obtido num host
+Linux, onde `PATH_MAX` é 4096. No Darwin `PATH_MAX` é **1024** e o diretório temporário do runner
+(`/var/folders/…/T/phase02_XXXXXX`) já ocupa 50–60 caracteres. Cada nível custa 9 caracteres
+(`"/d%07u"`), então 110 níveis exigem ~1045 caracteres de caminho: acima do limite **real** da
+plataforma. O `ENAMETOOLONG` (errno 63 no Darwin, 36 no Linux) era, portanto, uma **capacidade
+legítima da plataforma sendo apresentada como defeito da implementação**. O defeito estava no
+teste, não no RuntimeCore.
+
+**Correção — o teste passa a MEDIR, e distingue os três desfechos:**
+
+| Componente | O que faz |
+| --- | --- |
+| `rt_fs_limits_query()` (novo, `runtime_filesystem.h`) | devolve `path_max` (`pathconf(_PC_PATH_MAX)`, com queda para `PATH_MAX` de `limits.h` e registro de qual foi usado), `name_max` e `path_cap` (o buffer interno da própria implementação) |
+| `phase02_measure_depth()` (`phase02_harness.c`) | bisseção sobre `rt_fs_deep_paths()`: crescimento exponencial (8, 16, … até 512) para achar o intervalo, depois bisseção. Mede a capacidade **real**, não uma premissa |
+| classificação | **PASS** — capacidade criada e removida + teto no limite documentado da plataforma (`ENAMETOOLONG`), com os números no detalhe; **PASS** — nenhum teto dentro do limite sondado, registrado explicitamente como *"não é alegação de profundidade ilimitada"*; **BLOCKED** — nenhuma profundidade mensurável, ou recusa por `EPERM`/`EACCES`/`ENOSPC`/`EDQUOT`/`EROFS`, com o errno real; **FAIL** — erro inesperado depois de um nível bem-sucedido, ou seja: defeito de implementação |
+| `rt_fs_deep_paths()` (biblioteca) | passa a **desfazer o que criou também no caminho de falha** (antes retornava deixando a árvore parcial, e a sonda seguinte falharia com `EEXIST` em vez do limite real); o comprimento do nível só é confirmado depois de `mkdir` bem-sucedido |
+
+Números medidos agora, com o mesmo código:
+
+| Ambiente / geometria | Registro |
+| --- | --- |
+| Host Linux, raiz curta (`/tmp`) | `PASS capacity: depth up to 224 (2035 chars) … ceiling at depth=225 errno=36 … PATH_MAX=4096[pathconf] cap=2048` |
+| Host Linux, raiz de 822 chars (simulação de geometria) | `PASS … depth up to 135 (2033 chars) … ceiling at 136 errno=36` |
+| Host Linux, raiz de 2098 chars | `BLOCKED … no depth measurable … errno=36` |
+| Host Linux, workdir é arquivo comum | `BLOCKED … errno=20 (Not a directory)` |
+| Host Linux, workdir inexistente | `BLOCKED … errno=2 (No such file or directory)` |
+| AArch64 (qemu) | `PASS capacity: depth up to 224 (2035 chars) … errno=36` |
+
+No **runner macOS** espera-se `PATH_MAX=1024[pathconf]`, raiz `…/T/phase02_XXXXXX` (~55 chars) e,
+portanto, capacidade ≈ **107 níveis** (~1018 caracteres) com teto em `ENAMETOOLONG` — registrado
+como limite da plataforma, exatamente como a execução 02 deveria ter registrado. Os três desfechos
+foram exercitados em laboratório (tabela acima, evidência
+`evidence/host_fs_deep_paths_classification.txt`), rotulados como **simulação de geometria de
+caminho em Linux**, não como resultado Darwin.
+
+### 11.3 Resultados preservados da execução 02 (`MACOS_RUNNER_ARM64`)
+
+Preservados **como estão** e classificados apenas como runner macOS: `platform=darwin`,
+`page_size=16384`, `isa=aarch64`, `91 checks, 0 failures`, W^X, dual mapping RW/RX, `MAP_JIT` probe,
+`pthread_jit_write_protect_np` presente, JIT → 42, rewrite + icache → 4242, x18 reservado,
+threads/TLS/mutex/condition/atomics, signals, AF_UNIX, `SCM_RIGHTS`, POSIX shm, kqueue/kevent,
+loader. Nada disso é `IPHONE_PHYSICAL`; `page_size` de 16 KiB no runner **não** prova o tamanho de
+página no iPhone.
+
+### 11.4 Estado da regressão após a Correção 02
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | 0 warnings / 0 errors · ctest **2/2** · **119 checks, 0 falhas** · suíte `records=56 pass=52 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (qemu), rebuild limpo | 0 warnings · **118 checks, 0 falhas** · `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Parse OpenStep do `pbxproj` | `PLIST_SYNTAX=PASS` (69 objetos) — Correção 01 intacta |
+| Preflight do `.xcodeproj` | **62 checagens, 0 falhas** |
+| Auditoria de includes Apple | `UNGUARDED_LINUX_INCLUDES=0` (+ controle negativo detectando o defeito real) |
+| Fase 04 | 86 arquivos antes / 86 depois, byte-idênticos fora dos 2 `.txt` de inventário |
+| Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` (esperado aqui) |
+
+**Delta de checagens unitárias (91 → 119 no host; 90 → 118 no AArch64):** são **+28 checagens
+novas**, todas exigidas por esta correção — **+15** em `test_platform_randomness()` (fonte de
+aleatoriedade disponível e distinta a cada chamada, comprimento zero aceito, `NULL` recusado com
+`EINVAL`, nome único/prefixado/imprevisível, buffer pequeno recusado com `ENAMETOOLONG`) e **+13**
+no grupo de filesystem (7 → 20: limites consultáveis e coerentes, profundidade segura dentro do
+limite medido, profundidade absurda recusada com `ENAMETOOLONG`, **ausência de resíduo após uma
+sonda falha**, e `NULL`/profundidade 0/limites `NULL` recusados com `EINVAL`). Nenhuma checagem foi
+removida ou afrouxada — as duas que aparecem como removidas no diff foram reescritas e continuam
+presentes. Os CHECKs do fonte agora coincidem exatamente com os executados (119), porque nenhum
+deles vive em ramo morto; a diferença de −1 entre host e AArch64 continua sendo a asserção
+específica de ISA.
+
+### 11.5 O que a Correção 02 **não** prova
+
+* O build `iphoneos` **não** foi confirmado: a execução 02 parou em `runtime_dual_mapping.c` e este
+  ambiente não tem toolchain Apple. O que se pode afirmar é que **a causa demonstrada daquela
+  parada foi eliminada** e que a classe de erro passou a ser detectada antes do compilador.
+* O `.app`, o `Payload/` e a IPA continuam **não produzidos** neste ambiente.
+* `IPHONE_VALIDATION_PENDING` permanece: nada aqui é validação de iPhone.
+* A auditoria de includes é **estática**: quem decide é o compilador da Apple.

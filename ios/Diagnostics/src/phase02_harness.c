@@ -512,10 +512,153 @@ static rt_status_t phase02_suite_signals(phase02_log_t *log, const char *workdir
 
 /* ------------------------------------------------------------------------ fs */
 
+/* Largest depth probed when searching for the platform ceiling. The path buffer in
+ * runtime_filesystem.c (2048) binds before this on every platform we have measured,
+ * so the search always terminates on a real limit rather than on this guard. */
+#define PHASE02_DEEP_HARD_CAP 512u
+
+/* The log detail is a 512-character buffer: a workdir of two hundred levels would
+ * swamp the record. Report its length plus the tail, which is what identifies it. */
+static const char *phase02_short_path(const char *path, char *buffer, size_t capacity)
+{
+    size_t length = strlen(path);
+    if (length <= 32u) {
+        (void)snprintf(buffer, capacity, "%s", path);
+    } else {
+        (void)snprintf(buffer, capacity, "...%s", path + (length - 32u));
+    }
+    return buffer;
+}
+
+typedef struct phase02_depth_probe {
+    unsigned deepest_ok;   /* deepest depth that was created successfully */
+    size_t   deepest_len;  /* path length (characters) of that success */
+    unsigned first_fail;   /* first depth that failed (0 = none inside the cap) */
+    int      fail_errno;   /* errno reported there */
+    int      path_max;     /* platform PATH_MAX as reported by pathconf */
+    int      path_max_measured;
+    size_t   path_cap;     /* this implementation's own path buffer */
+} phase02_depth_probe_t;
+
+/* Bisection over rt_fs_deep_paths(). Measuring is the point: the reachable depth is
+ * PATH_MAX minus the length of the caller's directory, divided by the cost of a
+ * level, and PATH_MAX is 4096 on Linux but 1024 on Darwin. A fixed depth taken from
+ * one platform is not a fact about the other. */
+static void phase02_measure_depth(const char *workdir, phase02_depth_probe_t *probe)
+{
+    unsigned low = 0u;            /* known to succeed */
+    size_t low_len = 0u;
+    unsigned high = 0u;           /* known to fail */
+    int high_errno = 0;
+    unsigned try_depth = 8u;
+    size_t len = 0u;
+    int err = 0;
+    rt_fs_limits_t limits;
+
+    memset(probe, 0, sizeof(*probe));
+    if (rt_fs_limits_query(workdir, &limits, &err) == 0) {
+        probe->path_max = (int)limits.path_max;
+        probe->path_max_measured = limits.path_max_from_pathconf;
+        probe->path_cap = limits.path_cap;
+    }
+
+    while (try_depth <= PHASE02_DEEP_HARD_CAP) {
+        if (rt_fs_deep_paths(workdir, (size_t)try_depth, &len, &err) == 0) {
+            low = try_depth;
+            low_len = len;
+            try_depth *= 2u;
+            continue;
+        }
+        high = try_depth;
+        high_errno = err;
+        break;
+    }
+
+    while (high > low + 1u) {
+        unsigned middle = low + (high - low) / 2u;
+        if (rt_fs_deep_paths(workdir, (size_t)middle, &len, &err) == 0) {
+            low = middle;
+            low_len = len;
+        } else {
+            high = middle;
+            high_errno = err;
+        }
+    }
+
+    probe->deepest_ok = low;
+    probe->deepest_len = low_len;
+    probe->first_fail = high;
+    probe->fail_errno = high_errno;
+}
+
+/* Semantic outcome of the measurement — the three cases the report must separate:
+ *   PASS    the platform supports a measurable depth, and the boundary is the
+ *           platform's own documented limit (ENAMETOOLONG), reported as such;
+ *   PASS    no ceiling inside the probed cap: reported as "not reached", which is
+ *           NOT the same as "unlimited";
+ *   BLOCKED the platform refused for a permission/resource reason: capability not
+ *           measurable here, and the real errno is what gets recorded;
+ *   FAIL    the boundary error is something else: an implementation defect. */
+static void phase02_fs_deep_paths_record(phase02_log_t *log, const char *workdir)
+{
+    static const char *const refusal_hint =
+        "platform refused before the limit was reached; capacity not measurable here";
+    phase02_depth_probe_t probe;
+
+    phase02_measure_depth(workdir, &probe);
+
+    if (probe.deepest_ok == 0u) {
+        char short_path[40];
+        phase02_log_record(log, "fs.deep_paths", RT_BLOCKED,
+                           "no depth measurable from workdir=%s (len=%zu): first failure at "
+                           "depth=%u errno=%d (%s); PATH_MAX=%d[%s] cap=%zu",
+                           phase02_short_path(workdir, short_path, sizeof(short_path)),
+                           strlen(workdir), probe.first_fail, probe.fail_errno,
+                           strerror(probe.fail_errno), probe.path_max,
+                           probe.path_max_measured ? "pathconf" : "limits.h", probe.path_cap);
+        return;
+    }
+
+    if (probe.first_fail == 0u) {
+        phase02_log_record(log, "fs.deep_paths", RT_PASS,
+                           "deepest probed depth=%u (%zu chars) created; no ceiling within the "
+                           "probed cap of %u levels - NOT a claim of unlimited depth "
+                           "(PATH_MAX=%d[%s] cap=%zu)",
+                           probe.deepest_ok, probe.deepest_len, PHASE02_DEEP_HARD_CAP,
+                           probe.path_max, probe.path_max_measured ? "pathconf" : "limits.h",
+                           probe.path_cap);
+        return;
+    }
+
+    if (probe.fail_errno == ENAMETOOLONG) {
+        phase02_log_record(log, "fs.deep_paths", RT_PASS,
+                           "capacity: depth up to %u (%zu chars) created and removed; ceiling at "
+                           "depth=%u with errno=%d (File name too long) - the platform limit, "
+                           "correctly reported (PATH_MAX=%d[%s] cap=%zu)",
+                           probe.deepest_ok, probe.deepest_len, probe.first_fail, probe.fail_errno,
+                           probe.path_max, probe.path_max_measured ? "pathconf" : "limits.h",
+                           probe.path_cap);
+        return;
+    }
+
+    if (probe.fail_errno == EPERM || probe.fail_errno == EACCES || probe.fail_errno == ENOSPC ||
+        probe.fail_errno == EDQUOT || probe.fail_errno == EROFS) {
+        phase02_log_record(log, "fs.deep_paths", RT_BLOCKED,
+                           "deepest ok=%u (%zu chars); %s at depth=%u errno=%d (%s)",
+                           probe.deepest_ok, probe.deepest_len, refusal_hint, probe.first_fail,
+                           probe.fail_errno, strerror(probe.fail_errno));
+        return;
+    }
+
+    phase02_log_record(log, "fs.deep_paths", RT_FAIL,
+                       "unexpected errno=%d (%s) at depth=%u (deepest ok=%u, %zu chars)",
+                       probe.fail_errno, strerror(probe.fail_errno), probe.first_fail,
+                       probe.deepest_ok, probe.deepest_len);
+}
+
 static rt_status_t phase02_suite_fs(phase02_log_t *log, const char *workdir)
 {
     uint64_t free_bytes = 0u;
-    size_t deep_len = 0u;
     char temp_path[256];
     int err = 0;
 
@@ -531,13 +674,7 @@ static rt_status_t phase02_suite_fs(phase02_log_t *log, const char *workdir)
         phase02_log_record(log, "fs.roundtrip", RT_FAIL, "errno=%d (%s)", err, strerror(err));
     }
 
-    if (rt_fs_deep_paths(workdir, 110u, &deep_len, &err) == 0) {
-        phase02_log_record(log, "fs.deep_paths", RT_PASS, "nested directories up to %zu chars",
-                           deep_len);
-    } else {
-        phase02_log_record(log, "fs.deep_paths", RT_FAIL, "errno=%d (%s) at depth=110", err,
-                           strerror(err));
-    }
+    phase02_fs_deep_paths_record(log, workdir);
 
     if (rt_fs_links_and_modes(workdir, &err) == 0) {
         phase02_log_record(log, "fs.links_and_modes", RT_PASS,

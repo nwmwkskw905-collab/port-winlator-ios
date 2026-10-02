@@ -335,14 +335,12 @@ int rt_ipc_shm(int *err_out)
     void *view_two;
     unsigned char observed[sizeof(rt_ipc_pattern)];
     size_t length = 4096u;
-    int written;
     int rc = -1;
 
-    written = snprintf(name, sizeof(name), "/rt_shm_%ld", (long)getpid());
-    if (written < 0 || (size_t)written >= sizeof(name)) {
-        if (err_out != NULL) {
-            *err_out = ENAMETOOLONG;
-        }
+    /* Same reasoning as rt_dual_map_create(): a name derived only from the pid is
+     * predictable and survives a crashed previous run, where O_EXCL then turns a
+     * leftover object into a spurious failure. 64 bits from the platform CSPRNG. */
+    if (rt_platform_unique_shm_name(name, sizeof(name), "/rt_shm", err_out) != 0) {
         return -1;
     }
     (void)shm_unlink(name);

@@ -17,6 +17,7 @@
 #include "runtime_signals.h"
 #include "runtime_threads.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -357,11 +358,56 @@ static void test_signals(void)
 
 /* ----------------------------------------------------------------------- fs */
 
+/* --------------------------------------------------------------- platform */
+
+static void test_platform_randomness(void)
+{
+    unsigned char first[16];
+    unsigned char second[16];
+    char name_one[64];
+    char name_two[64];
+    char tiny[8];
+    int err = 0;
+
+    /* arc4random_buf on Apple / getrandom on Linux: both must really produce bytes. */
+    CHECK(rt_platform_random_bytes(first, sizeof(first), &err) == 0,
+          "platform random bytes available");
+    CHECK(rt_platform_random_bytes(second, sizeof(second), &err) == 0,
+          "platform random bytes available a second time");
+    CHECK(memcmp(first, second, sizeof(first)) != 0, "two draws differ (128-bit collision");
+    CHECK(rt_platform_random_bytes(NULL, 0u, &err) == 0, "zero-length draw is a no-op, not a fault");
+
+    /* negative: a NULL buffer with a real length must be rejected, not ignored */
+    err = 0;
+    CHECK(rt_platform_random_bytes(NULL, 4u, &err) == -1, "NULL buffer with length is refused");
+    CHECK(err == EINVAL, "…with EINVAL as the documented errno");
+
+    /* shm naming: unique, unpredictable, and refuses to silently produce a bad name */
+    CHECK(rt_platform_unique_shm_name(name_one, sizeof(name_one), "/rt_test", &err) == 0,
+          "unique shm name composed");
+    CHECK(rt_platform_unique_shm_name(name_two, sizeof(name_two), "/rt_test", &err) == 0,
+          "second unique shm name composed");
+    CHECK(strcmp(name_one, name_two) != 0, "the two names differ");
+    CHECK(strncmp(name_one, "/rt_test_", 9) == 0, "the name keeps the caller prefix");
+    CHECK(strlen(name_one) >= 9u + 16u, "the name carries pid and 64 bits of randomness");
+
+    /* negative: if it cannot produce a trustworthy name it must fail, never truncate */
+    err = 0;
+    CHECK(rt_platform_unique_shm_name(tiny, sizeof(tiny), "/rt_test", &err) == -1,
+          "too-small buffer is refused");
+    CHECK(err == ENAMETOOLONG, "…with ENAMETOOLONG as the documented errno");
+    err = 0;
+    CHECK(rt_platform_unique_shm_name(NULL, 64u, "/rt_test", &err) == -1,
+          "NULL output buffer is refused");
+    CHECK(err == EINVAL, "…with EINVAL as the documented errno");
+}
+
 static void test_filesystem(void)
 {
     char template_path[256];
     uint64_t free_bytes = 0u;
     size_t deep_len = 0u;
+    rt_fs_limits_t limits = { 0u, 0u, 0u, 0 };
     int err = 0;
     int written = snprintf(template_path, sizeof(template_path), "/tmp/phase02_unit_XXXXXX");
 
@@ -374,8 +420,52 @@ static void test_filesystem(void)
         return;
     }
     CHECK(rt_fs_roundtrip(template_path, &err) == 0, "filesystem round trip");
-    CHECK(rt_fs_deep_paths(template_path, 24u, &deep_len, &err) == 0, "deep path creation");
+
+    /* Limits are measured, never assumed: PATH_MAX is 4096 on Linux and 1024 on
+     * Darwin, so a depth that is safe on one host can be impossible on the other. */
+    /* Every check below executes unconditionally: a query that fails leaves the
+     * limits zeroed, so the assertions fail loudly instead of being skipped in a dead
+     * branch (the check count in the source must equal the count at runtime). */
+    CHECK(rt_fs_limits_query(template_path, &limits, &err) == 0, "filesystem limits are queryable");
+    CHECK(limits.path_max >= 512u, "platform reports a usable PATH_MAX");
+    CHECK(limits.name_max >= 32u, "platform reports a usable NAME_MAX");
+    CHECK(limits.path_cap > limits.name_max, "the implementation buffer exceeds NAME_MAX");
+    CHECK(rt_fs_deep_paths(template_path, 24u, &deep_len, &err) == 0,
+          "deep path creation well inside the reported limit");
     CHECK(deep_len > 100u, "deep path reached a long length");
+
+    /* negative: an impossible depth must be refused with the limit's own errno… */
+    err = 0;
+    CHECK(rt_fs_deep_paths(template_path, 4096u, &deep_len, &err) == -1,
+          "absurd depth is refused");
+    CHECK(err == ENAMETOOLONG, "…with ENAMETOOLONG, the platform/implementation limit");
+    /* …and must leave no partial tree behind (otherwise the next probe would fail
+     * with EEXIST instead of the real limit) */
+    {
+        DIR *dir = opendir(template_path);
+        int entries = 0;
+        if (dir != NULL) {
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != NULL) {
+                if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                    entries++;
+                }
+            }
+            (void)closedir(dir);
+        }
+        CHECK(entries == 0, "a failed deep-path probe leaves no residue in the workdir");
+    }
+
+    /* negative: invalid arguments are rejected, not silently accepted */
+    err = 0;
+    CHECK(rt_fs_deep_paths(NULL, 4u, &deep_len, &err) == -1, "NULL root is refused");
+    CHECK(err == EINVAL, "…with EINVAL");
+    err = 0;
+    CHECK(rt_fs_deep_paths(template_path, 0u, &deep_len, &err) == -1, "depth 0 is refused");
+    CHECK(err == EINVAL, "…with EINVAL");
+    err = 0;
+    CHECK(rt_fs_limits_query(NULL, &limits, &err) == -1, "NULL root for the limits query is refused");
+    CHECK(err == EINVAL, "…with EINVAL");
     CHECK(rt_fs_links_and_modes(template_path, &err) == 0, "symlink and chmod semantics");
     CHECK(rt_fs_capacity(template_path, &free_bytes, &err) == 0, "statvfs reports capacity");
 
@@ -467,6 +557,7 @@ int main(void)
     test_cpu_facts();
     test_threads();
     test_signals();
+    test_platform_randomness();
     test_filesystem();
     test_ipc();
     test_context();

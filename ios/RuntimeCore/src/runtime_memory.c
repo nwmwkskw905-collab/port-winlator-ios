@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -41,6 +42,61 @@ const char *rt_prot_name(rt_prot_t prot)
 }
 
 /* ---------------------------------------------------------------- platform */
+
+int rt_platform_random_bytes(void *buffer, size_t length, int *err_out)
+{
+    const rt_platform_t *platform = rt_platform_current();
+    if (platform == NULL || platform->random_bytes == NULL) {
+        if (err_out != NULL) {
+            *err_out = ENOTSUP;
+        }
+        return -1;
+    }
+    return platform->random_bytes(buffer, length, err_out);
+}
+
+int rt_platform_unique_shm_name(char *out, size_t capacity, const char *prefix, int *err_out)
+{
+    static const unsigned char zero[8] = { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u };
+    unsigned char random_bytes[8];
+    int written;
+
+    if (out == NULL || prefix == NULL || capacity == 0u) {
+        if (err_out != NULL) {
+            *err_out = EINVAL;
+        }
+        return -1;
+    }
+    if (rt_platform_random_bytes(random_bytes, sizeof(random_bytes), err_out) != 0) {
+        out[0] = '\0';
+        return -1;   /* no unpredictable name -> the caller must fail, never guess */
+    }
+    if (memcmp(random_bytes, zero, sizeof(zero)) == 0) {
+        /* A source that returns nothing but zeros is not a source. One in 2^64, but
+         * silently accepting it would be exactly the kind of "looks fine" fallback
+         * this project refuses to ship. */
+        if (err_out != NULL) {
+            *err_out = EIO;
+        }
+        out[0] = '\0';
+        return -1;
+    }
+    written = snprintf(out, capacity, "%s_%ld_%02x%02x%02x%02x%02x%02x%02x%02x",
+                       prefix, (long)getpid(),
+                       random_bytes[0], random_bytes[1], random_bytes[2], random_bytes[3],
+                       random_bytes[4], random_bytes[5], random_bytes[6], random_bytes[7]);
+    if (written < 0 || (size_t)written >= capacity) {
+        out[0] = '\0';
+        if (err_out != NULL) {
+            *err_out = ENAMETOOLONG;
+        }
+        return -1;
+    }
+    if (err_out != NULL) {
+        *err_out = 0;
+    }
+    return 0;
+}
 
 const rt_platform_t *rt_platform_current(void)
 {

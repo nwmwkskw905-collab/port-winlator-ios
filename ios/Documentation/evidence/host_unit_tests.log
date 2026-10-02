@@ -68,9 +68,37 @@ ok   controlled SIGSEGV is caught
 ok   first guard installs
 ok   nested guard is refused with EBUSY
 ok   guard removed
+ok   platform random bytes available
+ok   platform random bytes available a second time
+ok   two draws differ (128-bit collision
+ok   zero-length draw is a no-op, not a fault
+ok   NULL buffer with length is refused
+ok   …with EINVAL as the documented errno
+ok   unique shm name composed
+ok   second unique shm name composed
+ok   the two names differ
+ok   the name keeps the caller prefix
+ok   the name carries pid and 64 bits of randomness
+ok   too-small buffer is refused
+ok   …with ENAMETOOLONG as the documented errno
+ok   NULL output buffer is refused
+ok   …with EINVAL as the documented errno
 ok   filesystem round trip
-ok   deep path creation
+ok   filesystem limits are queryable
+ok   platform reports a usable PATH_MAX
+ok   platform reports a usable NAME_MAX
+ok   the implementation buffer exceeds NAME_MAX
+ok   deep path creation well inside the reported limit
 ok   deep path reached a long length
+ok   absurd depth is refused
+ok   …with ENAMETOOLONG, the platform/implementation limit
+ok   a failed deep-path probe leaves no residue in the workdir
+ok   NULL root is refused
+ok   …with EINVAL
+ok   depth 0 is refused
+ok   …with EINVAL
+ok   NULL root for the limits query is refused
+ok   …with EINVAL
 ok   symlink and chmod semantics
 ok   statvfs reports capacity
 ok   absent path is absent
@@ -91,4 +119,4 @@ ok   module marked as executed
 ok   marking an absent module fails
 ok   context describes itself
 ok   module table refuses to overflow
-== 91 checks, 0 failures ==
+== 119 checks, 0 failures ==

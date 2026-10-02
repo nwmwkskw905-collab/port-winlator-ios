@@ -1,0 +1,28 @@
+EVIDENCE_CLASS = HOST LINUX (x86-64) — SIMULAÇÃO DE GEOMETRIA DE CAMINHO
+NOTE           = NÃO é resultado Darwin nem de iPhone. O mesmo código de classificação
+                 do registro fs.deep_paths é exercitado aqui variando o comprimento da
+                 raiz, para provar que os três desfechos semânticos existem de verdade:
+                   (1) capacidade medida com o limite da plataforma corretamente
+                       reportado (ENAMETOOLONG) -> PASS, com os números no detalhe;
+                   (2) nenhuma profundidade mensurável a partir daquela raiz -> BLOCKED
+                       (nunca PASS);
+                   (3) errno inesperado depois de um nível bem-sucedido -> FAIL
+                       (não alcançável neste ambiente; exigiria um defeito real).
+                 A capacidade em cada linha é a do Linux; no runner macOS a raiz é
+                 /var/folders/... e PATH_MAX é 1024, então o teto virá de lá.
+FERRAMENTA     = /tmp/deep_sim (programa ad-hoc, fora do entregável)
+
+caso                                           resultado
+raiz curta (/tmp): capacidade ampla            capacity: depth up to 226 (2038 chars) created and removed; ceiling at depth=227 with errno=36 (File name too long) - the platform limit, correctly reported (PATH_MAX=4096[pathconf] cap=2048)
+raiz de 822 chars: limite com capacidade>0     capacity: depth up to 135 (2033 chars) created and removed; ceiling at depth=136 with errno=36 (File name too long) - the platform limit, correctly reported (PATH_MAX=4096[pathconf] cap=2048)
+raiz de 2023 chars: capacidade=1               capacity: depth up to 2 (2036 chars) created and removed; ceiling at depth=3 with errno=36 (File name too long) - the platform limit, correctly reported (PATH_MAX=4096[pathconf] cap=2048)
+raiz de 2103 chars: nada mensurável           no depth measurable from workdir=...zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz (len=2098): first failure at depth=1 errno=36 (File name too long); PATH_MAX=4096[pathconf] cap=2048
+workdir é um arquivo comum                    no depth measurable from workdir=/tmp/phase02_geo_file.bin (len=25): first failure at depth=1 errno=20 (Not a directory); PATH_MAX=4096[pathconf] cap=2048
+workdir inexistente                            no depth measurable from workdir=/tmp/phase02_geo_nao_existe (len=27): first failure at depth=1 errno=2 (No such file or directory); PATH_MAX=4096[pathconf] cap=2048
+
+resíduo deixado em cada raiz: 0 / 0 / 0
+status agregado da suíte fs em cada caso:
+  tmp                      suite_status=PASS
+  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx suite_status=PASS
+  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy suite_status=PASS
+  zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz suite_status=FAIL

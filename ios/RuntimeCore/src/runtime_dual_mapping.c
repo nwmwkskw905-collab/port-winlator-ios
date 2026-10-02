@@ -13,6 +13,12 @@
  * This is a *capability experiment*, never an architectural requirement (the port's
  * W^X preference stands: a single view flipped between RW and R-X is preferred when
  * the platform accepts it).
+ *
+ * Object naming: the name used to be "/rt_dual_<pid>_<counter>" — predictable, and
+ * therefore pre-creatable by another process even with O_EXCL. It now comes from
+ * rt_platform_unique_shm_name(), which pulls 64 bits from the platform CSPRNG
+ * (arc4random_buf on Apple, getrandom on Linux) and FAILS with the real errno if no
+ * acceptable source exists, instead of falling back to a guess.
  */
 #include "runtime_memory.h"
 
@@ -27,12 +33,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#if defined(__APPLE__)
-#include <sys/random.h>
-#endif
-
-static unsigned rt_dual_map_counter = 0u;
-
 static size_t rt_dual_round_up(size_t len)
 {
     size_t page = (size_t)rt_platform_page_size();
@@ -45,7 +45,6 @@ static size_t rt_dual_round_up(size_t len)
 int rt_dual_map_create(size_t len, rt_dual_map_t *out)
 {
     char name[64];
-    size_t written;
     int fd;
     void *rw;
     void *rx;
@@ -56,13 +55,9 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
     memset(out, 0, sizeof(*out));
     out->len = rt_dual_round_up(len);
 
-    written = (size_t)snprintf(name, sizeof(name), "/rt_dual_%ld_%u",
-                               (long)getpid(), rt_dual_map_counter);
-    if (written >= sizeof(name)) {
-        out->err = ENAMETOOLONG;
-        return -1;
+    if (rt_platform_unique_shm_name(name, sizeof(name), "/rt_dual", &out->err) != 0) {
+        return -1;   /* no unpredictable name -> no experiment (never a fixed name) */
     }
-    rt_dual_map_counter++;
 
     fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd < 0) {

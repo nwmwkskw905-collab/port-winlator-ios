@@ -22,9 +22,27 @@ extern "C" {
 /* create -> write -> read back -> rename -> read again -> unlink, all inside root. */
 int rt_fs_roundtrip(const char *root, int *err_out);
 
-/* Nested directories up to ~1024 characters total; *path_len_out reports the
- * deepest path length that was actually created. */
+/* Nested directories, one component per level. *path_len_out reports the deepest
+ * path length that was actually created. The caller decides the depth: there is no
+ * portable constant. Use rt_fs_limits_query() first — the reachable depth is a
+ * function of the platform limit (PATH_MAX: 4096 on Linux, 1024 on Darwin), of the
+ * length of root, and of this implementation's own path buffer (path_cap).
+ *
+ * On failure the function removes whatever it created before returning, so a failed
+ * probe never leaves a partial tree behind (a leftover tree would make the next
+ * probe fail with EEXIST instead of the real limit). */
 int rt_fs_deep_paths(const char *root, size_t depth, size_t *path_len_out, int *err_out);
+
+/* The three limits that decide how deep a path may go, so callers can measure
+ * capacity instead of assuming a depth that only holds on one platform. */
+typedef struct rt_fs_limits {
+    size_t path_max;        /* effective _PC_PATH_MAX for the filesystem holding root */
+    size_t name_max;        /* effective _PC_NAME_MAX */
+    size_t path_cap;        /* this implementation's own path buffer (RT_FS_PATH_CAP) */
+    int    path_max_from_pathconf; /* 1 = measured, 0 = compile-time PATH_MAX fallback */
+} rt_fs_limits_t;
+
+int rt_fs_limits_query(const char *root, rt_fs_limits_t *out, int *err_out);
 
 /* symlink + chmod + stat follow/not-follow semantics. */
 int rt_fs_links_and_modes(const char *root, int *err_out);

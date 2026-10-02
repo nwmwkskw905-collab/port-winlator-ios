@@ -148,6 +148,18 @@ jobs:
           set -o pipefail
           python3 tools/validate_xcodeproj.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_validate.log"
 
+      # ---- 4b. would the Apple SDK find every header we include?
+      # Cheap static pre-check for the class of defect that cost the second Apple CI
+      # run ('sys/random.h' file not found). It fails here, with the file and line,
+      # instead of two minutes later inside clang.
+      - name: 4b. Apple SDK include audit
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 tools/audit_apple_includes.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_include_audit.log"
+
       # ---- 5. authoritative gate: the real Xcode parser must accept the project
       - name: 5. GATE — xcodebuild must be able to read the project
         working-directory: ${{ github.workspace }}/ios

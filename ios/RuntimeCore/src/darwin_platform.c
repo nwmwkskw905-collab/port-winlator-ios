@@ -25,9 +25,11 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>    /* snprintf in rt_platform_unique_shm_name (all hosts) */
 
 #if defined(__APPLE__)
 #include <pthread.h>
+#include <stdlib.h>   /* arc4random_buf(3) */
 #include <sys/mman.h>
 #include <unistd.h>
 #if __has_include(<libkern/OSCacheControl.h>)
@@ -189,6 +191,36 @@ static int darwin_icache_flush(void *addr, size_t len)
 #endif
 }
 
+static int darwin_random_bytes(void *buffer, size_t length, int *err_out)
+{
+#if defined(__APPLE__)
+    if (buffer == NULL && length != 0u) {
+        if (err_out != NULL) {
+            *err_out = EINVAL;
+        }
+        return -1;
+    }
+    /* arc4random_buf(3): Apple's CSPRNG, available on macOS and iOS alike, needs no
+     * entitlement, cannot fail, and lives in <stdlib.h>. The glibc/Linux route
+     * (getrandom via <sys/random.h>) is deliberately NOT used here: that header is
+     * absent from the iphoneos SDK — including it under __APPLE__ is what made the
+     * first iphoneos build of runtime_dual_mapping.c fail. */
+    arc4random_buf(buffer, length);
+    if (err_out != NULL) {
+        *err_out = 0;
+    }
+    return 0;
+#else
+    (void)buffer;
+    (void)length;
+    if (err_out != NULL) {
+        *err_out = ENOTSUP;
+    }
+    return -1;
+#endif
+}
+
+
 const rt_platform_t rt_platform_darwin = {
     "darwin",
     darwin_page_size,
@@ -197,5 +229,6 @@ const rt_platform_t rt_platform_darwin = {
     darwin_mem_unmap,
     darwin_capabilities,
     darwin_jit_write_protect_set,
-    darwin_icache_flush
+    darwin_icache_flush,
+    darwin_random_bytes
 };

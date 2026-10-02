@@ -1,0 +1,95 @@
+EVIDENCE_CLASS = MACOS_RUNNER_ARM64
+NOTE           = runner macOS/Apple ARM64. NÃO é IPHONE_PHYSICAL. IPHONE_VALIDATION_PENDING.
+
+ORIGEM         = TRANSCRIÇÃO do relato da SEGUNDA execução real do workflow
+                 "iOS Runtime PoC (unsigned IPA)", após a Correção 01.
+                 Este arquivo NÃO é log bruto: o log bruto pertence ao GitHub Actions
+                 daquela execução. Nada foi inventado; os totais abaixo são os que a
+                 execução reportou, e a única linha de falha é reproduzida como veio.
+
+--------------------------------------------------------------------------------
+O QUE A CORREÇÃO 01 RESOLVEU (confirmado pela própria execução)
+--------------------------------------------------------------------------------
+- project.pbxproj: o Xcode LEU o projeto (o erro "damaged ... parse error" sumiu);
+  o portão `xcodebuild -list` passou e o build para iphoneos chegou a executar.
+- evidência/tee: o passo da suíte macOS não morre mais por caminho relativo; a suíte
+  rodou até o fim e exportou o relatório.
+
+--------------------------------------------------------------------------------
+BLOQUEADOR C — compile do iphoneos
+--------------------------------------------------------------------------------
+AppleClang 15.0.0.15000309 / SDK iphoneos:
+
+  ios/RuntimeCore/src/runtime_dual_mapping.c:31:10: fatal error:
+      'sys/random.h' file not found
+      #include <sys/random.h>
+
+CAUSA RAIZ: o include estava sob `#if defined(__APPLE__)` — ou seja, o header do
+Linux/glibc era puxado EXATAMENTE na plataforma que não o possui — e nenhuma linha do
+arquivo usava qualquer função dele (include morto). O SDK iphoneos não traz
+<sys/random.h>; a fonte de aleatoriedade correta no Darwin/iOS é arc4random_buf(3),
+declarada em <stdlib.h>.
+
+--------------------------------------------------------------------------------
+BLOQUEADOR D — suíte macOS (C/CMake) executando com 1 falha espúria
+--------------------------------------------------------------------------------
+records=56
+pass=53
+fail=1
+blocked=0
+unsupported=0
+not_applicable=2
+summary=FAIL
+
+Única falha:
+
+  TEST=fs.deep_paths STATUS=FAIL DETAIL=errno=63 (File name too long) at depth=110
+
+CAUSA RAIZ: o teste pedia uma profundidade FIXA de 110 níveis — número derivado de um
+host Linux (PATH_MAX 4096). O Darwin tem PATH_MAX 1024 e o diretório temporário do
+runner (/var/folders/.../T/phase02_XXXXXX, ~50-60 caracteres) já consome parte dele:
+cada nível custa 9 caracteres ("/d%07u"), então 110 níveis exigem ~1045 caracteres de
+caminho — acima do limite real. O ENAMETOOLONG (errno 63 no Darwin; 36 no Linux) era,
+portanto, uma capacidade LIMITADA da plataforma sendo reportada como defeito da
+implementação. O teste media a premissa errada, não o RuntimeCore.
+
+--------------------------------------------------------------------------------
+RESULTADOS DA SUÍTE QUE DEVEM SER PRESERVADOS (MACOS_RUNNER_ARM64)
+--------------------------------------------------------------------------------
+platform=darwin
+page_size=16384
+isa=aarch64
+
+Unit tests: 91 checks, 0 failures
+
+Suíte (registros que passaram, conforme reportado pela execução):
+  W^X (transições RW/R/R-X)                              PASS
+  dual mapping RW/RX                                     PASS
+  MAP_JIT probe                                          PASS
+  pthread_jit_write_protect_np presente                   PASS
+  JIT retornou 42                                        PASS
+  rewrite + sincronização de icache retornou 4242        PASS
+  x18 reservado pela plataforma                          PASS
+  threads: pthread/TLS/mutex/condition/atomics           PASS
+  signals                                                PASS
+  AF_UNIX (socketpair + unix stream)                     PASS
+  SCM_RIGHTS                                             PASS
+  POSIX shm                                              PASS
+  kqueue/kevent                                          PASS
+  loader                                                 PASS
+
+OBSERVAÇÃO DE HONESTIDADE: a execução reportou `unsupported=2` e `not_applicable=2`,
+mas NÃO itemizou quais registros eram. Este arquivo, portanto, não os nomeia — os
+totais acima estão transcritos como vieram. A próxima execução exporta o relatório
+completo por registro, e é ele que passa a ser a fonte.
+
+IMPORTANTE: page_size=16384, x18 reservado e JIT executando NO RUNNER não provam nada
+sobre o iPhone. Estas capacidades continuam dependendo de validação em dispositivo
+físico.
+
+--------------------------------------------------------------------------------
+O QUE AINDA NÃO FOI PROVADO
+--------------------------------------------------------------------------------
+- que o build iphoneos completa (ele parou em runtime_dual_mapping.c na run 02);
+- que o .app é produzido, empacotado em Payload/ e convertido em IPA;
+- que qualquer capacidade funciona no iPhone 13.
