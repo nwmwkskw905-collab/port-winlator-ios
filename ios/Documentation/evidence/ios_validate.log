@@ -1,0 +1,36 @@
+== structural validation ==
+ok   project.pbxproj exists
+ok   shared scheme exists
+ok   file starts with the required comment header
+ok   braces are balanced
+ok   object table is populated
+ok   every referenced identifier is defined
+ok   rootObject resolves to a defined object
+ok   section PBXProject present
+ok   section PBXNativeTarget present
+ok   section PBXSourcesBuildPhase present
+ok   section PBXFileReference present
+ok   section PBXGroup present
+ok   section XCBuildConfiguration present
+ok   section XCConfigurationList present
+ok   every file reference resolves on disk
+ok   every compilable source is a member of Sources
+ok   Sources phase has exactly one entry per source file
+ok   Sources phase is not empty
+ok   Info.plist is wired through INFOPLIST_FILE
+ok   bridging header is wired through SWIFT_OBJC_BRIDGING_HEADER
+ok   Info.plist exists on disk
+ok   bridging header exists on disk
+ok   bundle identifier is the documented reconstruction identifier
+ok   deployment target is present (NEW_RECONSTRUCTED_DEPLOYMENT_TARGET)
+ok   SDKROOT is iphoneos
+ok   product name is set
+ok   native target carries the expected name
+ok   product reference names the .app bundle
+ok   Debug and Release exist for project and target
+ok   scheme points at the target
+ok   scheme points at the product
+ok   scheme container is the generated project
+ok   entitlements file documents the requested capability
+ok   entitlements are NOT attached to signing (REQUESTED != GRANTED)
+== 34 checks, 0 failures ==

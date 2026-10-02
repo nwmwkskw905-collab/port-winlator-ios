@@ -1,0 +1,94 @@
+== PHASE_02_RECONSTRUCTED_POC unit tests ==
+platform=linux page_size=4096 isa=x86-64
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name maps every status to a distinct word
+ok   PASS is spelled PASS
+ok   loader builds a non-empty image
+ok   well-formed image accepted
+ok   magic round-trips
+ok   entry offset is inside the code blob
+ok   corrupted magic rejected
+ok   future version rejected
+ok   non-zero flags rejected
+ok   oversized code rejected
+ok   entry outside the blob rejected
+ok   truncated image rejected
+ok   NULL image rejected
+ok   code overlapping the header rejected
+ok   valid module is not rejected
+ok   module entry returned the emitted immediate
+ok   invalid module is rejected before execution
+ok   rejection reason is reported to the caller
+ok   emit_return_imm succeeds on this ISA
+ok   emitted length fits the buffer
+ok   payload starts with mov eax, imm32
+ok   payload ends with ret
+ok   immediate is encoded in the instruction
+ok   undersized buffer refused
+ok   jit arena allocated
+ok   generated code was callable under the guard
+ok   generated code returned 42
+ok   rewritten generated code returned 4242 after icache sync
+ok   rt_mem_reserve returns a mapping
+ok   fresh RW mapping is readable
+ok   RW -> R transition accepted
+ok   write to a read-only page faults
+ok   the fault reports an address
+ok   R -> RW transition accepted
+ok   write after returning to RW succeeds
+ok   RW -> R-X transition accepted
+ok   releasing NULL is refused
+ok   zero-length reserve is refused
+ok   munmap accepted
+ok   reading the unmapped low page faults
+ok   si_addr matches the probed address
+ok   dual mapping created
+ok   both views see the same bytes
+ok   dual mapping destroyed
+ok   destroyed map is not usable (negative case)
+ok   cpu facts collected
+ok   page size is a power of two >= 1024
+ok   pointer width reported
+ok   architecture name reported
+ok   ABI name reported
+ok   cpu facts name the same platform
+ok   mutex counter completed
+ok   mutex-protected counter is exact
+ok   TLS round trip per thread
+ok   create/join round trip
+ok   condition variable delivered tokens
+ok   atomic counter is exact
+ok   SIGUSR1 install/query/restore
+ok   controlled SIGSEGV is caught
+ok   first guard installs
+ok   nested guard is refused with EBUSY
+ok   guard removed
+ok   filesystem round trip
+ok   deep path creation
+ok   deep path reached a long length
+ok   symlink and chmod semantics
+ok   statvfs reports capacity
+ok   absent path is absent
+ok   socketpair round trip
+ok   pipe round trip
+ok   sun_path limit is reported
+ok   SCM_RIGHTS descriptor passing
+ok   POSIX shared memory round trip
+ok   readiness multiplexing works
+ok   read end closed
+ok   read on a closed descriptor fails
+ok   context initialised
+ok   context carries the page size
+ok   module added
+ok   module can be found
+ok   absent module returns NULL
+ok   module marked as executed
+ok   marking an absent module fails
+ok   context describes itself
+ok   module table refuses to overflow
+== 91 checks, 0 failures ==

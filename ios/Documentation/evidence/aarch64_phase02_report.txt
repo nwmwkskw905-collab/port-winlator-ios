@@ -1,0 +1,78 @@
+# PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics
+# platform=linux page_size=4096
+# host: platform=linux page_size=4096 workdir=/tmp/phase02_0hPiaI
+# note: host results are NOT iOS results; physical-device validation stays pending.
+
+== SUITE memory: memory protection matrix, W^X and dual mapping ==
+[PHASE02] TEST=memory.reserve_rw STATUS=PASS DETAIL=mapped one page read-write (page_size=4096)
+[PHASE02] TEST=memory.read_rw STATUS=PASS DETAIL=read 4096 bytes from the RW mapping
+[PHASE02] TEST=memory.rw_to_r_transition STATUS=PASS DETAIL=mprotect to R accepted
+[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7fc8c7439000
+[PHASE02] TEST=memory.r_to_rw_transition STATUS=PASS DETAIL=write after mprotect(RW) completed
+[PHASE02] TEST=memory.rw_to_rx_transition STATUS=PASS DETAIL=mprotect to R-X accepted (execution is tested by the jit suite)
+[PHASE02] TEST=memory.rx_to_rw_transition STATUS=PASS DETAIL=mprotect back to RW accepted
+[PHASE02] TEST=memory.wx_policy STATUS=PASS DETAIL=RWX granted by this kernel (recorded; the port still prefers W^X)
+[PHASE02] TEST=memory.release STATUS=PASS DETAIL=munmap accepted
+[PHASE02] TEST=memory.dual_mapping_rw_rx STATUS=PASS DETAIL=RW and R-X views are aliasing the same memory (len=4096)
+
+== SUITE jit: MAP_JIT, write-protect hook, generated-code microtest ==
+[PHASE02] TEST=jit.map_jit_probe STATUS=UNSUPPORTED DETAIL=platform 'linux' has no MAP_JIT (capability bit absent)
+[PHASE02] TEST=jit.write_protect_np STATUS=UNSUPPORTED DETAIL=platform 'linux' has no pthread_jit_write_protect_np
+[PHASE02] TEST=jit.emit_payload STATUS=PASS DETAIL=ISA=aarch64 emitted 8 bytes for 'return 42'
+[PHASE02] TEST=jit.alloc STATUS=PASS DETAIL=arena of 8 bytes (MAP_JIT=no)
+[PHASE02] TEST=jit.make_executable STATUS=PASS DETAIL=payload is in executable memory (mprotect R-X)
+[PHASE02] TEST=jit.execute_return_42 STATUS=PASS DETAIL=generated function returned 42 (expected 42)
+[PHASE02] TEST=jit.rewrite_payload STATUS=PASS DETAIL=payload rewritten and icache synchronised (8 bytes)
+[PHASE02] TEST=jit.execute_return_4242 STATUS=PASS DETAIL=rewritten generated function returned 4242 (expected 4242)
+[PHASE02] TEST=jit.execution_allowed STATUS=PASS DETAIL=this process executed memory it wrote
+
+== SUITE cpu: host CPU/ABI facts, page size, x18 policy ==
+[PHASE02] TEST=cpu.facts STATUS=PASS DETAIL=arch=aarch64 abi=aapcs64-linux platform=linux ptr_bits=64 page=4096 endian=little x18_platform_reserved=0 x18_build_reserved=0 hwcap=available cache_line=32
+[PHASE02] TEST=cpu.page_size STATUS=PASS DETAIL=PAGE_SIZE=4096 (power of two=yes)
+[PHASE02] TEST=cpu.pointer_and_endianness STATUS=PASS DETAIL=pointer_bits=64 endianness=little
+[PHASE02] TEST=cpu.guest_register_notes STATUS=PASS DETAIL=17 guest registers recorded; guest R8 -> x9
+[PHASE02] TEST=cpu.x18_reservation STATUS=PASS DETAIL=platform_reserved=0 build_reserved=0 | x18 is the platform register: reserved by arm64-apple-ios, the Windows TEB under _WIN32, unused on Linux. It is not a guest register in this port.
+[PHASE02] TEST=cpu.arm64_hwcap STATUS=PASS DETAIL=AT_HWCAP=0x00000000effffffb
+[PHASE02] TEST=cpu.scope STATUS=NOT_APPLICABLE DETAIL=facts describe this host (linux) only; they do not prove iOS behaviour
+
+== SUITE threads: pthreads, TLS, mutex, condition, atomics ==
+[PHASE02] TEST=threads.create_join STATUS=PASS DETAIL=4 threads created/joined, aggregate=0x4000000000000006
+[PHASE02] TEST=threads.tls STATUS=PASS DETAIL=per-thread TLS values read back, aggregate=0x0000000000008066
+[PHASE02] TEST=threads.mutex STATUS=PASS DETAIL=mutex-protected counter reached 4000
+[PHASE02] TEST=threads.condition STATUS=PASS DETAIL=condition variable delivered 4 tokens
+[PHASE02] TEST=threads.atomics STATUS=PASS DETAIL=atomic counter reached 4000
+
+== SUITE signals: install/query/restore, mask, controlled SIGSEGV ==
+[PHASE02] TEST=signals.install_query_restore STATUS=PASS DETAIL=SIGUSR1 handler installed, queried and restored (errno=0)
+[PHASE02] TEST=signals.mask_roundtrip STATUS=PASS DETAIL=SIGUSR1 block/unblock round trip (errno=0)
+[PHASE02] TEST=signals.controlled_segv STATUS=PASS DETAIL=SIGSEGV caught by the guard, si_addr=(nil), signal=11
+[PHASE02] TEST=signals.suite_survived STATUS=PASS DETAIL=suite continued after the controlled fault
+
+== SUITE fs: POSIX filesystem semantics ==
+[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_0hPiaI
+[PHASE02] TEST=fs.deep_paths STATUS=PASS DETAIL=nested directories up to 1009 chars
+[PHASE02] TEST=fs.links_and_modes STATUS=PASS DETAIL=symlink followed, chmod 0640 observed
+[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_hgboo7
+[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=960765952 bytes on the workdir fs
+
+== SUITE ipc: AF_UNIX, SCM_RIGHTS, pipe, shm, kqueue/epoll ==
+[PHASE02] TEST=ipc.socketpair STATUS=PASS DETAIL=AF_UNIX SOCK_STREAM socketpair round trip (errno=0)
+[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_0hPiaI (errno=0)
+[PHASE02] TEST=ipc.scm_rights STATUS=PASS DETAIL=file descriptor passed with SCM_RIGHTS and used (errno=0)
+[PHASE02] TEST=ipc.pipe STATUS=PASS DETAIL=pipe round trip (errno=0)
+[PHASE02] TEST=ipc.posix_shm STATUS=PASS DETAIL=shared memory object mapped twice and compared (errno=0)
+[PHASE02] TEST=ipc.sun_path_limit STATUS=PASS DETAIL=usable sockaddr_un.sun_path = 107 bytes on this platform
+[PHASE02] TEST=ipc.mux STATUS=PASS DETAIL=readiness reported by epoll
+
+== SUITE loader: experimental RTM1 module: validate, load, execute ==
+[PHASE02] TEST=loader.build_image STATUS=PASS DETAIL=32-byte RTM1 image
+[PHASE02] TEST=loader.run_valid_module STATUS=PASS DETAIL=module executed, entry returned 7 (expected 7)
+[PHASE02] TEST=loader.reject_bad_magic STATUS=PASS DETAIL=corrupted magic rejected
+[PHASE02] TEST=loader.reject_bad_version STATUS=PASS DETAIL=version 9 rejected
+[PHASE02] TEST=loader.reject_bad_flags STATUS=PASS DETAIL=non-zero flags rejected
+[PHASE02] TEST=loader.reject_oversize_code STATUS=PASS DETAIL=code_len above RT_MODULE_MAX_CODE rejected
+[PHASE02] TEST=loader.reject_bad_entry STATUS=PASS DETAIL=entry outside the code blob rejected
+[PHASE02] TEST=loader.reject_truncated STATUS=PASS DETAIL=8-byte image rejected as too small
+[PHASE02] TEST=loader.reject_code_overlapping_header STATUS=PASS DETAIL=code_off inside the header rejected
+
+# records=56 assertions=0 pass=53 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=1 summary=PASS
