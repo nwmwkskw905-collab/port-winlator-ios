@@ -4,6 +4,8 @@
  * PHASE_02_RECONSTRUCTED_POC (see runtime_platform.h).
  */
 #include "runtime_signals.h"
+#include "runtime_memory.h"
+#include "runtime_platform.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -17,10 +19,6 @@
  * know which frame owns the jump buffer. Attempting a nested guard is EBUSY. */
 static rt_fault_guard_t *g_active_guard = NULL;
 static volatile sig_atomic_t g_last_fault_signal = 0;
-
-/* Written only through a volatile object so the compiler cannot fold the address
- * into a literal "dereference NULL" warning at -O2; the fault is the point. */
-static volatile uintptr_t g_fault_target = 0u;
 
 static void rt_fault_handler(int sig, siginfo_t *info, void *ucontext)
 {
@@ -223,24 +221,48 @@ int rt_signal_mask_roundtrip(int signal_number, int *err_out)
 int rt_signal_controlled_segv(void **fault_addr_out, int *err_out)
 {
     rt_fault_guard_t guard;
+    size_t page = (size_t)rt_platform_page_size();
+    void *target_page;
 
     if (fault_addr_out != NULL) {
         *fault_addr_out = NULL;
     }
+
+    /*
+     * The deliberate fault must be a DEFINED fault. Writing through a null pointer is
+     * undefined behaviour: an optimiser is free to delete the store, and UBSAN reports
+     * "store to null pointer of type 'volatile int'" and aborts — which is exactly what it
+     * did the first time this suite was run under UBSAN (pass 04). The probe therefore
+     * writes into a page this process owns and has made inaccessible: the same SIGSEGV,
+     * through the same guard, with the same si_addr semantics, and no undefined behaviour.
+     * RT_PROT_NONE is a protection change on a private anonymous page — no execute
+     * permission is involved, so this stays clear of the JIT/entitlement surface.
+     */
+    target_page = rt_mem_reserve(page, err_out);
+    if (target_page == NULL) {
+        return -2; /* the probe could not be prepared; errno in *err_out */
+    }
+    if (rt_mem_protect(target_page, page, RT_PROT_NONE, err_out) != 0) {
+        (void)rt_mem_release(target_page, page, NULL);
+        return -2;
+    }
     if (rt_fault_guard_begin(&guard, err_out) != 0) {
+        (void)rt_mem_release(target_page, page, NULL);
         return -2;
     }
     guard.armed = 1;
     if (RT_FAULT_GUARD_TRY(&guard)) {
-        volatile int *target = (volatile int *)g_fault_target;
-        *target = 1; /* expected to fault; the guard catches it */
+        volatile int *target = (volatile int *)target_page;
+        *target = 1; /* expected to fault: the page is present but inaccessible */
         (void)rt_fault_guard_end(&guard);
+        (void)rt_mem_release(target_page, page, NULL);
         return -1; /* no fault happened: the probe itself failed */
     }
     if (fault_addr_out != NULL) {
         *fault_addr_out = rt_fault_guard_addr(&guard);
     }
     (void)rt_fault_guard_end(&guard);
+    (void)rt_mem_release(target_page, page, NULL);
     return 0;
 }
 

@@ -1,5 +1,5 @@
 == interface audit ==
-compiled sources : 16
+compiled sources : 18
 header directories: RuntimeCore/include, Diagnostics/include
 app-layer files   : 2
 

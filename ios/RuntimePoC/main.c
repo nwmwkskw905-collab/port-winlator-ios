@@ -12,6 +12,10 @@
  */
 #include "phase02_harness.h"
 #include "phase02_log.h"
+/* Pass 04: the same flight recorder the app uses. Optional here (--journal PATH): the
+ * regression tests exercise the selected-suite entry point with a journal so the artefact a
+ * terminated run leaves behind is verified on every host, not only on the device. */
+#include "phase02_progress.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -25,8 +29,8 @@
 
 static void phase02_usage(const char *program)
 {
-    printf("usage: %s [--suite <name|all>] [--export FILE] [--workdir DIR] [--list] [--quiet]\n",
-           program);
+    printf("usage: %s [--suite <name|all>] [--export FILE] [--workdir DIR] [--journal FILE] "
+           "[--list] [--quiet]\n", program);
     printf("suites: memory jit cpu threads signals fs ipc loader\n");
 }
 
@@ -58,6 +62,7 @@ int main(int argc, char **argv)
     const char *suite = "all";
     const char *export_path = NULL;
     const char *workdir_arg = NULL;
+    const char *journal_arg = NULL;
     char workdir[512];
     int quiet = 0;
     int list_only = 0;
@@ -74,6 +79,8 @@ int main(int argc, char **argv)
             export_path = argv[++argi];
         } else if (strcmp(argv[argi], "--workdir") == 0 && argi + 1 < argc) {
             workdir_arg = argv[++argi];
+        } else if (strcmp(argv[argi], "--journal") == 0 && argi + 1 < argc) {
+            journal_arg = argv[++argi];
         } else if (strcmp(argv[argi], "--quiet") == 0) {
             quiet = 1;
         } else if (strcmp(argv[argi], "--list") == 0) {
@@ -105,9 +112,17 @@ int main(int argc, char **argv)
         return 2;
     }
 
+    /* Disabled unless asked for: an extra file on disk is a diagnostic, never a side effect
+     * of running the suites. A journal that cannot be opened is reported and the run
+     * continues (same rule the app follows). */
+    if (journal_arg != NULL && phase02_progress_begin(journal_arg) != 0) {
+        fprintf(stderr, "could not open the journal %s: %s\n", journal_arg, strerror(errno));
+    }
+
     log = phase02_log_new();
     if (log == NULL) {
         fprintf(stderr, "out of memory\n");
+        phase02_progress_end();
         return 2;
     }
     phase02_log_init(log, "PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics");
@@ -152,6 +167,7 @@ int main(int argc, char **argv)
     }
 
     phase02_log_free(log);
+    phase02_progress_end();
     /* The temporary workdir is left in place: its path is in the report and the
      * evidence collector copies the report before /tmp is cleaned. */
     return exit_code;

@@ -1,0 +1,229 @@
+# selected-suite regression: entry points phase02_run_suite/phase02_run_all, target=linux workdir=/tmp/phase02-run-selected-ElI5JE
+ok   run_selected(memory) returns a report
+ok   run_selected(memory) records at least one test
+ok   run_selected(memory) reports no failures
+ok   run_selected(memory) has a summary
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(jit) returns a report
+ok   run_selected(jit) records at least one test
+ok   run_selected(jit) reports no failures
+ok   run_selected(jit) has a summary
+     jit       records=13 pass=11 fail=0 blocked=0 unsupported=2 untested=0 n/a=0 summary=PASS
+ok   run_selected(cpu) returns a report
+ok   run_selected(cpu) records at least one test
+ok   run_selected(cpu) reports no failures
+ok   run_selected(cpu) has a summary
+     cpu       records=7 pass=6 fail=0 blocked=0 unsupported=0 untested=0 n/a=1 summary=PASS
+ok   run_selected(threads) returns a report
+ok   run_selected(threads) records at least one test
+ok   run_selected(threads) reports no failures
+ok   run_selected(threads) has a summary
+     threads   records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(signals) returns a report
+ok   run_selected(signals) records at least one test
+ok   run_selected(signals) reports no failures
+ok   run_selected(signals) has a summary
+     signals   records=4 pass=4 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(fs) returns a report
+ok   run_selected(fs) records at least one test
+ok   run_selected(fs) reports no failures
+ok   run_selected(fs) has a summary
+     fs        records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(ipc) returns a report
+ok   run_selected(ipc) records at least one test
+ok   run_selected(ipc) reports no failures
+ok   run_selected(ipc) has a summary
+     ipc       records=7 pass=7 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(loader) returns a report
+ok   run_selected(loader) records at least one test
+ok   run_selected(loader) reports no failures
+ok   run_selected(loader) has a summary
+     loader    records=9 pass=9 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(all) returns a report
+ok   run_selected(all) records at least one test
+ok   run_selected(all) reports no failures
+ok   run_selected(all) has a summary
+     all       records=60 pass=57 fail=0 blocked=0 unsupported=2 untested=0 n/a=1 summary=PASS
+ok   the recorder is off again after a plain run
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   pressing cpu twice reports identical numbers
+ok   pressing threads twice reports identical numbers
+ok   sequence step runs
+ok   sequence step memory matches its baseline (no residue from the previous step)
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step cpu matches its baseline (no residue from the previous step)
+     cpu       records=7 pass=6 fail=0 blocked=0 unsupported=0 untested=0 n/a=1 summary=PASS
+ok   sequence step runs
+ok   sequence step threads matches its baseline (no residue from the previous step)
+     threads   records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step memory matches its baseline (no residue from the previous step)
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step jit matches its baseline (no residue from the previous step)
+     jit       records=13 pass=11 fail=0 blocked=0 unsupported=2 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step cpu matches its baseline (no residue from the previous step)
+     cpu       records=7 pass=6 fail=0 blocked=0 unsupported=0 untested=0 n/a=1 summary=PASS
+ok   sequence step runs
+ok   sequence step all matches its baseline (no residue from the previous step)
+     all       records=60 pass=57 fail=0 blocked=0 unsupported=2 untested=0 n/a=1 summary=PASS
+ok   an unknown selection still returns a report
+ok   an unknown selection is one UNSUPPORTED record and nothing else
+ok   an unknown selection does not need a log to be rejected
+ok   an unknown selection is UNSUPPORTED, not a crash and not a FAIL
+ok   a valid selection still works after an invalid one
+ok   rerun baseline
+ok   rerun executes
+ok   memory rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 10/10 reports the baseline numbers
+     memory rerun baseline:                records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   rerun baseline
+ok   rerun executes
+ok   cpu rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 10/10 reports the baseline numbers
+     cpu rerun baseline:                records=7 pass=6 fail=0 blocked=0 unsupported=0 untested=0 n/a=1 summary=PASS
+ok   rerun baseline
+ok   rerun executes
+ok   threads rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 10/10 reports the baseline numbers
+     threads rerun baseline:                records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   the case directory path fits
+ok   journal path is built without truncation
+ok   write-ahead path is built without truncation
+ok   a journalled run still produces the normal report
+ok   the recorder is closed after the run
+ok   the journal is readable
+ok   the journal's last event is JOURNAL_END
+ok   the journal file exists
+ok   the journal names the suite it entered
+ok   the journal names the suite it left
+ok   the write-ahead report exists and is not empty
+ok   the write-ahead report is readable
+ok   the write-ahead report contains the measurements
+ok   reading a missing journal fails instead of inventing an event
+ok   reading into a too-small buffer fails instead of truncating an event
+ok   policy: a platform that cannot + no opt-in = DEFERRED (the iOS device row)
+ok   policy: a platform that cannot + explicit opt-in = ATTEMPT (the dedicated run)
+ok   policy: a platform that can = ATTEMPT even without the opt-in (Linux/macOS)
+ok   policy: both = ATTEMPT
+ok   policy: decisions have their distinct names
+ok   policy: the current target has a name
+ok   policy: the current target states the evidence for its flags
+ok   policy: every decision has a reason
+ok   policy: the deferral names the physical run it comes from
+ok   policy: this host still attempts to enter written memory
+ok   policy: this host still attempts the executable object view
+ok   policy: refusing the opt-in does not disable a platform that allows the operation
+ok   policy: the opt-in does not disable a platform that allows the operation
+ok   policy: the summary renders
+ok   policy: the summary carries every field the report needs
+ok   policy: a NULL buffer is refused
+ok   policy: a buffer that cannot hold the summary is refused, not truncated
+ok   simulated iOS-class target defers entering written memory
+ok   simulated iOS-class target defers the executable object view
+ok   the simulated profile is labelled as a simulation, never as device evidence
+ok   the simulated profile names the target it stands in for
+ok   the execution-attempt opt-in still allows the attempt on the iOS-class target
+ok   iOS-class run_selected(memory) returns a report
+ok   iOS-class run_selected(memory) reports no failures
+ok   iOS-class run_selected(jit) returns a report
+ok   iOS-class run_selected(jit) reports no failures
+ok   iOS-class run_selected(cpu) returns a report
+ok   iOS-class run_selected(cpu) reports no failures
+ok   iOS-class run_selected(threads) returns a report
+ok   iOS-class run_selected(threads) reports no failures
+ok   iOS-class run_selected(signals) returns a report
+ok   iOS-class run_selected(signals) reports no failures
+ok   iOS-class run_selected(fs) returns a report
+ok   iOS-class run_selected(fs) reports no failures
+ok   iOS-class run_selected(ipc) returns a report
+ok   iOS-class run_selected(ipc) reports no failures
+ok   iOS-class run_selected(loader) returns a report
+ok   iOS-class run_selected(loader) reports no failures
+ok   iOS-class run_selected(all) returns a report
+ok   iOS-class run_selected(all) reports no failures
+     jit(ios)  records=12 pass=5 fail=0 blocked=5 unsupported=2 untested=0 n/a=0 summary=BLOCKED
+     all(ios)  records=59 pass=50 fail=0 blocked=6 unsupported=2 untested=0 n/a=1 summary=BLOCKED
+ok   a log for the record-level check
+ok   TEST=jit.make_executable STATUS=BLOCKED
+ok   TEST=jit.execute_return_42 STATUS=BLOCKED
+ok   TEST=jit.rewrite_payload STATUS=BLOCKED
+ok   TEST=jit.execute_return_4242 STATUS=BLOCKED
+ok   TEST=jit.execution_allowed STATUS=BLOCKED
+ok   the loader's execution is deferred, with the module NOT rejected
+ok   the deferral is reported through the report, not as a checkpoint string
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   cpu reports identical numbers with the execution attempt deferred
+ok   threads reports identical numbers with the execution attempt deferred
+ok   the jit suite does differ between the two profiles (the gate is really reached)
+ok   clearing the simulation restores this host's own profile
+== 206 checks, 0 failures ==

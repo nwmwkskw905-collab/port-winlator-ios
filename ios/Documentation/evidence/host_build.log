@@ -1,7 +1,4 @@
-[  5%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_dual_mapping.c.o
-[ 10%] Linking C static library libphase02_runtime_core.a
-[ 78%] Built target phase02_runtime_core
-[ 84%] Linking C executable phase02_poc
-[ 89%] Linking C executable phase02_unit_tests
-[ 94%] Built target phase02_unit_tests
-[100%] Built target phase02_poc
+[ 73%] Built target phase02_runtime_core
+[ 82%] Built target phase02_poc
+[ 91%] Built target phase02_unit_tests
+[100%] Built target phase02_run_selected_tests

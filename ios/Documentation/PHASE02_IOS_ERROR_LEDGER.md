@@ -33,6 +33,20 @@ defeitos novos (S-018 … S-025) foram encontrados e corrigidos, com auditoria e
 negativos próprios. Nada foi convertido de `BLOCKED`/`UNTESTED` em `PASS` por classificação, e
 nenhuma apólice de assinatura, perfil ou certificado existe no repositório.
 
+**Rodada 04 (run 03 crash investigation, base `d83332a` — o commit de que o IPA do run 03 foi
+construído):** o app **abre** e a ação `Run Selected` **termina o processo imediatamente**, nas
+quatro suítes relatadas (memory, jit, cpu, threads) e sem relatório. Este é um evento de
+execução física: nenhum host/QEMU o reproduz (as oito suítes saem `rc=0 summary=PASS` na
+mesma árvore). A rodada trata o evento como **terminação não classificada** — nunca `FAIL`,
+`BLOCKED` ou `PASS` — até localizar o ponto de terminação, e registra os campos provisórios em
+`Documentation/IPHONE13_PHYSICAL_RUN_03.md`. Resultado da investigação: a causa-raiz está no
+**prefixo comum** a toda suíte (não em código de suíte), e a correção é a política de execução
+(S-026). A rodada também encontrou e corrigiu um defeito de UB na sonda de fault (S-027),
+achado pela **primeira execução de UBSAN** deste projeto — não é a causa do crash e não é
+apresentado como tal. Nada foi mascarado: nenhum handler genérico de SIGSEGV/SIGBUS/SIGILL foi
+instalado, nenhum resultado foi convertido, e a classificação final continua dependendo de um
+novo teste físico.
+
 ---
 
 ## A. Inventário inicial (o que já era conhecido no começo desta rodada)
@@ -413,6 +427,95 @@ atualizadas para a forma nova **sem enfraquecer o defeito plantado**, e o invari
 (`JIT_ATTEMPT_ORDER`) passou a ser verificado na função que realmente mapeia
 (`rt_jit_alloc_ex`), com o mesmo efeito de detecção comprovado pelo controlo C.
 
+## B4. Defeitos encontrados na rodada 04 (terminação física do run 03)
+
+| ID | Defeito | Arquivo | Status |
+| --- | --- | --- | --- |
+| S-026 | O caminho comum executava, no aparelho, a operação que o iOS 26/TXM não permite: entrar em memória que o próprio processo tornou executável (arena JIT e view executável de objeto) e entrar no ponto de entrada do módulo mapeado. No iPhone 13 a permissão de execução é retirada **sem erro reportado**, e a execução da página termina o processo — derrubando junto o relatório e qualquer diagnóstico | `Diagnostics/src/phase02_harness.c`, `Diagnostics/include|src/phase02_execution_policy.*`, `RuntimePoC/Phase02Bridge.m` | `DEVICE_RETEST_REQUIRED` |
+| S-027 | `rt_signal_controlled_segv` produzia o fault deliberado escrevendo **através de um ponteiro nulo** — undefined behaviour que o UBSAN reporta (`store to null pointer of type 'volatile int'`) e que um otimizador pode remover. Nenhum sanitizador podia rodar sobre a suíte de sinais | `RuntimeCore/src/runtime_signals.c`, `include/runtime_signals.h` | `FIXED_PENDING_APPLE_CI` |
+
+### S-026 — a operação que o alvo não permite era executada pelo caminho comum
+
+**Causa raiz (única, e explicando as quatro suítes).** Não é um defeito de suíte: é do *prefixo
+comum*. `phase02_run_suite` / `phase02_run_all` executam, em toda suíte, os mesmos passos —
+inclusive os que pedem permissão de execução a páginas que o processo escreveu. No iPhone 13
+(A15, iOS 26, TXM/SPTM) essa permissão **não é concedida a um app de terceiros**: o `MAP_JIT`
+sem `dynamic-codesigning` é recusado, `mprotect(PROT_READ|PROT_EXEC)` pode **retornar sucesso e
+deixar a página não executável**, e a entrada nessa página termina o processo. O IPA do run 03
+continha exatamente as mudanças da pass 03 que passaram a *tentar* essa operação nas suítes
+memory/jit/loader (S-018…S-023); a suíte `cpu` e a suíte `threads`, que nunca tocaram código
+pass 03, morrem pelo mesmo motivo: elas **não** morrem pela operação JIT, e sim porque o
+processo é único — a terminação não tem escopo. Foi por isso que a investigação exigiu mapear o
+prefixo comum antes de atribuir o crash ao JIT, e por isso a correção é uma **política de
+execução** aplicada no prefixo do harness e na ponte, com o relatório e o journal gravados
+**antes** de cada passo perigoso.
+
+**Por que não é mascaramento.** A tentativa não foi removida do produto: existe um *opt-in*
+explícito (`PHASE02_ALLOW_EXECUTION=1`, ou `PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT=1` na
+compilação) para um ciclo físico dedicado, e o resultado, quando a operação é adiada, é
+`BLOCKED` com a política nomeada — nunca `PASS`, nunca um veredito de plataforma. Em Linux,
+macOS e macOS-host a cadeia continua executando e **provando execução executando** (o host
+segue com `jit` = 11 PASS, sem nenhuma mudança de número). O que muda no aparelho é que a
+execução do diagnóstico não pode custar o processo inteiro: sem relatório não há evidência, e
+sem evidência a próxima rodada não sabe onde parar.
+
+**Correção (mínima, incremental, sem tocar UI).**
+
+1. `Diagnostics/src/phase02_execution_policy.c` — política pura e testável: perfis
+   (`ios-device` com as duas operações fenced, `ios-simulator`, `apple-host`, `portable`),
+   `phase02_execution_decide(platform_allows, attempt)` e razões que citam o run 03. A
+   simulação de perfil (`PHASE02_TARGET_OVERRIDE`) existe só para exercitar em host as linhas
+   que o aparelho cerca, e **se rotula** `profile-source=override-simulation-not-device-evidence`.
+2. `Diagnostics/src/phase02_progress.c` — registrador de voo: `write(2)` por checkpoint (uma
+   escrita que retornou já está no kernel ⇒ sobrevive a SIGKILL), `O_APPEND`, sem alocação,
+   sem `stdio` com buffer, sem handlers; mais o *write-ahead* do relatório antes de cada passo
+   perigoso. Um diário que diz `WRITE_AHEAD_OK` nunca está à frente do que existe em disco.
+3. `phase02_harness.c` — o passo perigoso passa a ter ramo adiado em três pontos (cadeia JIT,
+   view executável do dual mapping, entrada do módulo), cada um registrando `BLOCKED` com a
+   razão e **sem** executar nada; e checkpoints nos pontos de entrada
+   (`HARNESS_ENTER`, `SUITE_ENTER`, `SUITE_FIRST_TEST_ENTER`, `SUITE_EXIT`) com write-ahead.
+4. `Phase02Bridge.m` — jornais + checkpoints do caminho do botão
+   (`RUN_SELECTED_ENTER`, `HARNESS_INIT_ENTER/OK`, `SUITE_DISPATCH_ENTER/END`,
+   `REPORT_FINALISED`, `RUN_SELECTED_EXIT`) gravando em `NSDocumentDirectory` (visível no app
+   Arquivos). A ordem de consumo do log não mudou: `stringWithUTF8String:` **antes** de
+   `phase02_log_free`, e `@""` quando a conversão falha — nunca um ponteiro morto, nunca um
+   `nil` devolvido a Swift.
+5. `Tests/test_run_selected.c` (novo, 206 verificações) — o botão, exercitado: as nove seleções
+   pelo mesmo ponto de entrada, segunda pressão, sequência
+   `memory→cpu→threads→memory→jit→cpu→all`, `memory×10`/`cpu×10`/`threads×10`, seleção
+   impossível, journal/write-ahead, matriz da política e o **perfil iOS-classe simulado**
+   (que prova, em host, que a mesma seleção produz relatório íntegro com a tentativa adiada e
+   que `cpu`/`threads` ficam **idênticos** nos dois perfis).
+6. `tools/pass04_negative_controls.py` (novo, 25/25) — o controle da classe do crash: uma
+   vítima real ligada aos fontes reais do projeto é morta por `SIGKILL` no meio da execução; o
+   detector tem de nomear o último checkpoint, dizer `TERMINATED_BEFORE_SUITE_EXIT` e encontrar
+   o relatório em disco — com o gêmeo negativo mostrando que ele **não** é sempre-verde.
+
+**Testes.** Host: `phase02_run_selected_tests` 206/206; CTest 3/3; unit 298/0; suíte completa
+`records=60 pass=56 fail=0`; cada suíte individual sem regressão de número. AArch64/QEMU:
+`phase02_run_selected_tests` 206/206, unit 289/0, suíte completa igual. ASAN=PASS, UBSAN=PASS
+(ver S-027). Controles: 18/18, 6/6, 19/19, 25/25. Auditorias: todas em 0 (entitlement, JIT
+causal, SHM, interface, composição, link, includes/APIs Apple) e
+`validate_xcodeproj.py` 62/62.
+
+**O que continua pendente.** `DEVICE_RETEST_REQUIRED`: nada aqui é confirmado no aparelho. O
+próximo IPA leva o diário e o write-ahead; se o processo ainda terminar, o diário diz onde; se
+não terminar, o relatório dirá `BLOCKED` com a política nomeada e a rodada seguinte terá
+evidência para decidir sobre a tentativa dedicada (`PHASE02_ALLOW_EXECUTION=1`).
+
+### S-027 — UB na sonda de fault (achado do UBSAN, não é a causa do crash)
+
+A primeira execução de UBSAN deste projeto (rodada 04) abortou em três binários com
+`runtime_signals.c:236:17: runtime error: store to null pointer of type 'volatile int'`: o
+fault deliberado era uma escrita através de `(volatile int *)0`. Isso é *undefined behaviour*
+(a norma não garante nem que a escrita aconteça) e por isso nenhum sanitizador podia rodar
+sobre a suíte de sinais — e a sonda depende de o fault acontecer exatamente ali. A correção não
+enfraquece nada: o alvo do fault passou a ser uma página **do próprio processo** tornada
+inacessível (`rt_mem_reserve` + `rt_mem_protect(RT_PROT_NONE)`), liberada em todos os caminhos
+de retorno. Mesmo sinal, mesma guarda, mesmas semânticas de `si_addr` — agora sobre um fault
+definido (`si_addr=0x7f06b305b000` no log do host). `RT_PROT_NONE` não envolve permissão de
+execução alguma: a sonda não toca a superfície JIT/entitlement. `UBSAN=PASS`, `ASAN=PASS`.
+
 ## C. Auditados e considerados NÃO defeitos (com o motivo)
 
 | Item | Motivo |
@@ -434,6 +537,13 @@ atualizadas para a forma nova **sem enfraquecer o defeito plantado**, e o invari
 | Debug/Release do `.pbxproj` | conferidos: mesmas configurações relevantes nos dois (deployment target, bridging header, `GENERATE_INFOPLIST_FILE=NO`, `CODE_SIGN_STYLE`), sem divergência |
 | Fallback de 4096 quando `sysconf(_SC_PAGESIZE)` falha (nos dois backends e em `rt_platform_page_size`) | o valor real é **medido** (`_SC_PAGESIZE`) e o relatório carrega o medido — a execução física registrou `page_size=16384`, que é o valor do próprio iPhone 13; o fallback só seria alcançado com um `sysconf` quebrado, e trocá-lo por falha mudaria o contrato de `rt_mem_*` em caminhos `PASS` sem defeito demonstrado. Coberto pela nova regra `PAGE_SIZE_MEASURED`, que proíbe escrever o tamanho da página no código |
 | `(void)rt_mem_protect(region, page, RW, &err)` no fim do probe de RWX do harness | é a restauração best-effort antes de `rt_mem_release()`; a concessão de RWX já foi registrada no registro `memory.wx_policy`, o mapeamento é liberado na linha seguinte e a recusa não tem consequência observável — registrado, não alterado |
+| `rt_signal_call_guarded` / estado residual de guarda como causa do crash de cpu/threads | **excluído por leitura e por medição**: a função aparece exatamente duas vezes, ambas dentro do microteste JIT, e `runtime_cpu_abi`/`runtime_threads` não chamam nenhum código da pass 03; além disso, o perfil iOS-classe simulado mostra `cpu` e `threads` com números **idênticos** ao perfil nativo (o crash das quatro suítes não pode ser atribuído a estado de guarda sem evidência nova) |
+| Fiação do entitlement como correção | `project.pbxproj` continua com **0** referências ao arquivo de entitlements; removê-lo ou fiá-lo não corrige nada e fiá-lo quebraria a instalação (ver L-005/S-024). A rodada 04 não alterou o arquivo nem a decisão |
+| Consumo do log pela ponte (`stringWithUTF8String:` sobre buffer morto) | auditado: `phase02_log_t` é heap, sempre terminado em NUL, com marcadores de truncamento; a ponte converte **antes** de `phase02_log_free` e devolve `@""` se a conversão falhar (caminho ilegível ≠ ponteiro inválido) |
+| Execução fora da main thread na ponte | correto e necessário (C sincrônico): o estado Swift só é tocado em `DispatchQueue.main.async`; os botões ficam desabilitados durante a execução, então não há reentrância; seleção inválida é `UNSUPPORTED`, sem crash |
+| `phase02_log_record` com buffer de detalhe na pilha (512 B) | truncamento **marcado** (`[DETAIL TRUNCATED at 512 chars]`), `vsnprintf` com capacidade, zero sem `vsnprintf` válido: sem leitura fora do buffer e sem perda silenciosa |
+| "Crash por sinal capturado por handler de guarda durante o prefixo" | auditado: a guarda só é instalada dentro do microteste JIT e é desinstalada em seguida; o handler re-emite sinais que não são dele; nenhum handler genérico foi instalado na rodada 04 (proibido por regra) |
+| Numeração/estado das suítes em `--suite all` após a política | verificado em host: o resumo agrega os mesmos registros com `blocked` apenas nos pontos adiados; em perfil nativo os números da suíte completa são os mesmos da pass 03 (`records=60 pass=56 fail=0 unsupported=2 n/a=2`) |
 | Símbolos duplicados/indefinidos no alvo Apple | `LINK_SYMBOL_AUDIT=PASS` (objetos AArch64, símbolo indefinido por objeto, provedor localizado) e `TARGET_COMPOSITION=0`; o link `iphoneos` continua sendo veredito do linker da Apple (`APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN`) |
 
 ---
@@ -457,6 +567,7 @@ Rodada 02 (stabilization pass 02) — a rodada de fechamento
   EXTERNAL_CAPABILITY_BLOCKED       = 1     (L-005, entitlement de JIT)
 ```
 
+```
 Rodada 03 (blocker resolution pass 03, base f81dda2)
   ROOT_CAUSES_IDENTIFIED            = 3      (R1 entitlement de JIT/dynamic-codesigning recusada
                                               ao app; R2 o runtime exigia MAP_JIT para ter arena
@@ -477,6 +588,29 @@ Rodada 03 (blocker resolution pass 03, base f81dda2)
                                               jit.free, jit.execution_allowed,
                                               memory.dual_mapping_rw_rx, ipc.posix_shm,
                                               loader.run_valid_module)
+
+Rodada 04 (run 03 crash investigation, base d83332a)
+  EVENT                            = IPHONE13_PHYSICAL_RUN_03 (terminação de processo na ação
+                                     Run Selected, sem relatório; campos provisórios registrados
+                                     em Documentation/IPHONE13_PHYSICAL_RUN_03.md)
+  ROOT_CAUSES_IDENTIFIED           = 1      (R4: o prefixo comum, comum a toda suíte, executava a
+                                              operação que o iOS 26/TXM não permite - entrar em
+                                              memória que o processo tornou executável - e a
+                                              terminação leva junto o relatório e o diagnóstico)
+  CODE_DEFECTS_FOUND_THIS_ROUND    = 2      (S-026 crash-class; S-027 UB na sonda de fault,
+                                              encontrado pelo primeiro UBSAN do projeto)
+  CODE_DEFECTS_FIXED_THIS_ROUND    = 2      (S-026, S-027)
+  KNOWN_UNFIXED_CODE_DEFECTS       = 0
+  AFFECTED_SELECTED_SUITES         >= 4     (memory, jit, cpu, threads - relatado no aparelho)
+  HOST_SELECTED_SUITE_TESTS        = 206    (Tests/test_run_selected.c, host)
+  AARCH64_SELECTED_SUITE_TESTS     = 206    (o mesmo teste sob qemu-aarch64)
+  CRASH_CLASS_NEGATIVE_CONTROL     = 25/25  (tools/pass04_negative_controls.py; SIGKILL real,
+                                              não destrutivo, com gêmeos negativos)
+  ASAN                             = PASS   (host: pontos de entrada do botão + todas as suítes)
+  UBSAN                            = PASS   (host: idem, após S-027)
+  APPLE_CI_RETEST_REQUIRED         = 2      (S-026, S-027)
+  IPHONE_RETEST_REQUIRED           = 1      (o próprio run 03: a validação final é física)
+```
 
 Nenhum defeito é contado duas vezes por sintomas dependentes: S-005 cobre a etapa **e** a
 classificação do mesmo caminho de dual mapping (uma causa, um defeito); L-001 e S-002 são

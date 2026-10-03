@@ -1,5 +1,5 @@
 == Apple include audit ==
-files compiled into the Apple target: 17
+files compiled into the Apple target: 19
 headers known absent on iphoneos  : 9
 file                                         line   header
 UNGUARDED_LINUX_INCLUDES=0 (no Linux-only header reaches the Apple build)

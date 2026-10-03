@@ -90,6 +90,18 @@ echo "[evidence] pass 03 negative controls (every detector must fire, then the t
 python3 "$ROOT/tools/pass03_negative_controls.py" \
     2>&1 | tee "$EVIDENCE/pass03_negative_controls.txt" | tail -3
 
+echo "[evidence] pass 04 selected-suite regression (the entry points the Run Selected button uses)"
+(cd "$ROOT/build/host" && ./phase02_run_selected_tests) \
+    > "$EVIDENCE/host_run_selected_tests.log" 2>&1 || true
+tail -1 "$EVIDENCE/host_run_selected_tests.log"
+
+echo "[evidence] pass 04 crash-class negative control (hard termination mid-run, non-destructive)"
+python3 "$ROOT/tools/pass04_negative_controls.py" \
+    2>&1 | tee "$EVIDENCE/pass04_negative_controls.txt" | tail -2
+
+echo "[evidence] ASAN / UBSAN over the selected-suite entry points"
+sh "$ROOT/tools/run_sanitizers.sh" 2>&1 | tee "$EVIDENCE/sanitizers.txt"
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true
@@ -112,6 +124,28 @@ echo "[evidence] pass 03 scope (blockers only; UI, Fase 04 and the baseline unto
   echo "PHASE04_FUNCTIONAL_CHANGES=0 (no diff under ios/box64-registers)"
   echo "PHASE05_STARTED=NO"
 } 2>&1 | tee "$EVIDENCE/pass03_scope_check.txt" | tail -6
+
+echo "[evidence] pass 04 scope (base d83332a: the crash fix only; UI, Fase 04 and runs 01/02 untouched)"
+{
+  echo "== pass 04 scope check (base d83332a, the commit physical run 03 was built from) =="
+  echo "-- files changed by this pass under ios/:"
+  git -C "$ROOT/.." diff --stat d83332a -- ios | sed 's/^/   /'
+  echo "-- files deleted by this pass under ios/ (must be empty):"
+  git -C "$ROOT/.." diff --diff-filter=D --name-only d83332a -- ios | sed 's/^/   /'
+  echo "-- new files added by this pass:"
+  git -C "$ROOT/.." ls-files --others --exclude-standard -- ios | sed 's/^/   /'
+  echo "-- Fase 04 (must be empty):"
+  git -C "$ROOT/.." diff --stat d83332a -- ios/box64-registers | sed 's/^/   /'
+  echo "-- IPHONE13_PHYSICAL_RUN_01.md / _02.md / 03 (immutable: must be empty):"
+  git -C "$ROOT/.." diff --stat d83332a -- ios/Documentation/IPHONE13_PHYSICAL_RUN_01.md \
+      ios/Documentation/IPHONE13_PHYSICAL_RUN_02.md | sed 's/^/   /'
+  echo "-- RuntimePoC/ (SwiftUI surface; only the bridge may change):"
+  git -C "$ROOT/.." diff --stat d83332a -- ios/RuntimePoC | sed 's/^/   /'
+  echo "UI_VISUAL_CHANGES=0 (ContentView.swift/WinlatorPhase02App.swift unchanged; "
+  echo "                     snapshot tools/ui_surface.snapshot.txt intact)"
+  echo "PHASE04_FUNCTIONAL_CHANGES=0 (no diff under ios/box64-registers)"
+  echo "PHASE05_STARTED=NO"
+} 2>&1 | tee "$EVIDENCE/pass04_scope_check.txt" | tail -6
 
 echo "[evidence] host/device distinction"
 {

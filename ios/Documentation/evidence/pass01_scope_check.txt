@@ -2,40 +2,48 @@
 -- Fase 04 (must be empty):
 -- interface/app layer RuntimePoC/ (pass 02: only the S-009 save destination;
    the visible surface is frozen by tools/ui_surface.snapshot.txt):
-    ios/RuntimePoC/WinlatorPhase02.entitlements | 58 +++++++++++++++++++++--------
-    1 file changed, 43 insertions(+), 15 deletions(-)
+    ios/RuntimePoC/Phase02Bridge.m | 63 +++++++++++++++++++++++++++++++++++++++---
+    ios/RuntimePoC/main.c          | 20 ++++++++++++--
+    2 files changed, 77 insertions(+), 6 deletions(-)
 -- physical baseline IPHONE13_PHYSICAL_RUN_01.md (must be empty: immutable):
 -- files changed by this pass:
-   .github/workflows/ios-runtime-poc.yml
+   ios/CMakeLists.txt
+   ios/Diagnostics/include/phase02_execution_policy.h
+   ios/Diagnostics/include/phase02_progress.h
+   ios/Diagnostics/src/phase02_execution_policy.c
    ios/Diagnostics/src/phase02_harness.c
+   ios/Diagnostics/src/phase02_progress.c
+   ios/Documentation/IPHONE13_PHYSICAL_RUN_03.md
+   ios/Documentation/PHASE02_IOS_ERROR_LEDGER.md
    ios/Documentation/evidence/aarch64_binary_arch.txt
    ios/Documentation/evidence/aarch64_build.log
    ios/Documentation/evidence/aarch64_phase02_report.txt
    ios/Documentation/evidence/aarch64_suite_stdout.log
-   ios/Documentation/evidence/aarch64_unit_tests.log
-   ios/Documentation/evidence/entitlement_levels.txt
+   ios/Documentation/evidence/apple_api_audit.txt
+   ios/Documentation/evidence/apple_include_audit.txt
    ios/Documentation/evidence/fix06_negative_controls.txt
    ios/Documentation/evidence/host_build.log
+   ios/Documentation/evidence/host_ctest.log
    ios/Documentation/evidence/host_phase02_report.txt
    ios/Documentation/evidence/host_suite_stdout.log
-   ios/Documentation/evidence/host_unit_tests.log
+   ios/Documentation/evidence/interface_audit.txt
    ios/Documentation/evidence/inventory_sha256.txt
+   ios/Documentation/evidence/ios_generate.log
    ios/Documentation/evidence/ios_stabilization_negative_controls.txt
-   ios/Documentation/evidence/link_symbol_audit.txt
    ios/Documentation/evidence/pass01_scope_check.txt
    ios/Documentation/evidence/pass02_scope_check.txt
+   ios/Documentation/evidence/pass03_negative_controls.txt
+   ios/Documentation/evidence/pass03_scope_check.txt
+   ios/Documentation/evidence/platform_composition_audit.txt
    ios/Documentation/evidence/platform_composition_negative_control.txt
-   ios/RuntimeCore/include/runtime_jit.h
-   ios/RuntimeCore/include/runtime_memory.h
-   ios/RuntimeCore/src/runtime_dual_mapping.c
-   ios/RuntimeCore/src/runtime_jit.c
-   ios/RuntimeCore/src/runtime_loader.c
-   ios/RuntimePoC/WinlatorPhase02.entitlements
-   ios/Tests/test_runtime_core.c
-   ios/tools/audit_fix06_contracts.py
-   ios/tools/build_ios.sh
+   ios/RuntimeCore/include/runtime_signals.h
+   ios/RuntimeCore/src/runtime_signals.c
+   ios/RuntimePoC/Phase02Bridge.m
+   ios/RuntimePoC/main.c
+   ios/Tests/test_run_selected.c
+   ios/WinlatorPhase02.xcodeproj/project.pbxproj
+   ios/tools/build_aarch64_cross.sh
    ios/tools/collect_evidence.sh
-   ios/tools/fix06_negative_controls.py
-   ios/tools/generate_xcodeproj.py
-   ios/tools/inspect_entitlements.sh
-   ios/tools/stabilization_negative_controls.py
+   ios/tools/fake_foundation/Foundation/Foundation.h
+   ios/tools/pass04_negative_controls.py
+   ios/tools/run_sanitizers.sh

@@ -1,0 +1,600 @@
+# ASAN: -fsanitize=address -fno-omit-frame-pointer
+# targets: phase02_unit_tests, phase02_run_selected_tests, phase02_poc (all suites)
+-- The C compiler identification is GNU 14.2.0
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/user/winlator/ios/build/address
+[  8%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/linux_platform.c.o
+[  8%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/darwin_platform.c.o
+[ 13%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_memory.c.o
+[ 17%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_dual_mapping.c.o
+[ 21%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_jit.c.o
+[ 26%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_cpu_abi.c.o
+[ 30%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_threads.c.o
+[ 34%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_signals.c.o
+[ 39%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_filesystem.c.o
+[ 43%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_ipc.c.o
+[ 47%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_context.c.o
+[ 52%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_loader.c.o
+[ 56%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_log.c.o
+[ 60%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_harness.c.o
+[ 65%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_progress.c.o
+[ 69%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_execution_policy.c.o
+[ 73%] Linking C static library libphase02_runtime_core.a
+[ 73%] Built target phase02_runtime_core
+[ 82%] Building C object CMakeFiles/phase02_poc.dir/RuntimePoC/main.c.o
+[ 82%] Building C object CMakeFiles/phase02_unit_tests.dir/Tests/test_runtime_core.c.o
+[ 86%] Linking C executable phase02_poc
+[ 86%] Built target phase02_poc
+[ 91%] Building C object CMakeFiles/phase02_run_selected_tests.dir/Tests/test_run_selected.c.o
+[ 95%] Linking C executable phase02_run_selected_tests
+[100%] Linking C executable phase02_unit_tests
+[100%] Built target phase02_run_selected_tests
+[100%] Built target phase02_unit_tests
+$ /home/user/winlator/ios/build/address/phase02_unit_tests
+== PHASE_02_RECONSTRUCTED_POC unit tests ==
+platform=linux page_size=4096 isa=x86-64
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name is non-empty
+ok   status_name maps every status to a distinct word
+ok   PASS is spelled PASS
+ok   loader builds a non-empty image
+ok   well-formed image accepted
+ok   magic round-trips
+ok   entry offset is inside the code blob
+ok   corrupted magic rejected
+ok   future version rejected
+ok   non-zero flags rejected
+ok   oversized code rejected
+ok   entry outside the blob rejected
+ok   truncated image rejected
+ok   NULL image rejected
+ok   code overlapping the header rejected
+ok   valid module is not rejected
+ok   module entry returned the emitted immediate
+ok   invalid module is rejected before execution
+ok   rejection reason is reported to the caller
+ok   emit_return_imm succeeds on this ISA
+ok   emitted length fits the buffer
+ok   payload starts with mov eax, imm32
+ok   payload ends with ret
+ok   immediate is encoded in the instruction
+ok   undersized buffer refused
+ok   jit arena allocated
+ok   generated code was callable under the guard
+ok   generated code returned 42
+ok   rewritten generated code returned 4242 after icache sync
+ok   rt_mem_reserve returns a mapping
+ok   fresh RW mapping is readable
+ok   RW -> R transition accepted
+ok   write to a read-only page faults
+ok   the fault reports an address
+ok   R -> RW transition accepted
+ok   write after returning to RW succeeds
+ok   RW -> R-X transition accepted
+ok   releasing NULL is refused
+ok   zero-length reserve is refused
+ok   munmap accepted
+ok   reading the unmapped low page faults
+ok   si_addr matches the probed address
+ok   dual mapping created
+ok   both views see the same bytes
+ok   dual mapping destroyed
+ok   destroyed map is not usable (negative case)
+ok   cpu facts collected
+ok   page size is a power of two >= 1024
+ok   pointer width reported
+ok   architecture name reported
+ok   ABI name reported
+ok   cpu facts name the same platform
+ok   mutex counter completed
+ok   mutex-protected counter is exact
+ok   TLS round trip per thread
+ok   create/join round trip
+ok   condition variable delivered tokens
+ok   atomic counter is exact
+ok   SIGUSR1 install/query/restore
+ok   controlled SIGSEGV is caught
+ok   first guard installs
+ok   nested guard is refused with EBUSY
+ok   guard removed
+ok   platform summary is produced
+ok   the returned length matches the string
+ok   summary names the platform
+ok   summary reports the page size
+ok   summary reports the JIT ISA
+ok   summary reports the Apple target
+ok   the ISA in the summary is the real one
+ok   the platform in the summary is the real one
+ok   a short buffer is refused
+ok   a one-byte buffer is refused
+ok   …and it is cleared, not left half-written
+ok   NULL buffer is refused
+ok   capacity 0 is refused
+ok   hook present and callable classifies as PASS
+ok   hook present but refusing classifies as BLOCKED
+ok   unavailable on the iOS device target classifies as NOT_APPLICABLE, not PASS
+ok   the same holds for the iOS simulator target
+ok   a platform without the API classifies as UNSUPPORTED
+ok   an Apple build of unknown target does not claim to be iOS (conservative)
+ok   no input classifies as PASS without a successful call
+ok   apple target has a non-empty name
+ok   apple target code and name agree
+ok   apple target code is one of the documented values
+ok   the target is 'none' exactly when the host is not Apple
+ok   the write-protect gate follows the Apple target, not plain __APPLE__
+ok   pthread_jit_write_protect_np is advertised exactly where the target can call it
+ok   platform random bytes available
+ok   platform random bytes available a second time
+ok   two draws differ (128-bit collision
+ok   zero-length draw is a no-op, not a fault
+ok   NULL buffer with length is refused
+ok   …with EINVAL as the documented errno
+ok   unique shm name composed
+ok   second unique shm name composed
+ok   the two names differ
+ok   the name keeps the caller prefix
+ok   the name carries pid and 64 bits of randomness
+ok   too-small buffer is refused
+ok   …with ENAMETOOLONG as the documented errno
+ok   NULL output buffer is refused
+ok   …with EINVAL as the documented errno
+ok   filesystem round trip
+ok   filesystem limits are queryable
+ok   platform reports a usable PATH_MAX
+ok   platform reports a usable NAME_MAX
+ok   the implementation buffer exceeds NAME_MAX
+ok   deep path creation well inside the reported limit
+ok   deep path reached a long length
+ok   absurd depth is refused
+ok   …with ENAMETOOLONG, the platform/implementation limit
+ok   a failed deep-path probe leaves no residue in the workdir
+ok   NULL root is refused
+ok   …with EINVAL
+ok   depth 0 is refused
+ok   …with EINVAL
+ok   NULL root for the limits query is refused
+ok   …with EINVAL
+ok   symlink and chmod semantics
+ok   statvfs reports capacity
+ok   absent path is absent
+ok   socketpair round trip
+ok   pipe round trip
+ok   sun_path limit is reported
+ok   SCM_RIGHTS descriptor passing
+ok   POSIX shared memory round trip
+ok   readiness multiplexing works
+ok   read end closed
+ok   read on a closed descriptor fails
+ok   observed success is the only source of PASS
+ok   a defect stays a defect even when something else is blocked
+ok   a capability the platform refused is BLOCKED, never FAIL
+ok   an API the target cannot call is NOT_APPLICABLE
+ok   an absent mechanism is UNSUPPORTED
+ok   an unestablished cause is UNTESTED - never PASS, never FAIL
+ok   a dependent of a blocked capability is BLOCKED
+ok   …and also when the dependency is UNSUPPORTED
+ok   …but when the dependency PASSED the capability was there: that is a defect
+ok   outcome names are stable for the report
+ok   a dependency names the test that measures it
+ok   physical run #1: MAP_JIT attempted + probe EPERM + alloc EPERM => dependency
+ok   …and that dependency maps to BLOCKED, not FAIL
+ok   a different errno is a different failure: not excused by the probe
+ok   a non-MAP_JIT allocation failure is never blamed on the MAP_JIT capability
+ok   probe PASSED and the allocation still failed => defect
+ok   an allocation error with errno lost is a defect, not a capability verdict
+ok   physical run #1: error with errno=0 => defect, not a platform answer
+ok   …and that defect is FAIL, with the reason named in the record
+ok   reaching PATH_MAX is the platform limit: a measurement, not a failure
+ok   the probe's own buffer as ceiling is PASS with the provenance stated
+ok   …same for the leaf join
+ok   a sandbox refusal is a capability, not a defect
+ok   a full filesystem is a resource limit, reported as BLOCKED
+ok   an errno that fits no contract is a defect
+ok   the failing stage has a stable name for the report
+ok   no failing stage means the probe succeeded
+ok   shm_open refused with EPERM is a capability the sandbox did not grant
+ok   the second view refused is the same class, and the stage tells them apart
+ok   an absent mechanism is UNSUPPORTED
+ok   two views of one object disagreeing is our defect, never a platform property
+ok   an error with errno 0 is a defect of the error path
+ok   the stage name identifies the syscall in the record
+ok   a broken image is still rejected
+ok   …with a real reason (the reason is never left at OK)
+ok   a rejection reason can never read as a success
+ok   arena refused: a valid module is BLOCKED, not rejected (physical #1)
+ok   …the reason names the missing capability, not a rejection
+ok   …so the detail can never print 'rejected: OK'
+ok   …and the errno of the failing allocation is reported (never 0)
+ok   no value is reported for a module that did not run
+ok   physical #1 combination classifies as a blocked dependency (see also loader E2E)
+ok   …and the report says BLOCKED, not FAIL
+ok   physical #1 symptom: a rejection with reason OK is a defect, never a verdict
+ok   a rejection that names its reason is correct behaviour
+ok   probe PASSED and the arena still failed: that is ours, not the capability
+ok   an arena failure with errno lost cannot be blamed on the capability
+ok   the same image is accepted once memory is available again
+ok   …and it still returns the emitted immediate
+ok   …with OK as the reason for a successful run
+ok   the probe fails on a read-only root
+ok   …and the caller receives a non-zero errno (physical #1: it was 0)
+ok   …which is the failing call's errno, not the caller's old value
+ok   …and the failing stage is named
+ok   …with EACCES/EPERM/EROFS for a read-only directory
+ok   the capacity ceiling also carries a real, non-zero errno
+ok   …and a stage
+ok   …which is the probe's own buffer, or the errno-lost invariant breach
+ok   NULL root is refused
+ok   …with EINVAL, not with the caller's stale value
+ok   …and the stage says which argument
+ok   the run #1 symptom (errno=0) is FAIL with 'errno not preserved', not PASS
+ok   the 42 payload is emitted and its length is reported
+ok   the 4242 payload is emitted into its own buffer
+ok   the two payloads differ: they were emitted into separate buffers
+ok   an arena sized max(first, second) holds both payloads
+ok   the sizing rule used by the microtest covers both writes
+ok   an undersized buffer is refused by the emitter
+ok   a guard that cannot be installed is a failure of ours
+ok   …reported as INTERNAL, not as EXEC_FAULT (no fault ever happened)
+ok   …with the errno of the guard failure
+ok   …and the output value is left untouched
+ok   the executable-view stage has a stable name
+ok   EPERM on the executable view is a capability this process was not granted
+ok   …and the report says BLOCKED, not UNSUPPORTED (the same rule as ipc.posix_shm)
+ok   shm_open refused is the same class, and the stage tells the two apart
+ok   an absent mechanism is UNSUPPORTED
+ok   two views that disagree although both were granted is our defect
+ok   an errno that fits no contract is a defect, never a platform limit
+ok   an error with errno 0 is a defect of the error path
+ok   no failing stage means the experiment succeeded
+ok   a successful dual map reports no failing stage
+ok   …and its two views alias the same memory
+ok   the cleanup stage has a stable name
+ok   a failing cleanup never turns a proven capability into a refusal
+ok   …while a refusal at shm_open still is one
+ok   the shared-memory probe succeeds on this host
+ok   …and reports either no failing stage or the cleanup one
+ok   a fully successful probe reports no errno
+ok   the log can be allocated
+ok   an over-long DETAIL carries an explicit truncation marker
+ok   …and the record itself is still identifiable
+ok   context initialised
+ok   context carries the page size
+ok   module added
+ok   module can be found
+ok   absent module returns NULL
+ok   module marked as executed
+ok   marking an absent module fails
+ok   context describes itself
+ok   module table refuses to overflow
+ok   region reserved for the overflow probe
+ok   rt_mem_protect refuses a length that would overflow the rounding
+ok   …with EOVERFLOW as the documented errno
+ok   a normal length is still protected
+ok   …and reports no error
+ok   region released
+ok   links probe on a missing root fails
+ok   …with ENOENT (the failing open), not a stale errno
+ok   the file root path fits its buffer
+ok   links probe under a file fails
+ok   …with ENOTDIR (the failing open), not a stale errno
+ok   temp file name into a too-small buffer fails
+ok   …with ENAMETOOLONG
+ok   temp file created for the success case
+ok   …and the success path clears errno
+ok   SIGUSR1 round trip still succeeds
+ok   …and clears errno
+ok   an invalid signal number fails
+ok   …and the failure carries an errno (never 0, never untouched)
+ok   thread round trip succeeds with errno cleared
+ok   TLS round trip succeeds with errno cleared
+ok   mutex counter succeeds with errno cleared
+ok   condition ping-pong succeeds with errno cleared
+ok   atomics round trip succeeds with errno cleared
+ok   SCM_RIGHTS probe still succeeds
+ok   …and clears errno
+ok   cpu facts collected for the truncation test
+ok   cpu facts summary returns the caller's buffer
+ok   a cpu summary that does not fit says it was truncated
+ok   …and a summary that fits carries no marker
+ok   context initialised for the truncation test
+ok   context description returns the caller's buffer
+ok   a truncated context description is marked
+ok   summary line returns the caller's buffer
+ok   a truncated summary line is marked
+ok   …and a summary that fits starts with its counts
+ok   …without a marker
+ok   jit arena allocated (arena-kind probe)
+ok   MAP_JIT kind implies the MAP_JIT path was taken
+ok   non-MAP_JIT arena reports the ANON kind
+ok   ANON arena: MAP_JIT was not attempted on this platform
+ok   ANON arena: no refusal to report
+ok   arena is writable before the executable flip
+ok   arena flips to R-X (single view, W^X)
+note arena RWX policy: granted by this kernel (recorded; the port still prefers W^X)
+ok   arena returns to writable-not-executable after the RWX observation
+ok   arena released
+ok   file-backed dual mapping: scratch directory created
+ok   file-backed dual mapping succeeded
+ok   file-backed map reports itself supported
+ok   file-backed views alias the same memory (real semantics)
+ok   writable view released
+ok   executable view released
+ok   no backing object is left behind in the directory
+ok   scratch directory removed (cleanup verified)
+ok   file-backed dual mapping refuses a NULL directory
+ok   …with errno=EINVAL (a defect of the call, not a platform answer)
+ok   …naming the stage that failed
+ok   …and reports the map as unsupported
+ok   file-backed dual mapping refuses an unusable directory
+ok   …with a real errno from open(2)
+ok   …naming open(2) as the failing stage
+== 298 checks, 0 failures ==
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_run_selected_tests
+# selected-suite regression: entry points phase02_run_suite/phase02_run_all, target=linux workdir=/tmp/phase02-run-selected-rOMl1z
+ok   run_selected(memory) returns a report
+ok   run_selected(memory) records at least one test
+ok   run_selected(memory) reports no failures
+ok   run_selected(memory) has a summary
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(jit) returns a report
+ok   run_selected(jit) records at least one test
+ok   run_selected(jit) reports no failures
+ok   run_selected(jit) has a summary
+     jit       records=13 pass=11 fail=0 blocked=0 unsupported=2 untested=0 n/a=0 summary=PASS
+ok   run_selected(cpu) returns a report
+ok   run_selected(cpu) records at least one test
+ok   run_selected(cpu) reports no failures
+ok   run_selected(cpu) has a summary
+     cpu       records=7 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=2 summary=PASS
+ok   run_selected(threads) returns a report
+ok   run_selected(threads) records at least one test
+ok   run_selected(threads) reports no failures
+ok   run_selected(threads) has a summary
+     threads   records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(signals) returns a report
+ok   run_selected(signals) records at least one test
+ok   run_selected(signals) reports no failures
+ok   run_selected(signals) has a summary
+     signals   records=4 pass=4 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(fs) returns a report
+ok   run_selected(fs) records at least one test
+ok   run_selected(fs) reports no failures
+ok   run_selected(fs) has a summary
+     fs        records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(ipc) returns a report
+ok   run_selected(ipc) records at least one test
+ok   run_selected(ipc) reports no failures
+ok   run_selected(ipc) has a summary
+     ipc       records=7 pass=7 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(loader) returns a report
+ok   run_selected(loader) records at least one test
+ok   run_selected(loader) reports no failures
+ok   run_selected(loader) has a summary
+     loader    records=9 pass=9 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   run_selected(all) returns a report
+ok   run_selected(all) records at least one test
+ok   run_selected(all) reports no failures
+ok   run_selected(all) has a summary
+     all       records=60 pass=56 fail=0 blocked=0 unsupported=2 untested=0 n/a=2 summary=PASS
+ok   the recorder is off again after a plain run
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   baseline run for the sequence comparison
+ok   pressing cpu twice reports identical numbers
+ok   pressing threads twice reports identical numbers
+ok   sequence step runs
+ok   sequence step memory matches its baseline (no residue from the previous step)
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step cpu matches its baseline (no residue from the previous step)
+     cpu       records=7 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=2 summary=PASS
+ok   sequence step runs
+ok   sequence step threads matches its baseline (no residue from the previous step)
+     threads   records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step memory matches its baseline (no residue from the previous step)
+     memory    records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step jit matches its baseline (no residue from the previous step)
+     jit       records=13 pass=11 fail=0 blocked=0 unsupported=2 untested=0 n/a=0 summary=PASS
+ok   sequence step runs
+ok   sequence step cpu matches its baseline (no residue from the previous step)
+     cpu       records=7 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=2 summary=PASS
+ok   sequence step runs
+ok   sequence step all matches its baseline (no residue from the previous step)
+     all       records=60 pass=56 fail=0 blocked=0 unsupported=2 untested=0 n/a=2 summary=PASS
+ok   an unknown selection still returns a report
+ok   an unknown selection is one UNSUPPORTED record and nothing else
+ok   an unknown selection does not need a log to be rejected
+ok   an unknown selection is UNSUPPORTED, not a crash and not a FAIL
+ok   a valid selection still works after an invalid one
+ok   rerun baseline
+ok   rerun executes
+ok   memory rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   memory rerun 10/10 reports the baseline numbers
+     memory rerun baseline:                records=10 pass=10 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   rerun baseline
+ok   rerun executes
+ok   cpu rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   cpu rerun 10/10 reports the baseline numbers
+     cpu rerun baseline:                records=7 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=2 summary=PASS
+ok   rerun baseline
+ok   rerun executes
+ok   threads rerun 1/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 2/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 3/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 4/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 5/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 6/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 7/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 8/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 9/10 reports the baseline numbers
+ok   rerun executes
+ok   threads rerun 10/10 reports the baseline numbers
+     threads rerun baseline:                records=5 pass=5 fail=0 blocked=0 unsupported=0 untested=0 n/a=0 summary=PASS
+ok   the case directory path fits
+ok   journal path is built without truncation
+ok   write-ahead path is built without truncation
+ok   a journalled run still produces the normal report
+ok   the recorder is closed after the run
+ok   the journal is readable
+ok   the journal's last event is JOURNAL_END
+ok   the journal file exists
+ok   the journal names the suite it entered
+ok   the journal names the suite it left
+ok   the write-ahead report exists and is not empty
+ok   the write-ahead report is readable
+ok   the write-ahead report contains the measurements
+ok   reading a missing journal fails instead of inventing an event
+ok   reading into a too-small buffer fails instead of truncating an event
+ok   policy: a platform that cannot + no opt-in = DEFERRED (the iOS device row)
+ok   policy: a platform that cannot + explicit opt-in = ATTEMPT (the dedicated run)
+ok   policy: a platform that can = ATTEMPT even without the opt-in (Linux/macOS)
+ok   policy: both = ATTEMPT
+ok   policy: decisions have their distinct names
+ok   policy: the current target has a name
+ok   policy: the current target states the evidence for its flags
+ok   policy: every decision has a reason
+ok   policy: the deferral names the physical run it comes from
+ok   policy: this host still attempts to enter written memory
+ok   policy: this host still attempts the executable object view
+ok   policy: refusing the opt-in does not disable a platform that allows the operation
+ok   policy: the opt-in does not disable a platform that allows the operation
+ok   policy: the summary renders
+ok   policy: the summary carries every field the report needs
+ok   policy: a NULL buffer is refused
+ok   policy: a buffer that cannot hold the summary is refused, not truncated
+ok   simulated iOS-class target defers entering written memory
+ok   simulated iOS-class target defers the executable object view
+ok   the simulated profile is labelled as a simulation, never as device evidence
+ok   the simulated profile names the target it stands in for
+ok   the execution-attempt opt-in still allows the attempt on the iOS-class target
+ok   iOS-class run_selected(memory) returns a report
+ok   iOS-class run_selected(memory) reports no failures
+ok   iOS-class run_selected(jit) returns a report
+ok   iOS-class run_selected(jit) reports no failures
+ok   iOS-class run_selected(cpu) returns a report
+ok   iOS-class run_selected(cpu) reports no failures
+ok   iOS-class run_selected(threads) returns a report
+ok   iOS-class run_selected(threads) reports no failures
+ok   iOS-class run_selected(signals) returns a report
+ok   iOS-class run_selected(signals) reports no failures
+ok   iOS-class run_selected(fs) returns a report
+ok   iOS-class run_selected(fs) reports no failures
+ok   iOS-class run_selected(ipc) returns a report
+ok   iOS-class run_selected(ipc) reports no failures
+ok   iOS-class run_selected(loader) returns a report
+ok   iOS-class run_selected(loader) reports no failures
+ok   iOS-class run_selected(all) returns a report
+ok   iOS-class run_selected(all) reports no failures
+     jit(ios)  records=12 pass=5 fail=0 blocked=5 unsupported=2 untested=0 n/a=0 summary=BLOCKED
+     all(ios)  records=59 pass=49 fail=0 blocked=6 unsupported=2 untested=0 n/a=2 summary=BLOCKED
+ok   a log for the record-level check
+ok   TEST=jit.make_executable STATUS=BLOCKED
+ok   TEST=jit.execute_return_42 STATUS=BLOCKED
+ok   TEST=jit.rewrite_payload STATUS=BLOCKED
+ok   TEST=jit.execute_return_4242 STATUS=BLOCKED
+ok   TEST=jit.execution_allowed STATUS=BLOCKED
+ok   the loader's execution is deferred, with the module NOT rejected
+ok   the deferral is reported through the report, not as a checkpoint string
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   baseline under the native profile
+ok   cpu reports identical numbers with the execution attempt deferred
+ok   threads reports identical numbers with the execution attempt deferred
+ok   the jit suite does differ between the two profiles (the gate is really reached)
+ok   clearing the simulation restores this host's own profile
+== 206 checks, 0 failures ==
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite all --quiet --workdir /tmp/tmp.pH9DCyype6
+records=60 assertions=0 pass=56 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite memory --quiet --journal /tmp/tmp.pH9DCyype6/journal.txt
+records=10 assertions=0 pass=10 fail=0 blocked=0 unsupported=0 untested=0 not_applicable=0 summary=PASS
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite jit --quiet --journal /tmp/tmp.pH9DCyype6/journal.txt
+records=13 assertions=0 pass=11 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=0 summary=PASS
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite cpu --quiet --journal /tmp/tmp.pH9DCyype6/journal.txt
+records=7 assertions=0 pass=5 fail=0 blocked=0 unsupported=0 untested=0 not_applicable=2 summary=PASS
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite threads --quiet --journal /tmp/tmp.pH9DCyype6/journal.txt
+records=5 assertions=0 pass=5 fail=0 blocked=0 unsupported=0 untested=0 not_applicable=0 summary=PASS
+--> exit 0
+$ /home/user/winlator/ios/build/address/phase02_poc --suite loader --quiet --journal /tmp/tmp.pH9DCyype6/journal.txt
+records=9 assertions=0 pass=9 fail=0 blocked=0 unsupported=0 untested=0 not_applicable=0 summary=PASS
+--> exit 0

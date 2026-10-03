@@ -19,8 +19,10 @@
 		9B0C14918192C40D0EFEEDD9 /* runtime_memory.c in Sources */ = {isa = PBXBuildFile; fileRef = 2BB2A1BB599226D49ECED81C /* runtime_memory.c */; };
 		34EE6E0DD3CF4D242ED96EA0 /* runtime_signals.c in Sources */ = {isa = PBXBuildFile; fileRef = 0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */; };
 		A46CD2BA12C537E03BA8EC04 /* runtime_threads.c in Sources */ = {isa = PBXBuildFile; fileRef = B42EBCE180E93191C873D458 /* runtime_threads.c */; };
+		BF9E269E124D87B532D1DB01 /* phase02_execution_policy.c in Sources */ = {isa = PBXBuildFile; fileRef = 8BF9A487F68CBB9F2444FA67 /* phase02_execution_policy.c */; };
 		1BE6EDF9F0FC1D331A62ACEF /* phase02_harness.c in Sources */ = {isa = PBXBuildFile; fileRef = 681BAF490EB0D0511265A3D9 /* phase02_harness.c */; };
 		AE9B834916293A7DC80997DF /* phase02_log.c in Sources */ = {isa = PBXBuildFile; fileRef = 700EA8348C7FEAB4CAD03BBD /* phase02_log.c */; };
+		E29B27460D8489DF3C45CA02 /* phase02_progress.c in Sources */ = {isa = PBXBuildFile; fileRef = 50E48E772F5AC165571C9299 /* phase02_progress.c */; };
 		60F76107646EFC223FE9A5A4 /* Phase02Bridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */; };
 		8E6FADDD289C6D850A44CF94 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7905E6D66FA0DC9949B3105A /* ContentView.swift */; };
 		FF3E5C5E0CD71D6A2E4DC48B /* WinlatorPhase02App.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD28C2EF9F75B5C66A8DC64E /* WinlatorPhase02App.swift */; };
@@ -50,10 +52,14 @@
 		2BB2A1BB599226D49ECED81C /* runtime_memory.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_memory.c; sourceTree = "<group>"; };
 		0C9DC05A9FA75B867F0AC168 /* runtime_signals.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_signals.c; sourceTree = "<group>"; };
 		B42EBCE180E93191C873D458 /* runtime_threads.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = runtime_threads.c; sourceTree = "<group>"; };
+		9C8FF70FFDD35721ABF4D481 /* phase02_execution_policy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_execution_policy.h; sourceTree = "<group>"; };
 		BAB92716C2FCB49617F69946 /* phase02_harness.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_harness.h; sourceTree = "<group>"; };
 		4C2C65454C6AA064B9F8B027 /* phase02_log.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_log.h; sourceTree = "<group>"; };
+		BC6BF18B24F89D3D6C131513 /* phase02_progress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = phase02_progress.h; sourceTree = "<group>"; };
+		8BF9A487F68CBB9F2444FA67 /* phase02_execution_policy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_execution_policy.c; sourceTree = "<group>"; };
 		681BAF490EB0D0511265A3D9 /* phase02_harness.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_harness.c; sourceTree = "<group>"; };
 		700EA8348C7FEAB4CAD03BBD /* phase02_log.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_log.c; sourceTree = "<group>"; };
+		50E48E772F5AC165571C9299 /* phase02_progress.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = phase02_progress.c; sourceTree = "<group>"; };
 		84374A0C4D4FC9FFF9484F4D /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9B077181F978A99E03BD4B0A /* Phase02-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Phase02-Bridging-Header.h; sourceTree = "<group>"; };
 		5B10963608EBD08A3881A5C2 /* Phase02Bridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Phase02Bridge.m; sourceTree = "<group>"; };
@@ -114,8 +120,10 @@
 		39BFDABF4CE3DBCC450DD34F /* include */ = {
 			isa = PBXGroup;
 			children = (
+				9C8FF70FFDD35721ABF4D481 /* child */,
 				BAB92716C2FCB49617F69946 /* child */,
 				4C2C65454C6AA064B9F8B027 /* child */,
+				BC6BF18B24F89D3D6C131513 /* child */,
 			);
 			path = include; name = include;
 			sourceTree = "<group>";
@@ -123,8 +131,10 @@
 		BDFBCCED56E7337A1515901A /* src */ = {
 			isa = PBXGroup;
 			children = (
+				8BF9A487F68CBB9F2444FA67 /* child */,
 				681BAF490EB0D0511265A3D9 /* child */,
 				700EA8348C7FEAB4CAD03BBD /* child */,
+				50E48E772F5AC165571C9299 /* child */,
 			);
 			path = src; name = src;
 			sourceTree = "<group>";
@@ -242,8 +252,10 @@
 				9B0C14918192C40D0EFEEDD9 /* runtime_memory.c in Sources */,
 				34EE6E0DD3CF4D242ED96EA0 /* runtime_signals.c in Sources */,
 				A46CD2BA12C537E03BA8EC04 /* runtime_threads.c in Sources */,
+				BF9E269E124D87B532D1DB01 /* phase02_execution_policy.c in Sources */,
 				1BE6EDF9F0FC1D331A62ACEF /* phase02_harness.c in Sources */,
 				AE9B834916293A7DC80997DF /* phase02_log.c in Sources */,
+				E29B27460D8489DF3C45CA02 /* phase02_progress.c in Sources */,
 				60F76107646EFC223FE9A5A4 /* Phase02Bridge.m in Sources */,
 				8E6FADDD289C6D850A44CF94 /* ContentView.swift in Sources */,
 				FF3E5C5E0CD71D6A2E4DC48B /* WinlatorPhase02App.swift in Sources */,

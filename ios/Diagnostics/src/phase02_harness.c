@@ -13,6 +13,8 @@
  *     behaviour.
  */
 #include "phase02_harness.h"
+#include "phase02_execution_policy.h"
+#include "phase02_progress.h"
 
 #include "phase02_log.h"
 #include "runtime_cpu_abi.h"
@@ -477,7 +479,7 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
             rt_dual_map_t ios_map;
             int named_err = map.err;
             rt_dual_stage_t named_stage = map.stage;
-            int ios_rc = rt_dual_map_create_file_backed(workdir, dual_len, &ios_map);
+            int ios_rc = 0;
 
             (void)snprintf(detail, sizeof(detail),
                            "named POSIX object refused at stage=%s errno=%d (%s) - a property "
@@ -488,6 +490,24 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
                            rt_dual_stage_name(named_stage), named_err, strerror(named_err));
             phase02_log_line(log, "[PHASE02] NOTE=memory.dual_mapping_backend %s", detail);
 
+            if (phase02_execution_allowed(PHASE02_EXEC_OP_OBJECT_EXEC_VIEW) == 0) {
+                /* The named path was attempted and its real stage/errno are recorded; the
+                 * executable view of an app-owned object is the operation this target is not
+                 * asked to perform without the explicit opt-in (run 03 terminated in this
+                 * suite). BLOCKED with the policy named: no PASS, no platform verdict. */
+                phase02_progress_checkpoint("DUAL_MAPPING_OBJECT_VIEW_DEFERRED");
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_BLOCKED,
+                                   "named POSIX path measured (stage=%s errno=%d, %s); the iOS "
+                                   "object-view backend was NOT attempted: %s",
+                                   rt_dual_stage_name(named_stage), named_err,
+                                   strerror(named_err),
+                                   phase02_execution_reason(
+                                       phase02_execution_profile_current(),
+                                       PHASE02_EXEC_OP_OBJECT_EXEC_VIEW, 0));
+            } else {
+            phase02_progress_checkpoint("DUAL_MAPPING_OBJECT_VIEW_BEGIN");
+            (void)phase02_progress_write_ahead(log, phase02_progress_directory());
+            ios_rc = rt_dual_map_create_file_backed(workdir, dual_len, &ios_map);
             if (ios_rc == 0) {
                 int aliased = rt_dual_map_views_aliased(&ios_map);
                 if (aliased == 1) {
@@ -535,6 +555,7 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
                                    rt_dual_stage_name(ios_map.stage), ios_map.err,
                                    strerror(ios_map.err), rt_dual_stage_name(named_stage),
                                    named_err, strerror(named_err), rt_platform_name());
+            }
             }
         } else if (!named_ok) {
             /* Non-Apple target (or a failure without an errno): the original path and its
@@ -794,6 +815,38 @@ static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status
         phase02_jit_release(log, arena, arena_len);
         return;
     }
+
+    /* ---- execution policy (pass 04, IPHONE13_PHYSICAL_RUN_03) ------------------------
+     * Making this arena executable and then entering it is what the previous physical run did
+     * at the moment the whole process disappeared. On a target whose platform strips execute
+     * permission without reporting it, the run must say so and stop here instead of taking
+     * the suite — and the report — down with it. Nothing is claimed about the capability:
+     * this is a policy deferral, available for a dedicated attempt through the opt-in, and
+     * every record below names it. On every other target the chain runs exactly as before and
+     * is proven by real execution. */
+    if (phase02_execution_allowed(PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY) == 0) {
+        const phase02_execution_profile_t *profile = phase02_execution_profile_current();
+        const char *reason = phase02_execution_reason(profile, PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY, 0);
+        phase02_progress_checkpoint("JIT_EXECUTION_DEFERRED");
+        phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
+                           "R-X transition NOT attempted: %s", reason);
+        phase02_log_record(log, "jit.execute_return_42", RT_BLOCKED,
+                           "nothing was executed: the execution attempt is deferred by policy "
+                           "(target=%s); this is neither a fault nor a platform verdict",
+                           profile->name);
+        phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
+                           "the rewrite was NOT written: its only purpose is to be executed "
+                           "again after the icache flush, and the execution attempt is "
+                           "deferred by policy (target=%s) - deferring both keeps the step "
+                           "from silently degrading into a write-only step", profile->name);
+        phase02_log_record(log, "jit.execute_return_4242", RT_BLOCKED,
+                           "nothing was executed: the execution attempt is deferred by policy "
+                           "(target=%s)", profile->name);
+        phase02_jit_release(log, arena, arena_len);
+        return;
+    }
+    phase02_progress_checkpoint("JIT_ENTER_WRITTEN_MEMORY_BEGIN");
+    (void)phase02_progress_write_ahead(log, phase02_progress_directory());
 
     if (!use_write_window &&
         rt_mem_protect(arena, first_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
@@ -1057,6 +1110,17 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
 
     phase02_jit_microtest(log, map_jit_status, map_jit_errno);
 
+    if (phase02_execution_allowed(PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY) == 0) {
+        /* The probe is implemented; what is deferred is the attempt to enter written memory
+         * on this target. Reporting BLOCKED (never PASS, never a platform verdict) is the
+         * honest answer, and it says exactly which policy sentence produced it. */
+        phase02_log_record(log, "jit.execution_allowed", RT_BLOCKED,
+                           "%s | %s",
+                           phase02_execution_reason(phase02_execution_profile_current(),
+                                                    PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY, 0),
+                           phase02_dependency_note(PHASE02_DEP_JIT_MAP));
+        return RT_PASS;
+    }
     allowed = rt_jit_execution_allowed();
     if (allowed == 1) {
         phase02_log_record(log, "jit.execution_allowed", RT_PASS,
@@ -1220,10 +1284,11 @@ static rt_status_t phase02_suite_signals(phase02_log_t *log, const char *workdir
                            rt_signal_last_fault_signal());
     } else if (rc == -2) {
         phase02_log_record(log, "signals.controlled_segv", RT_BLOCKED,
-                           "guard could not be installed errno=%d (%s)", err, strerror(err));
+                           "controlled fault could not be prepared (guard or fault page) "
+                           "errno=%d (%s)", err, strerror(err));
     } else {
         phase02_log_record(log, "signals.controlled_segv", RT_FAIL,
-                           "dereference of the null target did NOT fault");
+                           "the write to the inaccessible page did NOT fault");
     }
 
     phase02_log_record(log, "signals.suite_survived", RT_PASS,
@@ -1638,6 +1703,23 @@ static rt_status_t phase02_suite_loader(phase02_log_t *log, const char *workdir)
     }
     phase02_log_record(log, "loader.build_image", RT_PASS, "%zu-byte RTM1 image", image_len);
 
+    if (phase02_execution_allowed(PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY) == 0) {
+        /* The image and its execution path are audited by the rejection cases below; what is
+         * deferred here is only entering the mapped entry point — the operation that
+         * terminated the previous physical run. A valid image is still validated and still
+         * not rejected: the record says exactly that. */
+        phase02_progress_checkpoint("LOADER_EXECUTION_DEFERRED");
+        /* The image is still validated (the rejection cases below run on it) and its build is
+         * already recorded above: what is deferred is only entering the mapped entry point. */
+        phase02_log_record(log, "loader.run_valid_module", RT_BLOCKED,
+                           "image validated and accepted (%zu bytes) and the module was NOT "
+                           "rejected; entering the mapped entry point is deferred: %s",
+                           image_len,
+                           phase02_execution_reason(phase02_execution_profile_current(),
+                                                    PHASE02_EXEC_OP_ENTER_WRITTEN_MEMORY, 0));
+    } else {
+    phase02_progress_checkpoint("LOADER_ENTER_BEGIN");
+    (void)phase02_progress_write_ahead(log, phase02_progress_directory());
     status = rt_loader_run_ex(image, image_len, &value, &loader_err, &fault, &os_err,
                               &loader_map_jit);
     if (status == RT_PASS) {
@@ -1679,6 +1761,7 @@ static rt_status_t phase02_suite_loader(phase02_log_t *log, const char *workdir)
     }
 
     /* Negative cases: each must be rejected by pure validation. */
+    }
     {
         uint8_t copy[RT_MODULE_MAX_IMAGE];
         memcpy(copy, image, image_len);
@@ -1772,6 +1855,17 @@ const phase02_suite_t *phase02_suite_find(const char *name)
     return NULL;
 }
 
+/* The policy in force is evidence: it says whether the run was allowed to enter written
+ * memory, and it is emitted once per run so a report can never be read without it. */
+static void phase02_log_execution_policy(phase02_log_t *log)
+{
+    char summary[256];
+    if (phase02_execution_policy_summary(summary, sizeof(summary)) < 0) {
+        return;
+    }
+    phase02_log_line(log, "[PHASE02] NOTE=execution_policy %s", summary);
+}
+
 rt_status_t phase02_run_suite(const char *name, phase02_log_t *log, const char *workdir)
 {
     unsigned before[PHASE02_STATUS_COUNT];
@@ -1780,17 +1874,27 @@ rt_status_t phase02_run_suite(const char *name, phase02_log_t *log, const char *
     if (log == NULL || name == NULL) {
         return RT_FAIL;
     }
+    phase02_progress_checkpoint_kv("HARNESS_ENTER", "suite", name);
     suite = phase02_suite_find(name);
     if (suite == NULL) {
         phase02_log_record(log, "harness.unknown_suite", RT_UNSUPPORTED,
                            "no suite named '%s'", name);
+        phase02_progress_checkpoint("HARNESS_EXIT unknown-suite");
         return RT_UNSUPPORTED;
     }
 
+    phase02_log_execution_policy(log);
     phase02_snapshot(log, before);
     phase02_log_blank(log);
     phase02_log_line(log, "== SUITE %s: %s ==", suite->name, suite->description);
+    phase02_progress_checkpoint_kv("SUITE_ENTER", "suite", suite->name);
+    (void)phase02_progress_write_ahead(log, phase02_progress_directory());
+    /* The suite function is entered here, so its first test begins here: if the process is
+     * gone before the next checkpoint, the journal says exactly that. */
+    phase02_progress_checkpoint_kv("SUITE_FIRST_TEST_ENTER", "suite", suite->name);
     (void)suite->fn(log, workdir);
+    phase02_progress_checkpoint_kv("SUITE_EXIT", "suite", suite->name);
+    (void)phase02_progress_write_ahead(log, phase02_progress_directory());
     return phase02_delta_summary(log, before);
 }
 
@@ -1803,13 +1907,20 @@ rt_status_t phase02_run_all(phase02_log_t *log, const char *workdir)
     if (log == NULL) {
         return RT_FAIL;
     }
+    phase02_progress_checkpoint("HARNESS_ENTER suite=all");
+    phase02_log_execution_policy(log);
     for (index = 0u; index < phase02_suite_count(); index++) {
         const phase02_suite_t *suite = &phase02_suites_table[index];
         rt_status_t status;
         phase02_log_blank(log);
         phase02_log_line(log, "== SUITE %s: %s ==", suite->name, suite->description);
         phase02_snapshot(log, before);
+        phase02_progress_checkpoint_kv("SUITE_ENTER", "suite", suite->name);
+        (void)phase02_progress_write_ahead(log, phase02_progress_directory());
+        phase02_progress_checkpoint_kv("SUITE_FIRST_TEST_ENTER", "suite", suite->name);
         (void)suite->fn(log, workdir);
+        phase02_progress_checkpoint_kv("SUITE_EXIT", "suite", suite->name);
+        (void)phase02_progress_write_ahead(log, phase02_progress_directory());
         /* The delta of the counters is authoritative, not the suite's return value:
          * a suite that records a FAIL must not be able to claim success. */
         status = phase02_delta_summary(log, before);

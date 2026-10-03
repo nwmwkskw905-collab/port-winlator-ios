@@ -37,7 +37,7 @@ CONTROL_R=DETECTED by audit PAGE_SIZE_MEASURED
   what: a page size written into the source instead of measured
 
 == restoration ==
-  ok   Diagnostics/src/phase02_harness.c cfec101f7772c453
+  ok   Diagnostics/src/phase02_harness.c f2ad22092e2e2a35
   ok   RuntimeCore/src/runtime_jit.c 949bc3a1c664b31e
   ok   RuntimeCore/src/runtime_loader.c b418f24fc9191617
   ok   RuntimeCore/src/runtime_dual_mapping.c 93b18bbae52c21b2
@@ -47,7 +47,7 @@ CONTROL_R=DETECTED by audit PAGE_SIZE_MEASURED
   ok   RuntimePoC/ContentView.swift 0d7a04b1fe41830e
   ok   RuntimePoC/Info.plist 667f0796888635cb
   ok   RuntimeCore/src/runtime_memory.c c63c737a84026d56
-  ok   RuntimeCore/src/runtime_signals.c 52ec41544fc356cf
+  ok   RuntimeCore/src/runtime_signals.c a9506778897a9f5a
   ok   RuntimeCore/src/runtime_threads.c 80e2689c8803f142
   ok   RuntimeCore/src/darwin_platform.c 4cda982ec085e300
   after restore: build rc=0, tests == 298 checks, 0 failures ==

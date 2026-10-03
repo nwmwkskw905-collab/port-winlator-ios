@@ -30,6 +30,10 @@ if command -v qemu-aarch64 >/dev/null 2>&1; then
     (cd "$BUILD" && qemu-aarch64 -L "$SYSROOT" ./phase02_unit_tests) \
         > "$EVIDENCE/aarch64_unit_tests.log" 2>&1 || true
     tail -1 "$EVIDENCE/aarch64_unit_tests.log"
+    echo "[aarch64] selected-suite regression under qemu"
+    (cd "$BUILD" && qemu-aarch64 -L "$SYSROOT" ./phase02_run_selected_tests) \
+        > "$EVIDENCE/aarch64_run_selected_tests.log" 2>&1 || true
+    tail -1 "$EVIDENCE/aarch64_run_selected_tests.log"
     echo "[aarch64] full suite under qemu"
     (cd "$BUILD" && qemu-aarch64 -L "$SYSROOT" ./phase02_poc --suite all \
         --export "$EVIDENCE/aarch64_phase02_report.txt") \

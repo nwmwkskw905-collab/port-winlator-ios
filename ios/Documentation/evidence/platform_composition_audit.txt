@@ -2,7 +2,7 @@
 configurations : linux-x86_64, linux-aarch64, macos-arm64, iphoneos-arm64, iphonesimulator-x86_64
 project root   : /home/user/winlator/ios
 
-TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+TARGET_COMPOSITION=0 (19 files in the Xcode target, 16 in the CMake library, 3 executables)
 
 what each source really is (content-based, not filename-based):
   ContentView.swift          apple=yes            platform conditionals: (none)
@@ -11,8 +11,10 @@ what each source really is (content-based, not filename-based):
   darwin_platform.c          apple=yes linux=yes  platform conditionals: __APPLE__, __aarch64__, MAP_JIT, RT_APPLE_HAS_JIT_WRITE_PROTECT, __x86_64__, __i386__
   linux_platform.c           apple=yes linux=yes  platform conditionals: __linux__, __aarch64__
   main.c                     linux=yes            platform conditionals: (none)
+  phase02_execution_policy.c apple=yes linux=yes  platform conditionals: (none)
   phase02_harness.c          apple=yes linux=yes  platform conditionals: (none)
   phase02_log.c              apple=yes linux=yes  platform conditionals: (none)
+  phase02_progress.c         apple=yes linux=yes  platform conditionals: (none)
   runtime_context.c          apple=yes linux=yes  platform conditionals: (none)
   runtime_cpu_abi.c          apple=yes linux=yes  platform conditionals: __x86_64__, __i386__, __aarch64__, __arm__, __APPLE__, __linux__
   runtime_dual_mapping.c     apple=yes linux=yes  platform conditionals: (none)
@@ -23,6 +25,7 @@ what each source really is (content-based, not filename-based):
   runtime_memory.c           apple=yes linux=yes  platform conditionals: __APPLE__, __linux__
   runtime_signals.c          apple=yes linux=yes  platform conditionals: (none)
   runtime_threads.c          apple=yes linux=yes  platform conditionals: (none)
+  test_run_selected.c        linux=yes            platform conditionals: (none)
   test_runtime_core.c        linux=yes            platform conditionals: __x86_64__, __i386__, __aarch64__, __APPLE__
 
 APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
@@ -42,7 +45,18 @@ cache maintenance reached by each configuration:
 
 BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
 
-UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+conditions this audit could not decide (region treated as reachable):
+  Diagnostics/src/phase02_execution_policy.c:14 [macos-arm64] #ifndef PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT
+  Diagnostics/src/phase02_execution_policy.c:15 [macos-arm64] #define PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT 0
+  Diagnostics/src/phase02_execution_policy.c:14 [iphoneos-arm64] #ifndef PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT
+  Diagnostics/src/phase02_execution_policy.c:15 [iphoneos-arm64] #define PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT 0
+  Diagnostics/src/phase02_execution_policy.c:14 [iphonesimulator-x86_64] #ifndef PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT
+  Diagnostics/src/phase02_execution_policy.c:15 [iphonesimulator-x86_64] #define PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT 0
+  Diagnostics/src/phase02_execution_policy.c:14 [linux-x86_64] #ifndef PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT
+  Diagnostics/src/phase02_execution_policy.c:15 [linux-x86_64] #define PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT 0
+  Diagnostics/src/phase02_execution_policy.c:14 [linux-aarch64] #ifndef PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT
+  Diagnostics/src/phase02_execution_policy.c:15 [linux-aarch64] #define PHASE02_IOS_ALLOW_EXECUTION_ATTEMPT 0
+UNDECIDED_CONDITIONS=10 (add the fact to CONFIGS instead of guessing)
 
 PLATFORM_COMPOSITION_AUDIT=0
 note: static pre-check — the Apple compiler and linker remain the authority for the iphoneos build.

@@ -1,5 +1,5 @@
 == Apple API audit (macOS-only symbols) ==
-files scanned          : 29
+files scanned          : 33
 macOS-only symbols     : 8
 guards accepted as safe: RT_APPLE_HAS_JIT_WRITE_PROTECT, TARGET_OS_OSX, !TARGET_OS_IPHONE, !TARGET_OS_SIMULATOR, !defined(__APPLE__)
 

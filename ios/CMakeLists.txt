@@ -48,6 +48,8 @@ add_library(phase02_runtime_core STATIC
     RuntimeCore/src/runtime_loader.c
     Diagnostics/src/phase02_log.c
     Diagnostics/src/phase02_harness.c
+    Diagnostics/src/phase02_progress.c
+    Diagnostics/src/phase02_execution_policy.c
 )
 
 target_include_directories(phase02_runtime_core PUBLIC
@@ -68,8 +70,15 @@ target_link_libraries(phase02_poc PRIVATE phase02_runtime_core)
 add_executable(phase02_unit_tests Tests/test_runtime_core.c)
 target_link_libraries(phase02_unit_tests PRIVATE phase02_runtime_core)
 
+# Pass 04: the selected-suite regression. It drives the same two entry points the app's
+# "Run Selected" button drives, one press per phase02_log_t, and is the test that would have
+# caught a run-03-class termination that the per-suite host runs never exercised.
+add_executable(phase02_run_selected_tests Tests/test_run_selected.c)
+target_link_libraries(phase02_run_selected_tests PRIVATE phase02_runtime_core)
+
 enable_testing()
 add_test(NAME phase02_unit_tests COMMAND phase02_unit_tests)
+add_test(NAME phase02_run_selected_tests COMMAND phase02_run_selected_tests)
 add_test(NAME phase02_suite_all COMMAND phase02_poc --suite all --quiet)
 
 # The AArch64 Linux cross build of the very same translation units lives in a separate

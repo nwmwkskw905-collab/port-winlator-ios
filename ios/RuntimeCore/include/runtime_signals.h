@@ -68,10 +68,14 @@ int rt_signal_roundtrip(int signal_number, int *err_out);
 int rt_signal_mask_roundtrip(int signal_number, int *err_out);
 
 /*
- * Dereferences NULL inside a guarded scope and reports the fault.
+ * Produces ONE deliberate fault inside a guarded scope and reports it: the probe writes to a
+ * page this process owns and has made inaccessible (RT_PROT_NONE), never through a null
+ * pointer — a null-pointer store is undefined behaviour that UBSAN flags and an optimiser may
+ * remove, so it cannot be the basis of a test. The signal, the guard and the si_addr
+ * semantics are unchanged.
  * Returns 0 when the fault was observed (*fault_addr_out = si_addr),
  * -1 when no fault was observed (a failure of the probe itself),
- * -2 when the guard could not be installed (errno in *err_out).
+ * -2 when the probe could not be prepared (guard or fault page; errno in *err_out).
  */
 int rt_signal_controlled_segv(void **fault_addr_out, int *err_out);
 

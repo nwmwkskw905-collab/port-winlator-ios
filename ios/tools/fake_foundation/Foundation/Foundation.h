@@ -62,4 +62,26 @@ typedef unsigned long NSUInteger;
  * so the same stub also covers a syntax pass over app-level C. */
 extern NSString *NSTemporaryDirectory(void);
 
+/* Standard Foundation surface the pass-04 bridge diagnostics need: an ordered collection and
+ * the documented search-path API. Declared with the real signatures — if the bridge ever used
+ * them wrongly, the syntax check (and Apple's compiler) would say so. */
+typedef unsigned long NSInteger;
+
+@class NSArray<__covariant ObjectType>;
+
+typedef NSInteger NSSearchPathDirectory;
+typedef NSInteger NSSearchPathDomainMask;
+
+#define NSDocumentDirectory ((NSSearchPathDirectory)9)
+#define NSUserDomainMask    ((NSSearchPathDomainMask)1)
+
+@interface NSArray<__covariant ObjectType> : NSObject
+@property (readonly) NSUInteger count;
+@property (readonly) ObjectType firstObject;
+@end
+
+extern NSArray<NSString *> *NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory directory,
+                                                               NSSearchPathDomainMask domainMask,
+                                                               BOOL expandTilde);
+
 #endif /* PHASE02_FAKE_FOUNDATION_H */

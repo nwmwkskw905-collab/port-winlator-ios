@@ -1,0 +1,26 @@
+ok   PC1 the victim was killed by SIGKILL (rc=-9)
+ok   PC1 the journal survives the kill and names the last checkpoint
+ok   PC1 the diagnosis names the run-03 class
+ok   PC1-N with the recorder disabled the same detector reports UNKNOWN (it is not always-passing)
+ok   PC2 a completed run exits 0
+ok   PC2 a completed run is diagnosed as COMPLETED
+ok   PC2-N the kill case from PC1 is NOT diagnosed as COMPLETED
+ok   PC3 a report is on disk even though the run was killed
+ok   PC3 the report on disk contains the measurements taken before the kill
+ok   PC3 the risky step is covered by a write-ahead that reported OK
+ok   PC3-N a victim that takes the risky step before writing anything is flagged as uncovered
+ok   PC5 the bridge emits the whole checkpoint set
+ok   PC5 the checkpoints appear in execution order
+ok   PC5 the bridge emits no checkpoint inside the suite body
+ok   PC5-N dropping one checkpoint is detected by the same check
+ok   PC6 the JIT chain has a policy-guarded deferral branch
+ok   PC6 the JIT deferral reports BLOCKED and names the policy reason
+ok   PC6 the JIT deferral does not make the arena executable
+ok   PC6 the JIT deferral does not call the generated code
+ok   PC6 the object-view deferral reports BLOCKED with the named path's own stage
+ok   PC6 the object-view deferral does not create the executable view
+ok   PC6 the loader deferral reports BLOCKED and does not enter the entry point
+ok   PC6-N a branch whose policy guard was removed is no longer recognisable as guarded
+ok   PC4 the project's reader names the last checkpoint of a killed run
+ok   PC4-N a look-alike journal cannot fake a last checkpoint
+PASS04_NEGATIVE_CONTROLS=25/25
