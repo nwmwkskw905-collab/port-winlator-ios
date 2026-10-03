@@ -68,6 +68,23 @@ static void phase02_snapshot(const phase02_log_t *log, unsigned before[PHASE02_S
     }
 }
 
+int phase02_platform_summary(char *out, size_t capacity)
+{
+    int written;
+
+    if (out == NULL || capacity == 0u) {
+        return -1;
+    }
+    written = snprintf(out, capacity, "platform=%s page_size=%d isa=%s apple_target=%s",
+                       rt_platform_name(), rt_platform_page_size(), rt_jit_isa(),
+                       rt_platform_apple_target_name());
+    if (written < 0 || (size_t)written >= capacity) {
+        out[0] = '\0';
+        return -1;
+    }
+    return written;
+}
+
 rt_status_t phase02_classify_write_protect(int has_capability, int probe_result,
                                            int apple_target)
 {

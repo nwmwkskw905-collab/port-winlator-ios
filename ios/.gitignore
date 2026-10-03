@@ -13,3 +13,8 @@ box64-registers/harness/artifacts/frame/new/t_frame_new
 box64-registers/harness/artifacts/frame/orig/t_frame_orig
 box64-registers/harness/artifacts/frame/mutant/t_frame_mutant
 box64-registers/harness/out/
+
+# Python bytecode from the tools/ helpers (they set sys.dont_write_bytecode, but a
+# stray import should still never land in the repository)
+__pycache__/
+*.pyc

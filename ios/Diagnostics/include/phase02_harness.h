@@ -47,6 +47,19 @@ rt_status_t phase02_classify_write_protect(int has_capability, int probe_result,
                                            int apple_target);
 rt_status_t phase02_run_all(phase02_log_t *log, const char *workdir);
 
+/* One-line description of the runtime environment:
+ *   "platform=<name> page_size=<n> isa=<isa> apple_target=<target>"
+ *
+ * This exists so the app layer never has to include RuntimeCore headers: anything the
+ * app needs is exposed here. CI run #4 is why — Phase02Bridge.m called rt_jit_isa()
+ * while including only runtime_platform.h, and clang rejected the implicit declaration.
+ * The fix was not to sprinkle declarations: it was to expose the composed string from
+ * the layer that already sees all the RuntimeCore facts.
+ *
+ * Returns the number of characters written (excluding the terminator), or -1 when the
+ * buffer is too small or the arguments are invalid. */
+int phase02_platform_summary(char *out, size_t capacity);
+
 /* Comma-separated list of suite names, for --list and the app. */
 const char *phase02_suite_names(char *buf, size_t cap);
 

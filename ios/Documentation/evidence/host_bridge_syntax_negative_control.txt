@@ -1,0 +1,33 @@
+EVIDENCE_CLASS = CONTROLE NEGATIVO EM HOST LINUX (clang 19 + stub Foundation)
+NOTE           = NAO e build Apple. Arquivo usado: versao PRE-correcao de Phase02Bridge.m
+                 (commit e924199), no lugar correto, com o MESMO comando do passo 4e.
+                 Prova que o passo detecta o defeito real da CI #4 sem gastar um ciclo de CI.
+
+--- comando: sh tools/check_bridge_syntax.sh (arquivo revertido para e924199) ---
+# clang Debian clang version 19.1.7 (3+b1)
+# stub Foundation: tools/fake_foundation/Foundation/Foundation.h (never used by the app)
+RuntimePoC/Phase02Bridge.m:41:9: error: call to undeclared library function 'strcmp' with type 'int (const char *, const char *)'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   41 |     if (strcmp(cName, "all") == 0) {
+      |         ^
+RuntimePoC/Phase02Bridge.m:41:9: note: include the header <string.h> or explicitly provide a declaration for 'strcmp'
+RuntimePoC/Phase02Bridge.m:75:69: error: call to undeclared function 'rt_jit_isa'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+   75 |                        rt_platform_name(), rt_platform_page_size(), rt_jit_isa()];
+      |                                                                     ^
+RuntimePoC/Phase02Bridge.m:75:69: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+   74 |     NSString *value = [NSString stringWithFormat:@"platform=%s page_size=%d isa=%s",
+      |                                                                                 ~~
+      |                                                                                 %d
+   75 |                        rt_platform_name(), rt_platform_page_size(), rt_jit_isa()];
+      |                                                                     ^~~~~~~~~~~~
+1 warning and 2 errors generated.
+BRIDGE_SYNTAX warnings=1 errors=2
+BRIDGE_SYNTAX=FAIL (see /home/user/winlator/ios/Documentation/evidence/bridge_syntax.log)
+
+--- o que isso prova ---
+- mesmo arquivo, mesma linha e coluna da CI #4: Phase02Bridge.m:75:69
+  'call to undeclared function rt_jit_isa';
+- o warning de formato identico: 'format specifies type char * but the argument has type int'
+  (o int inferido pelo compilador no lugar do const char * real);
+- alem disso o passo expos um defeito LATENTE que so compilava na Apple porque
+  Foundation.h trazia <string.h> de carona: 'strcmp' em Phase02Bridge.m:41 sem
+  prototipo visivel. Corrigido no mesmo passe, com <stdio.h> e <string.h> explicitos.

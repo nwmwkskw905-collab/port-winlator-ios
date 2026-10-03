@@ -1,0 +1,46 @@
+EVIDENCE_CLASS = MACOS_RUNNER_ARM64 (ambiente de build) + IPHONEOS BUILD (alvo compilado)
+NOTE           = NÃO é IPHONE_PHYSICAL. Compilar para iphoneos não é executar em iPhone.
+                 IPHONE_VALIDATION_PENDING permanece.
+
+ORIGEM         = TRANSCRIÇÃO do relato da QUARTA execução real do workflow
+                 "iOS Runtime PoC (unsigned IPA)", já com as Correções 01, 02 e 03 na `main`.
+                 Não é log bruto; o log bruto pertence ao GitHub Actions daquela execução.
+
+--------------------------------------------------------------------------------
+O QUE AVANÇOU
+--------------------------------------------------------------------------------
+- `sys/random.h` NÃO reapareceu (Correção 02);
+- `pthread_jit_write_protect_np unavailable on iOS` NÃO reapareceu (Correção 03);
+- o build `iphoneos` ultrapassou os dois bloqueadores anteriores e chegou ao
+  alvo do app.
+
+--------------------------------------------------------------------------------
+BLOQUEADOR (CI #4) — chamada sem declaração visível
+--------------------------------------------------------------------------------
+ios/RuntimePoC/Phase02Bridge.m:75:69:
+    error: call to undeclared function 'rt_jit_isa'; ISO C99 and later do not support
+           implicit function declarations [-Wimplicit-function-declaration]
+
+    rt_platform_name(), rt_platform_page_size(), rt_jit_isa()
+
+warning consequente (mesma linha):
+    warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+
+Resultado: `1 warning and 1 error generated.` / `** BUILD FAILED **`
+
+CAUSA RAIZ: a função EXISTE e está declarada — `const char *rt_jit_isa(void)` em
+`RuntimeCore/include/runtime_jit.h`. O que faltava era o HEADER: `Phase02Bridge.m`
+incluía `phase02_harness.h`, `phase02_log.h` e `runtime_platform.h`, e chamava uma
+função de `runtime_jit.h`. Sem protótipo visível o compilador assume `int` (C89) ou
+recusa (C99+) — daí o erro, e daí o warning de formato: `%s` recebendo o `int` que o
+compilador inferiu, em vez do `const char *` real.
+
+É um defeito de INTERFACE, não de tipo: o diagnóstico de ISA estava correto, a função
+estava correta, e o tipo de retorno estava correto — só não era visível onde era usado.
+
+--------------------------------------------------------------------------------
+O QUE A PRÓXIMA EXECUÇÃO DEVE COMPROVAR
+--------------------------------------------------------------------------------
+No mínimo: o build `iphoneos` ULTRAPASSA `Phase02Bridge.m` e a chamada de `rt_jit_isa()`.
+Não se afirma que o build completo ou a IPA passarão: qualquer novo bloqueador do SDK
+será reportado sem mascaramento.

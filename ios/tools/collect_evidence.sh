@@ -25,6 +25,12 @@ python3 "$ROOT/tools/audit_apple_includes.py" 2>&1 | tee "$EVIDENCE/apple_includ
 echo "[evidence] Apple API audit (macOS-only symbols)"
 python3 "$ROOT/tools/audit_apple_apis.py" 2>&1 | tee "$EVIDENCE/apple_api_audit.txt"
 
+echo "[evidence] interface audit (declarations + layering)"
+python3 "$ROOT/tools/audit_interfaces.py" 2>&1 | tee "$EVIDENCE/interface_audit.txt"
+
+echo "[evidence] bridge syntax check (clang + stub Foundation)"
+sh "$ROOT/tools/check_bridge_syntax.sh" 2>&1 | tee "$EVIDENCE/bridge_syntax_stdout.txt"
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true

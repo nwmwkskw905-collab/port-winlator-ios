@@ -160,10 +160,13 @@ emissor AArch64 produz instruções corretas; nada além disso.
 3. ~~Aplicar a correção 02~~ e ~~reexecutar~~ — **feitos**: a execução 03 confirmou as correções
    01 e 02 e trouxe o bloqueador macOS×iOS, corrigido no pacote `phase02-apple-ci-fix-03.tar.gz`
    (ver §12).
-4. Aplicar a correção 03 e reexecutar o workflow. Esperado: portão PASS, auditorias de headers e
-   de APIs em 0, e o build `iphoneos` **ultrapassando** `darwin_platform.c`. Se aparecer outro
-   erro Apple real, ele será reportado sem mascaramento — não há afirmação antecipada de que a IPA
-   será produzida.
+4. ~~Aplicar a correção 03~~ e ~~reexecutar~~ — **feitos**: a execução 04 ultrapassou
+   `darwin_platform.c` e parou em `Phase02Bridge.m`, corrigido no pacote
+   `phase02-apple-ci-fix-04.tar.gz` (ver §13).
+5. Aplicar a correção 04 e reexecutar. Esperado: as quatro pré-checagens em 0, portão PASS, e o
+   build `iphoneos` **ultrapassando** `Phase02Bridge.m` e a chamada de `rt_jit_isa()`. Não há
+   afirmação de que o build completo sairá: se o SDK revelar outro bloqueador, ele será reportado
+   sem mascaramento.
 5. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
 6. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
    (Arquivos › No meu iPhone › Winlator PoC, ou `xcrun devicectl device copy from`).
@@ -565,3 +568,132 @@ mesmo num host Linux.
   completo e a IPA gerada, JIT no aparelho continua dependendo de assinatura/entitlements, e a
   suíte responde `NOT_APPLICABLE`/`BLOCKED` com o motivo real, nunca `PASS` por otimismo.
 * Um resultado de `MAP_JIT` no **simulador** não vale para o **aparelho**.
+
+---
+
+## 13. Correção 04 — chamada sem declaração visível (execução 04)
+
+A quarta execução real confirmou as Correções 02 e 03 (nem `sys/random.h`, nem
+`pthread_jit_write_protect_np unavailable on iOS` reapareceram) e o build `iphoneos` chegou ao
+alvo do app, onde parou em um defeito de **interface**:
+
+```
+ios/RuntimePoC/Phase02Bridge.m:75:69: error: call to undeclared function 'rt_jit_isa';
+    ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
+1 warning and 1 error generated.   ** BUILD FAILED **
+```
+
+### 13.1 Causa raiz exata
+
+`rt_jit_isa` **existe** e **está declarada**:
+
+| Onde | O quê |
+| --- | --- |
+| `RuntimeCore/src/runtime_jit.c:20` | `const char *rt_jit_isa(void)` — a **implementação** |
+| `RuntimeCore/include/runtime_jit.h:31` | `const char *rt_jit_isa(void);` — a **declaração** |
+| `RuntimePoC/Phase02Bridge.m:75` | a **chamada**, num arquivo que incluía só `phase02_harness.h`, `phase02_log.h` e `runtime_platform.h` |
+
+O header que declara a função nunca foi incluído ali. Sem protótipo visível, o compilador
+assume `int` (C89) ou recusa (C99+) — daí o **erro**, e daí o **warning de formato**: `%s`
+recebendo o `int` que o compilador inferiu em vez do `const char *` real. Nada estava errado na
+função, no tipo de retorno ou no diagnóstico de ISA: era só invisibilidade de declaração.
+
+**A correção não foi** — e não poderia ser — uma declaração ad hoc na bridge, um cast para
+calar o `%s`, ou a remoção do diagnóstico de ISA.
+
+### 13.2 Correção na camada arquitetural
+
+O sintoma revelou um problema maior: a camada de app alcançava headers do RuntimeCore. A regra
+passou a ser explícita e verificável:
+
+> **`RuntimePoC/*.m` e o bridging header falam APENAS com a API de Diagnostics
+> (`phase02_harness.h`, `phase02_log.h`). Tudo que o app precisa do RuntimeCore é exposto pela
+> API do harness.**
+
+| Arquivo | Mudança |
+| --- | --- |
+| `Diagnostics/include/phase02_harness.h` | nova `phase02_platform_summary(char *out, size_t capacity)` — o app deixa de precisar de `runtime_platform.h`/`runtime_jit.h` |
+| `Diagnostics/src/phase02_harness.c` | implementação (a camada que já vê todos os fatos do RuntimeCore compõe a string) |
+| `RuntimePoC/Phase02Bridge.m` | inclui só Diagnostics; `platformDescription` usa o resumo e `stringWithUTF8String:` — sem `%s` para o chamador errar, sem cast, **com o ISA preservado**; inclui `<stdio.h>`/`<string.h>` que ela de fato usa |
+| `RuntimePoC/Phase02-Bridging-Header.h` | só a camada Diagnostics (os headers de RuntimeCore saíram) |
+| `RuntimePoC/main.c` | usa o mesmo resumo no cabeçalho (`# host: …`) — CLI e app imprimem a mesma linha |
+
+O resumo produzido é:
+
+```
+platform=linux page_size=4096 isa=x86-64 apple_target=none
+```
+
+### 13.3 Auditoria de interfaces (nova)
+
+`tools/audit_interfaces.py` roda no CI como passo **4d** e verifica três coisas:
+
+1. **declarações implícitas** — uma função do projeto (`rt_*`, `phase02_*`, `Phase02*`) chamada
+   num arquivo onde nenhum header alcançável a declara, e que não é definida acima da chamada;
+2. **violação de camadas** — arquivos da camada de app incluindo header do RuntimeCore;
+3. **definições sem declaração** — função não-`static` definida em `.c`/`.m` que header algum
+   declara (portanto impossível de chamar de outro arquivo sem protótipo).
+
+O auditor resolve `#include`/`#import` recursivamente pelos **mesmos diretórios de busca do
+projeto** (`HEADER_SEARCH_PATHS` do gerador), então um arquivo que passa aqui compila do mesmo jeito.
+
+| Verificação | Resultado |
+| --- | --- |
+| Estado corrigido | `INTERFACE_AUDIT=0` — 16 fontes, nenhuma chamada sem declaração, nenhuma violação de camada |
+| **Controle negativo** (bridge do commit `e924199`) | acusa **`Phase02Bridge.m:65: 'rt_jit_isa' has no visible declaration`** *e* a violação de camada (`includes RuntimeCore header 'runtime_platform.h'`) |
+
+### 13.4 Validação com compilador real, sem Apple toolchain
+
+`tools/check_bridge_syntax.sh` (passo **4e** no CI) roda `clang` sobre `Phase02Bridge.m` com a
+política de warnings do projeto, `-Werror=implicit-function-declaration` e um **stub de
+Foundation** em `tools/fake_foundation/` — que declara apenas o que a bridge usa, com
+`+stringWithFormat:` marcado com o mesmo tipo de formato que o Foundation real usa
+(`__NSString__`), de modo que `%@` é válido e `%s` com `int` é diagnosticado igual.
+
+| Verificação | Resultado |
+| --- | --- |
+| Estado corrigido | `BRIDGE_SYNTAX=PASS` — **0 warnings, 0 errors** |
+| **Controle negativo** (bridge do `e924199`) | reproduz **os diagnósticos da CI #4, no mesmo arquivo, linha e coluna**: `Phase02Bridge.m:75:69 'call to undeclared function rt_jit_isa'` + `format specifies type char * but the argument has type int` |
+| Achado extra do controle negativo | `strcmp` em `Phase02Bridge.m:41` sem protótipo visível — um defeito **latente** que só compilava na Apple porque `Foundation.h` trazia `<string.h>` de carona. Corrigido no mesmo passe, com includes explícitos |
+
+Isso é uma pré-checagem, **não** a autoridade: quem decide continua sendo o compilador da Apple
+(o passo 6 do workflow, logo depois). O stub nunca é usado pelo app — só por este script.
+
+### 13.5 Testes acrescentados
+
+`test_platform_summary()` — **+11 checagens**: o resumo é produzido, o comprimento devolvido bate
+com a string, contém `platform=`, `page_size=`, `isa=` e `apple_target=`, e os valores são os
+**reais** (`rt_platform_name()`, `rt_jit_isa()`), não constantes copiadas; mais os negativos:
+buffer curto, buffer de 1 byte (que precisa ser **limpo**, não deixado pela metade), `NULL` e
+capacidade 0 recusados.
+
+### 13.6 Regressão após a Correção 04
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | 0 warnings / 0 errors · ctest **2/2** · **145 checks, 0 falhas** · suíte `records=56 pass=52 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (qemu), rebuild limpo | 0 warnings · **144 checks, 0 falhas** · `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Cabeçalho do relatório | `platform=linux page_size=4096 apple_target=none` · `# host: platform=… isa=x86-64 apple_target=none` |
+| Auditoria de interfaces (4d) | `INTERFACE_AUDIT=0` (+ controle negativo pegando o defeito real) |
+| Sintaxe da bridge (4e) | `BRIDGE_SYNTAX=PASS` 0/0 (+ controle negativo reproduzindo a CI #4) |
+| Auditoria de includes (4b, Correção 02) | `UNGUARDED_LINUX_INCLUDES=0` |
+| Auditoria de APIs (4c, Correção 03) | `UNGUARDED_MACOS_ONLY_APIS=0` |
+| `.xcodeproj` | `PLIST_SYNTAX=PASS` (69 objetos) · preflight **62 checagens, 0 falhas** |
+| Correção 01 | `EVIDENCE_DIR` absoluto · `mkdir -p` antes de cada `tee` · `pipefail` · portão `xcodebuild -list` intacto |
+| Fase 04 | 86 arquivos, byte-idênticos fora dos 2 `.txt` de inventário · 0 alterações no git |
+| Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` |
+
+*(Um warning real apareceu durante a regressão e foi corrigido, não silenciado:
+`main.c:115: declaration of 'summary' shadows a previous local [-Wshadow]`, resolvido renomeando
+a variável local.)*
+
+### 13.7 O que a Correção 04 **não** prova
+
+* Não prova que o build `iphoneos` completa: ele parou em `Phase02Bridge.m` na execução 04 e este
+  ambiente não tem toolchain Apple. Prova-se que **a causa demonstrada foi eliminada** e que
+  agora existem três verificações estáticas (4b/4c/4d/4e) cobrindo as três classes de falha já
+  vistas: header ausente, símbolo indisponível no alvo e declaração invisível.
+* Não prova nada sobre o iPhone 13: `IPHONE_VALIDATION_PENDING` permanece, e continua valendo
+  que JIT no aparelho depende de assinatura/entitlements — a suíte responde
+  `NOT_APPLICABLE`/`BLOCKED` com o motivo real, nunca `PASS` por otimismo.

@@ -68,6 +68,19 @@ ok   controlled SIGSEGV is caught
 ok   first guard installs
 ok   nested guard is refused with EBUSY
 ok   guard removed
+ok   platform summary is produced
+ok   the returned length matches the string
+ok   summary names the platform
+ok   summary reports the page size
+ok   summary reports the JIT ISA
+ok   summary reports the Apple target
+ok   the ISA in the summary is the real one
+ok   the platform in the summary is the real one
+ok   a short buffer is refused
+ok   a one-byte buffer is refused
+ok   …and it is cleared, not left half-written
+ok   NULL buffer is refused
+ok   capacity 0 is refused
 ok   hook present and callable classifies as PASS
 ok   hook present but refusing classifies as BLOCKED
 ok   unavailable on the iOS device target classifies as NOT_APPLICABLE, not PASS
@@ -132,4 +145,4 @@ ok   module marked as executed
 ok   marking an absent module fails
 ok   context describes itself
 ok   module table refuses to overflow
-== 132 checks, 0 failures ==
+== 145 checks, 0 failures ==

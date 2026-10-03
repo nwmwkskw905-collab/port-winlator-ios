@@ -172,6 +172,28 @@ jobs:
           mkdir -p "$EVIDENCE_DIR"
           python3 tools/audit_apple_apis.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_api_audit.log"
 
+      # ---- 4d. interface audit: are all our calls declared where we call them?
+      # CI run #4: Phase02Bridge.m called rt_jit_isa() with only runtime_platform.h in
+      # scope. This catches that class — plus app-layer files reaching into RuntimeCore.
+      - name: 4d. Interface audit (declarations and layering)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 tools/audit_interfaces.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_interface_audit.log"
+
+      # ---- 4e. clang over the Objective-C bridge, with the project's warning policy.
+      # Same front-end family as Xcode; the stub Foundation only stands in for
+      # declarations, never for behaviour. The Apple SDK build remains the authority.
+      - name: 4e. Bridge syntax check (clang, stub Foundation)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          sh tools/check_bridge_syntax.sh 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_bridge_syntax.log"
+
       # ---- 5. authoritative gate: the real Xcode parser must accept the project
       - name: 5. GATE — xcodebuild must be able to read the project
         working-directory: ${{ github.workspace }}/ios

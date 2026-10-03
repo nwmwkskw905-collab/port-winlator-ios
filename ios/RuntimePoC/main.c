@@ -12,7 +12,6 @@
  */
 #include "phase02_harness.h"
 #include "phase02_log.h"
-#include "runtime_platform.h"
 
 #include <errno.h>
 #include <stddef.h>
@@ -112,8 +111,13 @@ int main(int argc, char **argv)
         return 2;
     }
     phase02_log_init(log, "PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics");
-    phase02_log_line(log, "# host: platform=%s page_size=%d workdir=%s",
-                     rt_platform_name(), rt_platform_page_size(), workdir);
+    {
+        char environment[192];
+        if (phase02_platform_summary(environment, sizeof(environment)) < 0) {
+            (void)snprintf(environment, sizeof(environment), "platform=<unavailable>");
+        }
+        phase02_log_line(log, "# host: %s workdir=%s", environment, workdir);
+    }
     phase02_log_line(log, "# note: host results are NOT iOS results; physical-device "
                           "validation stays pending.");
 

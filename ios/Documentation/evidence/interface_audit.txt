@@ -1,0 +1,14 @@
+== interface audit ==
+compiled sources : 16
+header directories: RuntimeCore/include, Diagnostics/include
+app-layer files   : 2
+
+--- implicit declarations
+ok   none
+--- layer violations
+ok   none
+--- definitions without a declaration
+ok   none
+
+INTERFACE_AUDIT=0 (every project call has a visible declaration; app layer uses the Diagnostics API only)
+note: static pre-check — clang remains the authority.

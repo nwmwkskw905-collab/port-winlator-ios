@@ -11,9 +11,20 @@
  */
 #import "Phase02Bridge.h"
 
+/* Layering: this file is app glue and talks ONLY to the Diagnostics API
+ * (phase02_harness.h / phase02_log.h). Everything it needs from RuntimeCore — the
+ * platform name, the page size, the JIT ISA, the Apple target — comes from
+ * phase02_platform_summary(). Including RuntimeCore headers here directly is what made
+ * CI run #4 fail: the bridge called rt_jit_isa() with only runtime_platform.h in scope,
+ * so the call had no visible declaration. */
 #include "phase02_harness.h"
 #include "phase02_log.h"
-#include "runtime_platform.h"
+
+/* The standard headers this file actually uses. They used to arrive by accident
+ * through Foundation.h; a translation unit that names snprintf/strcmp should include
+ * their headers, the same way every other file in this project does. */
+#include <stdio.h>
+#include <string.h>
 
 static BOOL gLastRunHadFailure = NO;
 
@@ -34,8 +45,13 @@ static BOOL gLastRunHadFailure = NO;
     }
 
     phase02_log_init(log, "PHASE_02_RECONSTRUCTED_POC - iOS runtime PoC diagnostics");
-    phase02_log_line(log, "# device: platform=%s page_size=%d", rt_platform_name(),
-                     rt_platform_page_size());
+    {
+        char summary[192];
+        if (phase02_platform_summary(summary, sizeof(summary)) < 0) {
+            (void)snprintf(summary, sizeof(summary), "platform=<unavailable>");
+        }
+        phase02_log_line(log, "# device: %s", summary);
+    }
     phase02_log_line(log, "# suite: %s", cName);
 
     if (strcmp(cName, "all") == 0) {
@@ -71,9 +87,15 @@ static BOOL gLastRunHadFailure = NO;
 
 + (NSString *)platformDescription
 {
-    NSString *value = [NSString stringWithFormat:@"platform=%s page_size=%d isa=%s",
-                       rt_platform_name(), rt_platform_page_size(), rt_jit_isa()];
-    return value;
+    char summary[192];
+    if (phase02_platform_summary(summary, sizeof(summary)) < 0) {
+        return @"platform=<unavailable>";
+    }
+    /* A C string into NSString — no %s formatting for the caller to get wrong, and no
+     * cast: the ISA diagnosis stays exactly where it was, now composed by the layer
+     * that owns the fact. */
+    NSString *value = [NSString stringWithUTF8String:summary];
+    return (value != nil) ? value : @"platform=<unavailable>";
 }
 
 + (BOOL)lastRunHadFailure

@@ -396,6 +396,34 @@ static void test_apple_target(void)
  * called at all. The four outcomes must stay distinct, and none of them may be
  * manufactured from another. Exercised here with synthetic inputs, so the iOS branch
  * is verified even on a Linux host. */
+/* The composed platform summary is the app-facing API (CI run #4 taught us the app
+ * must not reach into RuntimeCore headers for facts like the ISA). It must be complete,
+ * bounded, and must refuse a buffer that cannot hold the answer. */
+static void test_platform_summary(void)
+{
+    char summary[256];
+    char tiny[8];
+    char exact[1];
+    int written = phase02_platform_summary(summary, sizeof(summary));
+
+    CHECK(written > 0, "platform summary is produced");
+    CHECK((size_t)written == strlen(summary), "the returned length matches the string");
+    CHECK(strstr(summary, "platform=") != NULL, "summary names the platform");
+    CHECK(strstr(summary, "page_size=") != NULL, "summary reports the page size");
+    CHECK(strstr(summary, "isa=") != NULL, "summary reports the JIT ISA");
+    CHECK(strstr(summary, "apple_target=") != NULL, "summary reports the Apple target");
+    CHECK(strstr(summary, rt_jit_isa()) != NULL, "the ISA in the summary is the real one");
+    CHECK(strstr(summary, rt_platform_name()) != NULL, "the platform in the summary is the real one");
+
+    /* negative: too small a buffer must fail and must not leave a partial string */
+    exact[0] = 'x';
+    CHECK(phase02_platform_summary(tiny, sizeof(tiny)) == -1, "a short buffer is refused");
+    CHECK(phase02_platform_summary(exact, 1u) == -1, "a one-byte buffer is refused");
+    CHECK(exact[0] == '\0', "…and it is cleared, not left half-written");
+    CHECK(phase02_platform_summary(NULL, 64u) == -1, "NULL buffer is refused");
+    CHECK(phase02_platform_summary(summary, 0u) == -1, "capacity 0 is refused");
+}
+
 static void test_write_protect_semantics(void)
 {
     CHECK(phase02_classify_write_protect(1, 0, RT_APPLE_TARGET_MACOS) == RT_PASS,
@@ -614,6 +642,7 @@ int main(void)
     test_cpu_facts();
     test_threads();
     test_signals();
+    test_platform_summary();
     test_write_protect_semantics();
     test_apple_target();
     test_platform_randomness();
