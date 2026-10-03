@@ -1,0 +1,10 @@
+ok   S1 NAMED_PATH_INTACT: shm_open path still first, everywhere
+ok   S2 IOS_BACKEND_SEMANTICS: unique name, exclusive create, immediate unlink, MAP_SHARED RW + R-X views
+ok   S3 EXPLICIT_SELECTION: iOS only, after a refusal, both results named
+ok   S4 NO_API_REMOVED: the previous entry points still exist
+ok   S5 CLEANUP: descriptor closed, object unlinked on every path
+ok   S6 CLASSIFY_NOT_CONFUSED: refusal = capability, notes emitted, experiment named as such
+ok   S7 DUAL_NOT_IN_JIT_PATH: no JIT/loader/backend dependence on dual mapping
+ok   S8 TESTS: aliasing, cleanup and the negative case covered
+ok   S9 SURFACE_STABLE: the dual-mapping surface is exactly 5 named functions
+SHM_BACKEND_AUDIT=0

@@ -266,4 +266,29 @@ ok   summary line returns the caller's buffer
 ok   a truncated summary line is marked
 ok   …and a summary that fits starts with its counts
 ok   …without a marker
-== 265 checks, 0 failures ==
+ok   jit arena allocated (arena-kind probe)
+ok   MAP_JIT kind implies the MAP_JIT path was taken
+ok   non-MAP_JIT arena reports the ANON kind
+ok   ANON arena: MAP_JIT was not attempted on this platform
+ok   ANON arena: no refusal to report
+ok   arena is writable before the executable flip
+ok   arena flips to R-X (single view, W^X)
+note arena RWX policy: granted by this kernel (recorded; the port still prefers W^X)
+ok   arena returns to writable-not-executable after the RWX observation
+ok   arena released
+ok   file-backed dual mapping: scratch directory created
+ok   file-backed dual mapping succeeded
+ok   file-backed map reports itself supported
+ok   file-backed views alias the same memory (real semantics)
+ok   writable view released
+ok   executable view released
+ok   no backing object is left behind in the directory
+ok   scratch directory removed (cleanup verified)
+ok   file-backed dual mapping refuses a NULL directory
+ok   …with errno=EINVAL (a defect of the call, not a platform answer)
+ok   …naming the stage that failed
+ok   …and reports the map as unsupported
+ok   file-backed dual mapping refuses an unusable directory
+ok   …with a real errno from open(2)
+ok   …naming open(2) as the failing stage
+== 289 checks, 0 failures ==

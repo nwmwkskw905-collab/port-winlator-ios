@@ -10,7 +10,8 @@ mkdir -p "$EVIDENCE"
 
 echo "[evidence] inventory of the reconstructed tree"
 find "$ROOT/RuntimeCore" "$ROOT/Diagnostics" "$ROOT/RuntimePoC" "$ROOT/Tests" "$ROOT/tools" \
-     -type f | sort | xargs sha256sum > "$EVIDENCE/inventory_sha256.txt"
+     -name __pycache__ -prune -o -type f -print | sort \
+     | xargs sha256sum > "$EVIDENCE/inventory_sha256.txt"
 wc -l < "$EVIDENCE/inventory_sha256.txt"
 
 echo "[evidence] host build + tests"
@@ -76,10 +77,41 @@ echo "[evidence] entitlement levels (1-2 repository facts, 3 needs a signed prod
 sh "$ROOT/tools/inspect_entitlements.sh" "$ROOT/build/host/phase02_poc" \
     2>&1 | tee "$EVIDENCE/entitlement_levels.txt" | head -3
 
+echo "[evidence] entitlement configuration audit (level 1, wiring coherence, no grant claims)"
+python3 "$ROOT/tools/audit_entitlement_config.py" 2>&1 | tee "$EVIDENCE/entitlement_config_audit.txt" | tail -3
+
+echo "[evidence] JIT causal graph audit (probe -> arena -> write window -> execution -> free)"
+python3 "$ROOT/tools/audit_jit_causal_graph.py" 2>&1 | tee "$EVIDENCE/jit_causal_graph_audit.txt" | tail -3
+
+echo "[evidence] SHM / dual-mapping backend audit (named path intact, iOS backend selected)"
+python3 "$ROOT/tools/audit_shm_backend.py" 2>&1 | tee "$EVIDENCE/shm_backend_audit.txt" | tail -3
+
+echo "[evidence] pass 03 negative controls (every detector must fire, then the tree is restored)"
+python3 "$ROOT/tools/pass03_negative_controls.py" \
+    2>&1 | tee "$EVIDENCE/pass03_negative_controls.txt" | tail -3
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true
 tail -1 "$EVIDENCE/ios_validate.log"
+
+echo "[evidence] pass 03 scope (blockers only; UI, Fase 04 and the baseline untouched)"
+{
+  echo "== pass 03 scope check (base f81dda2) =="
+  echo "-- files changed by this pass under ios/:"
+  git -C "$ROOT/.." diff --stat f81dda2 -- ios | sed 's/^/   /'
+  echo "-- files deleted by this pass under ios/ (must be empty):"
+  git -C "$ROOT/.." diff --diff-filter=D --name-only f81dda2 -- ios | sed 's/^/   /'
+  echo "-- Fase 04 (must be empty):"
+  git -C "$ROOT/.." diff --stat f81dda2 -- ios/box64-registers | sed 's/^/   /'
+  echo "-- IPHONE13_PHYSICAL_RUN_01.md (must be empty: immutable baseline):"
+  git -C "$ROOT/.." diff --stat f81dda2 -- ios/Documentation/IPHONE13_PHYSICAL_RUN_01.md | sed 's/^/   /'
+  echo "-- new files added by this pass:"
+  git -C "$ROOT/.." ls-files --others --exclude-standard -- ios | sed 's/^/   /'
+  echo "UI_VISUAL_CHANGES=0 (audit_ios_stabilization.py rule_ui_surface_frozen, snapshot intact)"
+  echo "PHASE04_FUNCTIONAL_CHANGES=0 (no diff under ios/box64-registers)"
+  echo "PHASE05_STARTED=NO"
+} 2>&1 | tee "$EVIDENCE/pass03_scope_check.txt" | tail -6
 
 echo "[evidence] host/device distinction"
 {

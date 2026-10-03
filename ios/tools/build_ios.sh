@@ -13,6 +13,19 @@
 # With no Apple toolchain the script reports the environment limitation instead of
 # pretending to have built anything:
 #   IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN
+#
+# ENTITLEMENT WIRING (level 1 -> level 2), decided and audited in pass 03:
+#   RuntimePoC/WinlatorPhase02.entitlements records com.apple.security.cs.allow-jit as
+#   REQUESTED_IN_REPO and is deliberately NOT attached to CODE_SIGN_ENTITLEMENTS for this
+#   iOS target: on iOS-based platforms every entitlement must be allowlisted by the
+#   provisioning profile, and an entitlements file asking for one the profile does not allow
+#   makes the signed build/install fail ("provisioning profile does not include the ...
+#   entitlement"; device 0xE8008016). Attaching it would break the only install path that can
+#   validate anything, and could not obtain MAP_JIT anyway (physical run #2: refused
+#   errno=1). If a signing context that CAN carry it is available, opt in explicitly:
+#     xcodebuild ... CODE_SIGN_ENTITLEMENTS=RuntimePoC/WinlatorPhase02.entitlements
+#   (Debug and Release together, never a single configuration; the audit enforces this).
+#   The unsigned build below is unaffected by that setting either way.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 EVIDENCE="$ROOT/Documentation/evidence"
@@ -25,6 +38,8 @@ echo "[ios] regenerating the Xcode project from the tree"
 python3 "$ROOT/tools/generate_xcodeproj.py" | tee "$EVIDENCE/ios_generate.log"
 echo "[ios] structural validation"
 python3 "$ROOT/tools/validate_xcodeproj.py" | tee "$EVIDENCE/ios_validate.log"
+echo "[ios] entitlement wiring (level 1 -> 2)"
+python3 "$ROOT/tools/audit_entitlement_config.py" | tee "$EVIDENCE/ios_entitlement_config.log" | tail -3
 
 if ! command -v xcodebuild >/dev/null 2>&1; then
     echo "IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN"

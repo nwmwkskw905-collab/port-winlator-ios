@@ -1,0 +1,22 @@
+== pass 03 negative controls (every detector must fire, then the tree is restored)
+ok   control A_unwired_without_decision: detected by tools/audit_entitlement_config.py: 'FAIL E2: the entitlements file is not wired and does not record the wiring decision: an inert entitlement file'
+ok   control B_granted_claim_in_docs: detected by tools/audit_entitlement_config.py: "FAIL E3: Documentation/RELATORIO_FASE_02_RECONSTRUIDA.md:1189 claims a granted capability: 'JIT enabled'"
+ok   control C_make_executable_pass_without_execution: detected by tools/audit_jit_causal_graph.py: 'FAIL J8: jit.make_executable can be PASS before anything executed'
+ok   control D_loader_pass_without_value: detected by tools/audit_jit_causal_graph.py: 'FAIL J8: the loader PASS does not carry the value the entry point returned'
+ok   control E_icache_sync_removed: detected by tools/audit_jit_causal_graph.py: 'FAIL J7: the rewritten payload is executed without a new icache flush'
+ok   control F_rwx_arena_introduced: detected by tools/audit_jit_causal_graph.py: "FAIL J4: an RWX request outside a MAP_JIT creation: 'addr = mmap(NULL, len, PROT_READ | PROT_WRITE | PROT_EXEC"
+ok   control G_shm_perm_as_generic_defect: detected by tools/audit_shm_backend.py: 'FAIL S6: the POSIX SHM refusal is no longer classified through phase02_classify_shm_error (a refusal must stay'
+ok   control H_dual_mapping_as_requirement: detected by tools/audit_shm_backend.py: 'FAIL S6: the record does not say that the port does not depend on the dual-mapping experiment'
+ok   control I_ios_backend_on_every_platform: detected by tools/audit_shm_backend.py: 'FAIL S3: the substitution is not gated on the Apple iOS target'
+ok   control J_macos_api_on_ios_target: detected by tools/audit_jit_causal_graph.py: 'FAIL J10: the harness calls the macOS-only API directly'
+ok   control K_mprotect_on_map_jit_arena: detected by tools/audit_jit_causal_graph.py: 'FAIL J5: rt_jit_execution_allowed still calls rt_mem_protect on a MAP_JIT arena (the run #2 latent defect)'
+ok   control L_wiring_subset: detected by tools/audit_entitlement_config.py: 'FAIL E2: CODE_SIGN_ENTITLEMENTS is set for a subset of the target configurations (Debug) - a project that requ'
+ok   control M_jit_key_removed: detected by tools/audit_entitlement_config.py: 'FAIL E1: RuntimePoC/WinlatorPhase02.entitlements does not request com.apple.security.cs.allow-jit'
+ok   control N_note_claims_applied: detected by tools/audit_entitlement_config.py: "FAIL E3: Diagnostics/src/phase02_harness.c:1001 claims a granted capability: 'entitlement is applied'"
+ok   control O_alias_check_always_true: unit tests reported 'destroyed map is not usable (negative case) (/home/user/winlator/ios/Tests/test_runtime_core.c:302)'
+ok   control P_backing_object_leaks: unit tests reported 'no backing object is left behind in the directory (/home/user/winlator/ios/Tests/test_runtime_core.c:413)'
+ok   control Q_audits_green_after_restore: tools/audit_jit_causal_graph.py green
+ok   control R_entitlement_audit_green_after_restore: tools/audit_entitlement_config.py green
+ok   control S_shm_audit_green_after_restore: tools/audit_shm_backend.py green
+# audits run: 17, unit-test runs: 2
+PASS03_NEGATIVE_CONTROLS=19/19

@@ -133,10 +133,10 @@ def main():
 
     run_control("A", root / HARNESS,
                 lambda t: patch(t, """        if (rt_jit_begin_write(arena, arena_len, &err) != 0) {
-            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,""",
+            phase02_log_record(log, "jit.write_payload", RT_BLOCKED,""",
                                 """        (void)rt_jit_begin_write(arena, arena_len, &err);
         if (0) {
-            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,""",
+            phase02_log_record(log, "jit.write_payload", RT_BLOCKED,""",
                                 "write window check"),
                 "a JIT result discarded again with (void) (write window)",
                 "DISCARDED_RESULTS", False)

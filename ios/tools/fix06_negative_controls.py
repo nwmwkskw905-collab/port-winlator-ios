@@ -77,7 +77,12 @@ def patch(text, old, new, what):
 
 
 def control_a(root, runner, out):
-    """The loader forgets to write the reason: the exact run #1 defect at the C level."""
+    """The loader forgets to write the reason: the exact run #1 defect at the C level.
+
+    Pass 03 changed the loader's shape (the arena has a kind and the copy happens inside the
+    window that kind requires), so the anchor follows the code. What the control plants is
+    unchanged: a valid module that cannot get an executable arena, returning BLOCKED with no
+    reason written - the state that printed "rejected: OK" on the device."""
     path = root / LOADER
     original = path.read_text()
     try:
@@ -88,11 +93,9 @@ def control_a(root, runner, out):
             *os_err_out = io_err;
         }
         return RT_BLOCKED;
-    }
-    memcpy(arena, image + header.code_off, header.code_len);""",
+""",
                        """        return RT_BLOCKED;
-    }
-    memcpy(arena, image + header.code_off, header.code_len);""",
+""",
                        "loader JIT-unavailable reason")
         path.write_text(broken)
         rc, audit_log = runner.audit()
@@ -150,7 +153,11 @@ int rt_fs_deep_paths(const char *root, size_t depth, size_t *path_len_out, int *
 
 
 def control_c(root, runner, out):
-    """The pre-Fix-06 shape: the attempt is recorded only after the mmap succeeded."""
+    """The pre-Fix-06 shape: the attempt is recorded only after the mmap succeeded.
+
+    Pass 03 gave rt_jit_alloc_ex() the W^X fallback, so the anchor follows the new body; the
+    planted defect is the same one run #1 exposed (a refusal that cannot be attributed to the
+    MAP_JIT capability because the attempt was never recorded)."""
     path = root / JIT
     original = path.read_text()
     try:
@@ -159,23 +166,13 @@ def control_c(root, runner, out):
         }
         addr = mmap(NULL, rounded, PROT_READ | PROT_WRITE | PROT_EXEC,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
-        if (addr == MAP_FAILED) {
-            if (err_out != NULL) {
-                *err_out = errno;       /* captured immediately */
-            }
-            return NULL;
-        }""",
+        if (addr != MAP_FAILED) {""",
                        """        addr = mmap(NULL, rounded, PROT_READ | PROT_WRITE | PROT_EXEC,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
-        if (addr == MAP_FAILED) {
-            if (err_out != NULL) {
-                *err_out = errno;
-            }
-            return NULL;
-        }
-        if (map_jit_attempted_out != NULL) {
-            *map_jit_attempted_out = 1;     /* control C: only on success */
-        }""", "MAP_JIT attempt order")
+        if (addr != MAP_FAILED) {
+            if (map_jit_attempted_out != NULL) {
+                *map_jit_attempted_out = 1;     /* control C: only on success */
+            }""", "MAP_JIT attempt order")
         path.write_text(broken)
         rc, audit_log = runner.audit()
         caught_audit = rc != 0 and "JIT_ATTEMPT_ORDER" in audit_log

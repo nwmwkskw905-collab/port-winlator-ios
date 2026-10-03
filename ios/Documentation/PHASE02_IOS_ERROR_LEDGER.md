@@ -24,6 +24,15 @@ mas o que falta é a **observação no aparelho**. `FIXED_PENDING_APPLE_CI` = a 
 e está provada localmente, e o que falta é o próximo ciclo real (build/CI Apple) para
 confirmar em Darwin, além do reteste físico.
 
+**Rodada 03 (blocker resolution pass 03, base `f81dda2`):** parte do resultado físico
+`IPHONE13_PHYSICAL_RUN_02` (imutável, transcrito em
+`Documentation/IPHONE13_PHYSICAL_RUN_02.md`). Não há `FAIL` de código a corrigir — a rodada
+ataca apenas os cinco `BLOCKED`, o `UNTESTED` e os defeitos **provados** nos caminhos que essas
+correções destravam. O grafo causal foi confirmado no código e ganhou três causas-raiz; oito
+defeitos novos (S-018 … S-025) foram encontrados e corrigidos, com auditoria e controles
+negativos próprios. Nada foi convertido de `BLOCKED`/`UNTESTED` em `PASS` por classificação, e
+nenhuma apólice de assinatura, perfil ou certificado existe no repositório.
+
 ---
 
 ## A. Inventário inicial (o que já era conhecido no começo desta rodada)
@@ -329,6 +338,81 @@ Base: `IPHONE13_PHYSICAL_RUN_01`, iPhone 13, `apple_target=ios-device`, `page_si
 
 ---
 
+## B3. Defeitos encontrados na rodada 03 (blockers do run 02 + caminhos destravados)
+
+| ID | Defeito | Arquivo | Status |
+| --- | --- | --- | --- |
+| S-018 | `rt_jit_alloc` devolvia `NULL` quando o `MAP_JIT` era recusado: o iOS ficava **sem arena nenhuma**, embora o mecanismo W^X de visão única (o mesmo que o run 02 provou funcionar) existisse no próprio runtime | `RuntimeCore/src/runtime_jit.c`, `include/runtime_jit.h` | `DEVICE_RETEST_REQUIRED` |
+| S-019 | `rt_jit_execution_allowed` chamava `rt_mem_protect(R-X)` numa arena `MAP_JIT` (transição errada: as proteções são fixadas na criação e a janela de escrita é o mecanismo suportado) | `RuntimeCore/src/runtime_jit.c` | `DEVICE_RETEST_REQUIRED` |
+| S-020 | O loader copiava o código para dentro de uma arena `MAP_JIT` **sem abrir a janela de escrita** e em seguida chamava `mprotect` nela | `RuntimeCore/src/runtime_loader.c` | `DEVICE_RETEST_REQUIRED` |
+| S-021 | `jit.make_executable` podia ser `PASS` com base no retorno de `mprotect`, sem execução: em aparelhos com TXM o kernel aceita a transição e retira a permissão de execução | `Diagnostics/src/phase02_harness.c` | `DEVICE_RETEST_REQUIRED` |
+| S-022 | A cadeia JIT não verificava a escrita (read-back) nem registrava a liberação da arena: os treze passos não eram todos observáveis | `Diagnostics/src/phase02_harness.c` | `DEVICE_RETEST_REQUIRED` |
+| S-023 | O experimento de dual mapping não conseguia separar "namespace POSIX nomeado recusado" de "alias executável recusado", e não havia backing compatível com o sandbox iOS | `RuntimeCore/src/runtime_dual_mapping.c`, `include/runtime_memory.h`, harness | `DEVICE_RETEST_REQUIRED` |
+| S-024 | Contabilidade das quatro camadas de entitlement incompleta: o estado de fiação não era auditado, o conteúdo do arquivo não distinguia decisão de omissão e o script de inspeção não reportava L1/L2 sem macOS | `RuntimePoC/WinlatorPhase02.entitlements`, `tools/inspect_entitlements.sh`, `tools/build_ios.sh`, harness, `tools/generate_xcodeproj.py` | `FIXED_PENDING_APPLE_CI` |
+| S-025 | Instrumentação: detectores ancorados em formas antigas do código (regra `JIT_ATTEMPT_ORDER` sobre o wrapper, controles negativos do Fix 06 e da estabilização) — falhavam alto, não em silêncio, mas deixariam de medir | `tools/audit_fix06_contracts.py`, `tools/fix06_negative_controls.py`, `tools/stabilization_negative_controls.py` | `FIXED_PENDING_APPLE_CI` |
+
+### S-018 — a arena que o iOS precisava era recusada junto com o `MAP_JIT`
+
+O run 02 mediu `jit.alloc = BLOCKED` com `errno=1`, o mesmo do probe. O grafo causal estava
+certo, mas a consequência era um port **sem caminho de execução**: `rt_jit_alloc` tratava a
+recusa do `MAP_JIT` como fim, embora `memory.rw_to_rx_transition = PASS` e `memory.wx_policy =
+PASS` provem, no mesmo aparelho, que a visão única RW ↔ R-X funciona. A correção **não** é
+"usar um `mmap` comum para o teste ficar verde": `rt_jit_alloc_ex` tenta o `MAP_JIT`, guarda o
+errno da recusa (`map_jit_refused_errno_out`), marca a arena com o mecanismo que a produziu
+(`RT_JIT_ARENA_ANON_MAP_JIT_REFUSED`) e cai no mecanismo W^X que o projeto já usa onde não há
+`MAP_JIT` — com a recusa publicada no registro e com a execução verificada de verdade. O
+`MAP_JIT` continua `BLOCKED` em `jit.map_jit_probe`; o que muda é que a ausência da capacidade
+deixa de ser a ausência de arena.
+
+### S-019 / S-020 — transição errada em região `MAP_JIT`
+
+Ambos eram latentes no run 02 (nada executou, porque não havia arena) e são provados pela
+leitura do contrato da API: numa região `MAP_JIT` as proteções são fixadas na criação
+(estilo `PROT_MAX`) e a operação suportada é abrir/fechar a janela de escrita. Os dois
+caminhos agora ramificam pelo **tipo da arena** — janela para `MAP_JIT`, `rt_mem_protect` para
+a arena anônima — no microteste, no loader e em `rt_jit_execution_allowed`.
+
+### S-021 / S-022 — "PASS sem execução" e cadeia incompleta
+
+`jit.make_executable` só é `PASS` **depois** de a chamada real devolver o valor esperado: se o
+kernel aceitar a transição e a execução falhar dentro da arena, o registro é `BLOCKED` e diz
+que o aparelho não honrou a permissão; se falhar fora da arena, é `FAIL` do código emitido —
+nunca um `PASS` tirado do retorno de um `mprotect`. A cadeia ganhou verificação da escrita por
+read-back (`jit.write_payload`) e o registro da liberação (`jit.free`), fechando os treze
+passos exigidos.
+
+### S-023 — o experimento de dual mapping no iOS
+
+A recusa em `shm_open` é do **namespace nomeado**, não da memória compartilhada em geral: o
+backend do iOS passou a usar um objeto **file-backed** `MAP_SHARED` dentro do container do
+app, desvinculado imediatamente, com duas visões reais (RW e R-X) e verificação de alias —
+selecionado explicitamente, só em alvo Apple iOS e só **depois** de a via nomeada ser recusada.
+Linux e macOS continuam na via original, que não foi removida. O experimento continua sendo
+uma *medida de capacidade*, nunca um requisito: a estratégia do iOS é a visão única.
+
+### S-024 — a fiação do entitlement é decisão, não defeito
+
+Investigação completa: `RuntimePoC/WinlatorPhase02.entitlements` não é referenciado por
+`CODE_SIGN_ENTITLEMENTS` em nenhuma configuração, e isso é uma **decisão documentada**, agora
+auditada (`tools/audit_entitlement_config.py`, regra `E2`): em plataformas iOS toda entitlement
+precisa estar na allowlist do perfil de provisionamento, e um arquivo que pede uma entitlement
+que o perfil não permite **quebra o build/instalação assinados** ("provisioning profile does
+not include the … entitlement"; dispositivo: `0xE8008016`). Fiar o arquivo não obteria a
+capacidade e destruiria o único caminho que valida algo — a instalação do dono do aparelho. O
+que passou a existir: a decisão escrita no arquivo, o *opt-in* explícito em `tools/build_ios.sh`,
+a nota de quatro camadas no harness, a auditoria e a extensão do `inspect_entitlements.sh` (que
+agora reporta L1 e L2 sem macOS e mantém
+`ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN`). Se um dia for fiada,
+tem de ser em **Debug e Release juntos** — a auditoria proíbe o subconjunto.
+
+### S-025 — detectores ancorados em código que mudou
+
+Os três controles/regras que apontavam para a forma antiga falharam de forma **visível**
+(asserção de âncora), o que é o comportamento correto de um detector honesto; as âncoras foram
+atualizadas para a forma nova **sem enfraquecer o defeito plantado**, e o invariante do Fix 06
+(`JIT_ATTEMPT_ORDER`) passou a ser verificado na função que realmente mapeia
+(`rt_jit_alloc_ex`), com o mesmo efeito de detecção comprovado pelo controlo C.
+
 ## C. Auditados e considerados NÃO defeitos (com o motivo)
 
 | Item | Motivo |
@@ -340,6 +424,12 @@ Base: `IPHONE13_PHYSICAL_RUN_01`, iPhone 13, `apple_target=ios-device`, `page_si
 | Suítes de threads/sinais/CPU (PASS físico) | nenhuma interação nova com os caminhos JIT/loader corrigidos: o mesmo `rt_signal_call_guarded` é usado, sequencialmente, sem estado novo compartilhado; **não foram modificadas** |
 | `RuntimePoC/main.c` fora do alvo Xcode | correto: o app usa `@main` do SwiftUI; compilar `main.c` geraria símbolo `main` duplicado |
 | `.entitlements` não ligado a `CODE_SIGN_ENTITLEMENTS` | decisão deliberada e documentada no próprio arquivo; ligar quebraria a instalação sem o perfil correto (ver L-005) |
+| `jit.write_protect_np = NOT_APPLICABLE` no iPhone | propriedade da API para o alvo iOS (o SDK marca `pthread_jit_write_protect_np` indisponível). Nunca é `PASS` e nunca é defeito; a rodada 03 não reintroduziu a chamada (regra `J10`) |
+| `jit.execution_allowed = UNTESTED` no run 02 | consequência, não causa: sem arena executável o probe não conclui nenhum passo. A rodada 03 corrigiu a **implementação** (janela por tipo de arena) e o registro passou a nomear a dependência — `UNTESTED` continua possível, mas só quando um passo do próprio probe não conclui |
+| `memory.dual_mapping_rw_rx = BLOCKED` (run 02) | o experimento é medida de capacidade, não requisito do port; a recusa foi em `shm_open` (namespace nomeado). A rodada 03 acrescentou o backend iOS e não promoveu o status |
+| `shm_open` recusado no iOS | não significa "memória compartilhada impossível": `MAP_SHARED` anônimo, objeto file-backed no container e `mach` VM não são afetados, e o runtime não depende do namespace nomeado |
+| `rt_dual_map_views_aliased` retorna −1 para mapa destruído | contrato documentado (mapa inutilizável); o teste negativo novo depende exatamente disso |
+| `rt_jit_alloc` (wrapper) mantido | superfície pública preservada: a rodada 03 **adiciona** `rt_jit_alloc_ex` e mantém o wrapper com o contrato antigo (compatibilidade com testes e chamadas existentes) |
 | `Info.plist` sem `MinimumOSVersion` / com `UIFileSharingEnabled` | o Xcode injeta `MinimumOSVersion` de `IPHONEOS_DEPLOYMENT_TARGET=16.0` no processamento; o bundle físico validado no CI já mostrou o executável `arm64` e o `CFBundleIdentifier` esperado; a execução física 01 **instalou e abriu** o app |
 | Debug/Release do `.pbxproj` | conferidos: mesmas configurações relevantes nos dois (deployment target, bridging header, `GENERATE_INFOPLIST_FILE=NO`, `CODE_SIGN_STYLE`), sem divergência |
 | Fallback de 4096 quando `sysconf(_SC_PAGESIZE)` falha (nos dois backends e em `rt_platform_page_size`) | o valor real é **medido** (`_SC_PAGESIZE`) e o relatório carrega o medido — a execução física registrou `page_size=16384`, que é o valor do próprio iPhone 13; o fallback só seria alcançado com um `sysconf` quebrado, e trocá-lo por falha mudaria o contrato de `rt_mem_*` em caminhos `PASS` sem defeito demonstrado. Coberto pela nova regra `PAGE_SIZE_MEASURED`, que proíbe escrever o tamanho da página no código |
@@ -367,6 +457,27 @@ Rodada 02 (stabilization pass 02) — a rodada de fechamento
   EXTERNAL_CAPABILITY_BLOCKED       = 1     (L-005, entitlement de JIT)
 ```
 
+Rodada 03 (blocker resolution pass 03, base f81dda2)
+  ROOT_CAUSES_IDENTIFIED            = 3      (R1 entitlement de JIT/dynamic-codesigning recusada
+                                              ao app; R2 o runtime exigia MAP_JIT para ter arena
+                                              (S-018); R3 o sandbox iOS recusa o namespace POSIX
+                                              nomeado em shm_open, e o experimento não tinha
+                                              backing compatível (S-023))
+  CODE_DEFECTS_FOUND_THIS_ROUND     = 8      (S-018 … S-025)
+  CODE_DEFECTS_FIXED_THIS_ROUND     = 8      (S-018 … S-025)
+  KNOWN_UNFIXED_CODE_DEFECTS        = 0
+  DEPENDENT_BLOCKED_TESTS           = 4      (jit.alloc, loader.run_valid_module,
+                                              memory.dual_mapping_rw_rx, jit.execution_allowed)
+  EXTERNAL_CAPABILITY_BLOCKED       = 2      (R1 entitlement de JIT no iOS; R3 namespace POSIX
+                                              nomeado no sandbox iOS - o port não depende dele)
+  APPLE_CI_RETEST_REQUIRED          = 7      (S-018 … S-024)
+  IPHONE_RETEST_REQUIRED            = 12     (jit.map_jit_probe, jit.alloc, jit.write_payload,
+                                              jit.make_executable, jit.execute_return_42,
+                                              jit.rewrite_payload, jit.execute_return_4242,
+                                              jit.free, jit.execution_allowed,
+                                              memory.dual_mapping_rw_rx, ipc.posix_shm,
+                                              loader.run_valid_module)
+
 Nenhum defeito é contado duas vezes por sintomas dependentes: S-005 cobre a etapa **e** a
 classificação do mesmo caminho de dual mapping (uma causa, um defeito); L-001 e S-002 são
 causas distintas; S-010/S-011/S-012 são três decisões independentes no mesmo arquivo (o
@@ -374,6 +485,9 @@ causas distintas; S-010/S-011/S-012 são três decisões independentes no mesmo 
 escrita curta tratada como erro com errno), cada uma com o seu próprio controle negativo.
 
 `KNOWN_UNFIXED_CODE_DEFECTS = 0`: todo defeito de código conhecido da Fase 02 está corrigido e
-com regressão. O que permanece **não** é defeito de código: a concessão da entitlement de JIT
+com regressão. Na rodada 03, nenhum dos cinco `BLOCKED` do run 02 foi reclassificado: dois são
+probes de capacidade (um deles externo e não obtenível), três são dependentes de uma causa
+única cada, e o `UNTESTED` é dependente do caminho de arena — que a rodada 03 destravou de
+verdade (implementação + verificação por execução), não por rótulo. O que permanece **não** é defeito de código: a concessão da entitlement de JIT
 (`EXTERNAL_CAPABILITY_BLOCKED=1`, dependente de assinatura/provisioning) e as confirmações que
 só o Apple CI real e o iPhone podem dar (`APPLE_CI_RETEST_REQUIRED`, `IPHONE_RETEST_REQUIRED`).

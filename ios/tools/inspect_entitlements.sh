@@ -2,12 +2,17 @@
 # inspect_entitlements.sh — read what a BUILT Apple product actually carries, without
 # touching personal data.
 #
-# Why this exists (Fix 06, mandatory entitlement investigation): four different things get
-# confused with each other.
-#   level 1  requested in the project  — RuntimePoC/WinlatorPhase02.entitlements; a file
-#                                        existing proves nothing about the product.
-#   level 2  present before signing    — belongs to the signing step.
-#   level 3  granted to the signature  — only readable on the built product (this script).
+# Why this exists (Fix 06, mandatory entitlement investigation; extended in pass 03): four
+# different things get confused with each other, and the script now separates them explicitly
+# instead of only answering the product side.
+#   level 1  requested in the project  — RuntimePoC/WinlatorPhase02.entitlements plus the
+#                                        CODE_SIGN_ENTITLEMENTS wiring state. Readable on ANY
+#                                        host, which is why it is printed first.
+#   level 2  present before signing    — belongs to the signing step: whether the product
+#                                        carries a signature, a CodeResources seal or an
+#                                        embedded provisioning profile (presence only).
+#   level 3  granted to the signature  — only readable on the built product, with an Apple
+#                                        toolchain (this script).
 #   level 4  observed at runtime       — the harness records it (MAP_JIT accepted/refused).
 #
 # This script answers level 3 and must be honest when it cannot: on a Linux host, or on an
@@ -25,6 +30,7 @@ set -u
 STATUS="UNTESTED"
 REASON=""
 PRODUCT="${1:-}"
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
 say() { printf '%s\n' "$*"; }
 
@@ -33,18 +39,56 @@ if [ -z "$PRODUCT" ]; then
     say "usage: sh ios/tools/inspect_entitlements.sh <App.app|binary|ipa>"
     exit 0
 fi
+
+# ---------------------------------------------------------------- level 1: repository facts
+# These do not depend on the host or on the product, so they are always reported first: a
+# reader must never have to guess what the project requests and whether anything applies it.
+say "LEVEL1_REQUESTED_IN_REPO=checked"
+if [ -f "$ROOT/RuntimePoC/WinlatorPhase02.entitlements" ]; then
+    say "  file=RuntimePoC/WinlatorPhase02.entitlements present"
+    if grep -q "com.apple.security.cs.allow-jit" "$ROOT/RuntimePoC/WinlatorPhase02.entitlements"; then
+        say "  key_names:"
+        sed -n 's/.*<key>\(com\.apple\.[A-Za-z0-9._-]*\)<\/key>.*/    - \1/p' \
+            "$ROOT/RuntimePoC/WinlatorPhase02.entitlements" | sort -u
+    else
+        say "  key_names=<none of interest>"
+    fi
+    if grep -q "WIRING DECISION" "$ROOT/RuntimePoC/WinlatorPhase02.entitlements"; then
+        say "  wiring_decision=recorded_in_the_entitlements_file"
+    else
+        say "  wiring_decision=NOT_RECORDED (an unwired entitlements file must say why)"
+    fi
+else
+    say "  file=ABSENT"
+fi
+# The wiring state, read off the project file: how many target configurations attach the file.
+PBXPROJ="$ROOT/WinlatorPhase02.xcodeproj/project.pbxproj"
+if [ -f "$PBXPROJ" ]; then
+    WIRED=$(grep -c "CODE_SIGN_ENTITLEMENTS" "$PBXPROJ" || true)
+    if [ "${WIRED:-0}" -gt 0 ]; then
+        say "  CODE_SIGN_ENTITLEMENTS=set in $WIRED configuration line(s) (level 2 will decide"
+        say "    whether the signing step embeds it; a subset of configurations is a defect)"
+    else
+        say "  CODE_SIGN_ENTITLEMENTS=not set in any configuration: the request is a repository"
+        say "    record only. Reason and opt-in are documented in the entitlements file and in"
+        say "    tools/build_ios.sh (on iOS every entitlement must be allowlisted by the"
+        say "    provisioning profile, so attaching one it cannot carry breaks the signed"
+        say "    build/install; the unsigned build embeds nothing either way)"
+    fi
+fi
+
 if [ ! -e "$PRODUCT" ]; then
     say "ENTITLEMENT_INSPECTION=UNTESTED REASON=PRODUCT_NOT_FOUND product=$PRODUCT"
+    say "ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN"
     exit 0
 fi
-if [ "$(uname -s)" != "Darwin" ]; then
+if [ "$(uname -s)" != "Darwin" ] || ! command -v codesign >/dev/null 2>&1; then
+    say "LEVEL2_PRESENT_BEFORE_SIGNING=not readable without an Apple toolchain on the product"
+    say "  (the level-1 facts above are host independent and remain valid)"
     say "ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_MACOS_HOST host=$(uname -s)"
+    say "ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN"
     say "note: level 3 of the entitlement investigation cannot be read off Darwin; run this"
     say "      on a macOS host (or in the CI job) over the produced product"
-    exit 0
-fi
-if ! command -v codesign >/dev/null 2>&1; then
-    say "ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_CODESIGN"
     exit 0
 fi
 
@@ -56,15 +100,18 @@ case "$PRODUCT" in
 *.ipa)
     if ! command -v unzip >/dev/null 2>&1; then
         say "ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_UNZIP"
+        say "ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN"
         exit 0
     fi
     unzip -qq "$PRODUCT" -d "$WORK" || {
         say "ENTITLEMENT_INSPECTION=UNTESTED REASON=IPA_UNREADABLE product=$PRODUCT"
+        say "ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN"
         exit 0
     }
     TARGET=$(find "$WORK/Payload" -maxdepth 1 -name '*.app' -print 2>/dev/null | head -1)
     if [ -z "$TARGET" ]; then
         say "ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_APP_IN_IPA product=$PRODUCT"
+        say "ENTITLEMENT_SIGNATURE_INSPECTION=UNTESTED REASON=NO_APPLE_TOOLCHAIN"
         exit 0
     fi
     ;;
@@ -75,8 +122,14 @@ EXEC_NAME=$(basename "$TARGET")
                                        "$TARGET/Info.plist" 2>/dev/null || echo "")
 
 say "ENTITLEMENT_INSPECTION=STARTED product=$PRODUCT"
-say "LEVEL1_REQUESTED_IN_REPO=see RuntimePoC/WinlatorPhase02.entitlements (repository fact;"
-say "  the project does not wire it to CODE_SIGN_ENTITLEMENTS, so nothing applies by itself)"
+
+# ------------------------------------------------- level 2: what the product carries at all
+# Presence only: a seal, a signature or a profile is a boolean fact here, never content.
+if [ -d "$BUNDLE" ] && [ -e "$BUNDLE/_CodeSignature/CodeResources" ]; then
+    say "LEVEL2_CODESIGNATURE_SEAL=present_in_bundle"
+else
+    say "LEVEL2_CODESIGNATURE_SEAL=absent_in_bundle"
+fi
 
 # ---------------------------------------------------------------- level 2/3: the signature
 SIGN_INFO="$WORK/codesign.txt"
@@ -134,6 +187,7 @@ else
 fi
 
 say "LEVEL4_OBSERVED_AT_RUNTIME=see the harness record jit.map_jit_probe on the device"
+say "ENTITLEMENT_SIGNATURE_INSPECTION=COMPLETE (key names and booleans only)"
 say "ENTITLEMENT_INSPECTION=COMPLETE (this script prints key names and booleans only; no"
 say "  certificate subject, team identifier, UDID or profile value is ever printed)"
 exit 0

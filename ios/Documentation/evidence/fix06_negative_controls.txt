@@ -13,12 +13,12 @@ CONTROL_F=DETECTED by audit ERRNO_ZERO_DEFECT; DETECTED by unit tests
   what: errno 0 accepted as a verdict (silent failure as PASS)
 
 == restoration ==
-  ok   RuntimeCore/src/runtime_loader.c 29b701ade74e47f0
+  ok   RuntimeCore/src/runtime_loader.c b418f24fc9191617
   ok   RuntimeCore/src/runtime_filesystem.c 052b434126dd5baf
-  ok   RuntimeCore/src/runtime_jit.c 9940ff05bd38e6bf
-  ok   Diagnostics/src/phase02_harness.c 59e4ce3b0d0844f1
+  ok   RuntimeCore/src/runtime_jit.c 949bc3a1c664b31e
+  ok   Diagnostics/src/phase02_harness.c cfec101f7772c453
   ok   Documentation/IPHONE13_PHYSICAL_RUN_01.md 8f10c579584e5079
-  after restore: build rc=0, tests == 274 checks, 0 failures ==
+  after restore: build rc=0, tests == 298 checks, 0 failures ==
   after restore: FIX06_CONTRACTS_AUDIT=0
 
 FIX06_NEGATIVE_CONTROLS=6/6

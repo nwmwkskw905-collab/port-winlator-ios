@@ -3,7 +3,7 @@ compiler: aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
 
 -- cache-maintenance symbols demanded by each object (undefined symbols) --
   linux_platform.o         __clear_cache __errno_location close getauxval getrandom mmap mprotect munmap open read sysconf 
-  runtime_dual_mapping.o   __errno_location close ftruncate memset mmap munmap rt_platform_page_size rt_platform_unique_shm_name shm_open shm_unlink 
+  runtime_dual_mapping.o   __errno_location close ftruncate memset mmap munmap open rt_platform_page_size rt_platform_unique_shm_name shm_open shm_unlink snprintf unlink 
   runtime_ipc.o            __cmsg_nxthdr __errno_location accept bind close connect epoll_create1 epoll_ctl epoll_wait ftruncate listen memcmp memset mmap munmap pipe read recvmsg rt_platform_unique_shm_name sendmsg shm_open shm_unlink snprintf socket socketpair unlink write 
 CLEAR_CACHE_REFERENCED_BY= linux_platform.o
 

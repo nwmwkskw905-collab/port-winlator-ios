@@ -106,16 +106,27 @@ uint32_t rt_jit_call_u32(const void *code)
     return fn();
 }
 
-void *rt_jit_alloc(size_t len, int *err_out, int *map_jit_attempted_out)
+void *rt_jit_alloc_ex(size_t len, int *err_out, rt_jit_arena_kind_t *arena_kind_out,
+                      int *map_jit_attempted_out, int *map_jit_refused_errno_out)
 {
+    if (err_out != NULL) {
+        *err_out = 0;
+    }
+    if (arena_kind_out != NULL) {
+        *arena_kind_out = RT_JIT_ARENA_ANON;
+    }
     if (map_jit_attempted_out != NULL) {
         *map_jit_attempted_out = 0;
+    }
+    if (map_jit_refused_errno_out != NULL) {
+        *map_jit_refused_errno_out = 0;
     }
 #if defined(__APPLE__) && defined(__aarch64__) && defined(MAP_JIT)
     {
         size_t page = (size_t)rt_platform_page_size();
         size_t rounded = ((len + page - 1u) / page) * page;
         void *addr;
+        int refused = 0;
         /* The MAP_JIT path is taken (and reported as taken) before the call is made, so a
          * refusal can be attributed to it instead of looking like a generic failure. */
         if (map_jit_attempted_out != NULL) {
@@ -123,24 +134,58 @@ void *rt_jit_alloc(size_t len, int *err_out, int *map_jit_attempted_out)
         }
         addr = mmap(NULL, rounded, PROT_READ | PROT_WRITE | PROT_EXEC,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
-        if (addr == MAP_FAILED) {
-            if (err_out != NULL) {
-                *err_out = errno;       /* captured immediately */
+        if (addr != MAP_FAILED) {
+            if (arena_kind_out != NULL) {
+                *arena_kind_out = RT_JIT_ARENA_MAP_JIT;
             }
-            return NULL;
+            return addr;
         }
-        if (err_out != NULL) {
-            *err_out = 0;
+        refused = errno;                /* captured immediately, never overwritten */
+        if (map_jit_refused_errno_out != NULL) {
+            *map_jit_refused_errno_out = refused;
+        }
+        /* MAP_JIT was refused. Falling back is not "using a plain mmap to green a test": the
+         * arena handed back here has exactly the semantics the port requires — writable now,
+         * never writable and executable at the same time, flipped to R-X by the caller after
+         * the instruction-cache flush, and every step verified by real execution. It is the
+         * same mechanism the port already uses on every platform without MAP_JIT, and on iOS
+         * it is the ONLY mechanism a third-party app can have (the entitlement that gates
+         * MAP_JIT is not obtainable; physical run #2 measured the refusal). The refusal stays
+         * visible through *map_jit_refused_errno_out and through jit.map_jit_probe, which
+         * keeps reporting the capability as BLOCKED. A caller that needs MAP_JIT specifically
+         * must not use this function. */
+        addr = rt_mem_reserve(len, err_out);
+        if (addr == NULL) {
+            return NULL;               /* err_out: the fallback's own errno */
+        }
+        if (arena_kind_out != NULL) {
+            *arena_kind_out = RT_JIT_ARENA_ANON_MAP_JIT_REFUSED;
         }
         return addr;
     }
 #else
-    /* No MAP_JIT here: a plain RW mapping that the caller must flip with
+    /* No MAP_JIT on this platform/target: a plain RW mapping that the caller must flip with
      * rt_mem_protect(). This is deliberately not presented as a JIT arena, and
      * map_jit_attempted_out stays 0 — a failure of this path is not the MAP_JIT
      * capability. */
-    return rt_mem_reserve(len, err_out);
+    {
+        void *addr = rt_mem_reserve(len, err_out);
+        if (addr == NULL) {
+            return NULL;
+        }
+        if (arena_kind_out != NULL) {
+            *arena_kind_out = RT_JIT_ARENA_ANON;
+        }
+        return addr;
+    }
 #endif
+}
+
+void *rt_jit_alloc(size_t len, int *err_out, int *map_jit_attempted_out)
+{
+    /* Compatibility wrapper: callers that do not act on the arena mechanism (or that only
+     * need the MAP_JIT-attempt fact) keep their old signature. */
+    return rt_jit_alloc_ex(len, err_out, NULL, map_jit_attempted_out, NULL);
 }
 
 int rt_jit_free(void *addr, size_t len)
@@ -234,12 +279,15 @@ int rt_jit_execution_allowed(void)
     /* Answerable only by trying: emit a payload, make it executable, call it under
      * the fault guard. Returns 1 (yes), 0 (no) or -1 (not determined here).
      *
-     * Every step is checked, and the MAP_JIT path is driven the way the platform requires:
-     * when the arena came from a MAP_JIT mapping, the payload is written inside the
-     * write-protect window (begin/end write) instead of straight into a possibly
-     * write-protected region, and the instruction-cache flush is honoured. Failure of any
-     * of those is "not determined" (-1), never a false "this process may not execute
-     * memory it wrote". */
+     * Every step is checked, and the two arena mechanisms are driven the way each one
+     * requires — this is the defect physical run #2 exposed: the MAP_JIT branch opened the
+     * write window correctly, but the executable step then called rt_mem_protect(R-X) on the
+     * MAP_JIT region *and* the anonymous branch relied on rt_mem_protect alone. On a MAP_JIT
+     * region the page protections are set at creation (PROT_MAX-style) and mprotect() is the
+     * wrong tool: the supported operation is closing the write window, which is what
+     * rt_jit_end_write() does. A failure of that step must not be reported as "this process
+     * may not execute memory it wrote" when the write was never actually made executable.
+     * Failure of any step below is "not determined" (-1), never a false verdict. */
     uint8_t payload[16];
     size_t len = 0u;
     void *arena = NULL;
@@ -247,35 +295,43 @@ int rt_jit_execution_allowed(void)
     void *fault = NULL;
     uint32_t value = 0u;
     int err = 0;
-    int used_map_jit = 0;
+    int map_jit_attempted = 0;
+    rt_jit_arena_kind_t kind = RT_JIT_ARENA_ANON;
     int result;
     rt_jit_fn_t fn;
 
     if (rt_jit_emit_return_imm(payload, sizeof(payload), 1u, &len) != 0) {
         return -1;
     }
-    arena = rt_jit_alloc(len, &err, &used_map_jit);
+    arena = rt_jit_alloc_ex(len, &err, &kind, &map_jit_attempted, NULL);
+    (void)map_jit_attempted;
     if (arena == NULL) {
         return -1;
     }
-    if (used_map_jit != 0 && rt_jit_begin_write(arena, len, &err) != 0) {
-        (void)rt_jit_free(arena, len);
-        return -1; /* no write window: nothing was written, nothing was measured */
-    }
-    memcpy(arena, payload, len);
-    if (used_map_jit != 0 && rt_jit_end_write(arena, len, &err) != 0) {
-        (void)rt_jit_free(arena, len);
-        return -1;
+    if (kind == RT_JIT_ARENA_MAP_JIT) {
+        /* MAP_JIT region: the payload only exists inside the write window. */
+        if (rt_jit_begin_write(arena, len, &err) != 0) {
+            (void)rt_jit_free(arena, len);
+            return -1; /* no write window: nothing was written, nothing was measured */
+        }
+        memcpy(arena, payload, len);
+        if (rt_jit_end_write(arena, len, &err) != 0) {
+            (void)rt_jit_free(arena, len);
+            return -1; /* the window never closed: the payload is not executable yet */
+        }
+        /* No mprotect here: on a MAP_JIT region the protections were fixed at creation and
+         * closing the write window is the supported transition. */
+    } else {
+        memcpy(arena, payload, len);
+        if (rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
+            (void)rt_jit_free(arena, len);
+            return 0; /* writable but not executable: this process may not execute it */
+        }
     }
     if (rt_jit_invalidate(arena, len) != 0 && (rt_platform_capabilities() & RT_CAP_ICACHE_FLUSH) != 0u) {
         /* The platform can flush and the flush failed: executing would be untrustworthy. */
         (void)rt_jit_free(arena, len);
         return -1;
-    }
-
-    if (rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
-        (void)rt_jit_free(arena, len);
-        return 0; /* writable but not executable: this process may not execute it */
     }
 
     target = arena;

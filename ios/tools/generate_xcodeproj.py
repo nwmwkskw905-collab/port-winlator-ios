@@ -37,6 +37,12 @@ RUNTIME_POC = "RuntimePoC"
 
 PLIST_NAME = "Info.plist"
 BRIDGING_HEADER = "Phase02-Bridging-Header.h"
+# Level 1 of the entitlement investigation (see tools/audit_entitlement_config.py). The file
+# records what the PoC requests; it is deliberately NOT attached to CODE_SIGN_ENTITLEMENTS for
+# this iOS target (reason and opt-in: the file itself and tools/build_ios.sh). The generator
+# still insists that it exists: a harness that reports "L1_requested_in_repo" while the file
+# is gone would be reporting a request nobody can read.
+ENTITLEMENTS_NAME = "WinlatorPhase02.entitlements"
 
 
 def uid(label: str) -> str:
@@ -66,6 +72,9 @@ def collect_files(root: Path) -> dict:
         problems.append(f"missing {RUNTIME_POC}/{PLIST_NAME}")
     if not (root / RUNTIME_POC / BRIDGING_HEADER).is_file():
         problems.append(f"missing {RUNTIME_POC}/{BRIDGING_HEADER}")
+    if not (root / RUNTIME_POC / ENTITLEMENTS_NAME).is_file():
+        problems.append(f"missing {RUNTIME_POC}/{ENTITLEMENTS_NAME} (level 1 of the "
+                        f"entitlement investigation must stay readable)")
     if problems:
         for issue in problems:
             print(f"generate_xcodeproj: ERROR: {issue}", file=sys.stderr)

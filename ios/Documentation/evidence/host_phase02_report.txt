@@ -1,13 +1,13 @@
 # PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics
 # platform=linux page_size=4096 apple_target=none
-# host: platform=linux page_size=4096 isa=x86-64 apple_target=none workdir=/tmp/phase02_cUDwX2
+# host: platform=linux page_size=4096 isa=x86-64 apple_target=none workdir=/tmp/phase02_FfWsNR
 # note: host results are NOT iOS results; physical-device validation stays pending.
 
 == SUITE memory: memory protection matrix, W^X and dual mapping ==
 [PHASE02] TEST=memory.reserve_rw STATUS=PASS DETAIL=mapped one page read-write (page_size=4096)
 [PHASE02] TEST=memory.read_rw STATUS=PASS DETAIL=read 4096 bytes from the RW mapping
 [PHASE02] TEST=memory.rw_to_r_transition STATUS=PASS DETAIL=mprotect to R accepted
-[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7faa8296b000
+[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7f60fee2a000
 [PHASE02] TEST=memory.r_to_rw_transition STATUS=PASS DETAIL=write after mprotect(RW) completed
 [PHASE02] TEST=memory.rw_to_rx_transition STATUS=PASS DETAIL=mprotect to R-X accepted (execution is tested by the jit suite)
 [PHASE02] TEST=memory.rx_to_rw_transition STATUS=PASS DETAIL=mprotect back to RW accepted
@@ -17,17 +17,19 @@
 
 == SUITE jit: MAP_JIT, write-protect hook, generated-code microtest ==
 [PHASE02] TEST=jit.map_jit_probe STATUS=UNSUPPORTED DETAIL=platform 'linux' has no MAP_JIT (capability bit absent, target=none)
-[PHASE02] NOTE=jit.entitlement_levels requested_in_repo=com.apple.security.cs.allow-jit (RuntimePoC/WinlatorPhase02.entitlements exists but is NOT wired to CODE_SIGN_ENTITLEMENTS: nothing is applied by itself) present_before_signing=external to this process (the signing step; no key material or provisioning profile is in the repository) granted_to_signature=NOT observable in-process: read it on the built product with tools/inspect_entitlements.sh (key names only, never certificate data) observed_at_runtime=MAP_JIT refused with errno 0 (defect) (target=none)
+[PHASE02] NOTE=jit.entitlement_levels L1_requested_in_repo=com.apple.security.cs.allow-jit (RuntimePoC/WinlatorPhase02.entitlements) and the wiring decision: the file is DELIBERATELY NOT attached to CODE_SIGN_ENTITLEMENTS, because on iOS-based platforms every entitlement must be allowlisted by the provisioning profile and an entitlements file that requests one the profile does not allow makes the signed build/install fail (Xcode: "provisioning profile does not include the ... entitlement"; device: 0xE8008016) - attaching it would break the only install path that can validate anything, for a capability it cannot obtain. The opt-in for a signing context that can carry it is documented in tools/build_ios.sh. L2_embedded_at_build=decided by the signing step: this project builds UNSIGNED_IPA (CODE_SIGNING_ALLOWED=NO), so the built product embeds nothing - a fact, not a failure L3_granted_to_signature=NOT observable in-process; read it off the built product with tools/inspect_entitlements.sh (key names and booleans only, never certificate or profile data) L4_observed_at_runtime=MAP_JIT not applicable (no MAP_JIT on this platform/target) (target=none) the wiring grants nothing and is never claimed to: only signing, installation and a physical run can decide L3/L4
 [PHASE02] TEST=jit.write_protect_np STATUS=UNSUPPORTED DETAIL=platform 'linux' has no pthread_jit_write_protect_np (target=none, capability bit absent)
 [PHASE02] TEST=jit.emit_payload STATUS=PASS DETAIL=ISA=x86-64 emitted 6 bytes for 'return 42'
-[PHASE02] TEST=jit.alloc STATUS=PASS DETAIL=arena of 6 bytes (MAP_JIT=no)
+[PHASE02] TEST=jit.alloc STATUS=PASS DETAIL=arena of 6 bytes (anonymous W^X; MAP_JIT is not a capability of this platform/target)
+[PHASE02] TEST=jit.write_payload STATUS=PASS DETAIL=6 bytes written into the RW arena and read back identical
 [PHASE02] TEST=jit.icache_sync STATUS=PASS DETAIL=6 bytes flushed through the linux backend hook after the first write
-[PHASE02] TEST=jit.make_executable STATUS=PASS DETAIL=payload is in executable memory (mprotect R-X)
+[PHASE02] TEST=jit.make_executable STATUS=PASS DETAIL=payload is in executable memory and PROVEN executable by real execution returning 42 (mprotect R-X)
 [PHASE02] TEST=jit.execute_return_42 STATUS=PASS DETAIL=generated function returned 42 (expected 42)
 [PHASE02] TEST=jit.icache_sync STATUS=PASS DETAIL=6 bytes flushed through the linux backend hook after the rewrite
-[PHASE02] TEST=jit.rewrite_payload STATUS=PASS DETAIL=payload rewritten (6 bytes), write window closed and instruction cache synchronised
+[PHASE02] TEST=jit.rewrite_payload STATUS=PASS DETAIL=payload rewritten (6 bytes), window closed and instruction cache synchronised
 [PHASE02] TEST=jit.execute_return_4242 STATUS=PASS DETAIL=rewritten generated function returned 4242 (expected 4242)
-[PHASE02] TEST=jit.execution_allowed STATUS=PASS DETAIL=this process executed memory it wrote
+[PHASE02] TEST=jit.free STATUS=PASS DETAIL=arena released after execution (munmap accepted): no generated code stays mapped
+[PHASE02] TEST=jit.execution_allowed STATUS=PASS DETAIL=this process executed memory it wrote (emitted fetch/return payload, made it executable through the arena's own mechanism and got 1 back from the CPU)
 
 == SUITE cpu: host CPU/ABI facts, page size, x18 policy ==
 [PHASE02] TEST=cpu.facts STATUS=PASS DETAIL=arch=x86-64 abi=sysv-amd64-linux platform=linux ptr_bits=64 page=4096 endian=little x18_platform_reserved=0 x18_build_reserved=0 hwcap=n/a cache_line=64
@@ -52,15 +54,15 @@
 [PHASE02] TEST=signals.suite_survived STATUS=PASS DETAIL=suite continued after the controlled fault
 
 == SUITE fs: POSIX filesystem semantics ==
-[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_cUDwX2
+[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_FfWsNR
 [PHASE02] TEST=fs.deep_paths STATUS=PASS DETAIL=capacity measured: depth up to 224 (2035 chars) created and removed; the ceiling at depth=225 (stage=leaf-path-join, errno=36) is this probe's own path buffer (cap=2048), NOT the platform's (PATH_MAX=4096[pathconf]): depth beyond it was not probed and is not claimed
 [PHASE02] TEST=fs.links_and_modes STATUS=PASS DETAIL=symlink followed, chmod 0640 observed
-[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_3D2Ar7
-[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=911884288 bytes on the workdir fs
+[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_vyquCp
+[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=957177856 bytes on the workdir fs
 
 == SUITE ipc: AF_UNIX, SCM_RIGHTS, pipe, shm, kqueue/epoll ==
 [PHASE02] TEST=ipc.socketpair STATUS=PASS DETAIL=AF_UNIX SOCK_STREAM socketpair round trip (errno=0)
-[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_cUDwX2 (errno=0)
+[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_FfWsNR (errno=0)
 [PHASE02] TEST=ipc.scm_rights STATUS=PASS DETAIL=file descriptor passed with SCM_RIGHTS and used (errno=0)
 [PHASE02] TEST=ipc.pipe STATUS=PASS DETAIL=pipe round trip (errno=0)
 [PHASE02] TEST=ipc.posix_shm STATUS=PASS DETAIL=shared memory object created, mapped twice (stage=none), written through one view and read through the other (19 bytes match)
@@ -78,4 +80,4 @@
 [PHASE02] TEST=loader.reject_truncated STATUS=PASS DETAIL=8-byte image rejected as too small
 [PHASE02] TEST=loader.reject_code_overlapping_header STATUS=PASS DETAIL=code_off inside the header rejected
 
-# records=58 assertions=0 pass=54 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS
+# records=60 assertions=0 pass=56 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS

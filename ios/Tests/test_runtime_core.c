@@ -302,6 +302,137 @@ static void test_dual_mapping(void)
     CHECK(rt_dual_map_views_aliased(&map) == -1, "destroyed map is not usable (negative case)");
 }
 
+
+/* ------------------------------------------------------------------- pass 03 */
+
+/* The arena mechanism the allocator reports must match what actually happened, on every
+ * host: this is the invariant that made physical run #2's `jit.alloc` unattributable, and
+ * the one that keeps the MAP_JIT refusal visible when the W^X fallback supplies the arena. */
+static void test_jit_alloc_arena_kind(void)
+{
+    size_t len = 64u;
+    void *arena;
+    int err = 0;
+    int attempted = 0;
+    int refused = 0;
+    rt_jit_arena_kind_t kind = RT_JIT_ARENA_MAP_JIT;   /* poisoned: must be overwritten */
+
+    arena = rt_jit_alloc_ex(len, &err, &kind, &attempted, &refused);
+    CHECK(arena != NULL, "jit arena allocated (arena-kind probe)");
+    if (arena == NULL) {
+        CHECK(err != 0, "a failed allocation reports a real errno, never 0");
+        return;
+    }
+    CHECK(kind != RT_JIT_ARENA_MAP_JIT || attempted != 0,
+          "MAP_JIT kind implies the MAP_JIT path was taken");
+    if (kind == RT_JIT_ARENA_MAP_JIT) {
+        CHECK(attempted == 1, "MAP_JIT arena: the attempt flag is set");
+        CHECK(refused == 0, "MAP_JIT arena: nothing was refused");
+    } else if (kind == RT_JIT_ARENA_ANON_MAP_JIT_REFUSED) {
+        /* The iOS/macOS case physical run #2 measures on the device: the refusal must stay
+         * visible (errno) and the arena must still be a real W^X arena — never a success
+         * that hides the missing capability. */
+        CHECK(attempted == 1, "fallback arena: the MAP_JIT attempt is still reported");
+        CHECK(refused != 0, "fallback arena: the MAP_JIT refusal errno is preserved");
+    } else {
+        CHECK(kind == RT_JIT_ARENA_ANON, "non-MAP_JIT arena reports the ANON kind");
+        CHECK(attempted == 0, "ANON arena: MAP_JIT was not attempted on this platform");
+        CHECK(refused == 0, "ANON arena: no refusal to report");
+    }
+
+    /* Whatever the kind, an anonymous arena must behave as a W^X buffer: writable, then
+     * executable, never both, and releasable. A MAP_JIT arena's protection belongs to the
+     * mapping and is driven by the write window, so it is not flipped here. */
+    if (kind != RT_JIT_ARENA_MAP_JIT) {
+        CHECK(rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_WRITE, &err) == 0,
+              "arena is writable before the executable flip");
+        CHECK(rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_EXEC, &err) == 0,
+              "arena flips to R-X (single view, W^X)");
+        /* The kernel's RWX policy is a measurement, not a design goal — the harness records
+         * it the same way, so either answer is a fact and is printed rather than asserted.
+         * What IS asserted is that the arena can return to writable-not-executable: the port
+         * never needs (or keeps) a page that is writable and executable at the same time. */
+        printf("note arena RWX policy: %s\n",
+               (rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_WRITE | RT_PROT_EXEC, &err) == 0)
+                   ? "granted by this kernel (recorded; the port still prefers W^X)"
+                   : "refused (strict W^X available)");
+        CHECK(rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_WRITE, &err) == 0,
+              "arena returns to writable-not-executable after the RWX observation");
+    }
+    CHECK(rt_jit_free(arena, len) == 0, "arena released");
+}
+
+/* The iOS backend of the dual-mapping experiment (pass 03). On this host the named POSIX
+ * path works, so this test exercises the substitute directly and checks the semantics the
+ * experiment needs: one object, two live views, write-through/read-through aliasing, no
+ * leftover object, and a real errno on a refusal. */
+static void test_dual_mapping_file_backed(void)
+{
+    char dir[] = "/tmp/phase02-dual-XXXXXX";
+    char *made;
+    rt_dual_map_t map;
+    size_t page = (size_t)rt_platform_page_size();
+    int entries = -1;
+
+    made = mkdtemp(dir);
+    CHECK(made != NULL, "file-backed dual mapping: scratch directory created");
+    if (made == NULL) {
+        return;
+    }
+
+    if (rt_dual_map_create_file_backed(dir, page, &map) != 0) {
+        printf("note file-backed dual mapping unavailable here: stage=%s errno=%d (%s)\n",
+               rt_dual_stage_name(map.stage), map.err, strerror(map.err));
+        CHECK(map.err != 0, "a refused file-backed dual mapping carries a real errno");
+        CHECK(rt_dual_map_views_aliased(&map) == -1,
+              "a refused map is not usable (negative case)");
+    } else {
+        CHECK(map.stage == RT_DUAL_STAGE_NONE, "file-backed dual mapping succeeded");
+        CHECK(map.supported == 1, "file-backed map reports itself supported");
+        CHECK(rt_dual_map_views_aliased(&map) == 1,
+              "file-backed views alias the same memory (real semantics)");
+        CHECK(munmap(map.rw, map.len) == 0, "writable view released");
+        CHECK(munmap(map.rx, map.len) == 0, "executable view released");
+    }
+
+    /* Cleanup: the object is unlinked at creation, so the directory must be empty again
+     * (a stray file would survive a crash and accumulate in the app container). */
+    {
+        DIR *d = opendir(dir);
+        struct dirent *entry;
+        if (d != NULL) {
+            entries = 0;
+            while ((entry = readdir(d)) != NULL) {
+                if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                    entries++;
+                }
+            }
+            (void)closedir(d);
+        }
+    }
+    CHECK(entries == 0, "no backing object is left behind in the directory");
+    CHECK(rmdir(dir) == 0, "scratch directory removed (cleanup verified)");
+}
+
+/* A file-backed map refuses to guess a location: no directory means no experiment, with a
+ * real errno, and never a fallback to a system-wide or fixed name. */
+static void test_dual_mapping_file_backed_negative(void)
+{
+    rt_dual_map_t map;
+    size_t page = (size_t)rt_platform_page_size();
+
+    CHECK(rt_dual_map_create_file_backed(NULL, page, &map) != 0,
+          "file-backed dual mapping refuses a NULL directory");
+    CHECK(map.err == EINVAL, "…with errno=EINVAL (a defect of the call, not a platform answer)");
+    CHECK(map.stage == RT_DUAL_STAGE_NAME, "…naming the stage that failed");
+    CHECK(map.supported == 0, "…and reports the map as unsupported");
+
+    CHECK(rt_dual_map_create_file_backed("/nonexistent-phase02-dir", page, &map) != 0,
+          "file-backed dual mapping refuses an unusable directory");
+    CHECK(map.err != 0, "…with a real errno from open(2)");
+    CHECK(map.stage == RT_DUAL_STAGE_FILE_OPEN, "…naming open(2) as the failing stage");
+}
+
 /* ---------------------------------------------------------------------- cpu */
 
 static void test_cpu_facts(void)
@@ -1269,6 +1400,9 @@ int main(void)
     test_mem_protect_rejects_overflow();
     test_failure_carries_and_success_clears_errno();
     test_summaries_mark_truncation();
+    test_jit_alloc_arena_kind();
+    test_dual_mapping_file_backed();
+    test_dual_mapping_file_backed_negative();
 
     printf("== %u checks, %u failures ==\n", g_checks, g_failures);
     return (g_failures == 0u) ? 0 : 1;

@@ -107,6 +107,7 @@ rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_
     uint32_t value = 0u;
     int io_err = 0;
     int map_jit_attempted = 0;
+    rt_jit_arena_kind_t arena_kind = RT_JIT_ARENA_ANON;
     int rc;
     rt_jit_fn_t fn;
 
@@ -131,7 +132,7 @@ rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_
         return RT_FAIL;                 /* the image itself was rejected */
     }
 
-    arena = rt_jit_alloc(header.code_len, &io_err, &map_jit_attempted);
+    arena = rt_jit_alloc_ex(header.code_len, &io_err, &arena_kind, &map_jit_attempted, NULL);
     if (map_jit_attempted_out != NULL) {
         *map_jit_attempted_out = map_jit_attempted;
     }
@@ -148,7 +149,32 @@ rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_
         }
         return RT_BLOCKED;
     }
+    /* The code is copied through the mechanism the arena actually is — the defect this
+     * pass fixes: copying straight into a MAP_JIT region that is write-protected (its default
+     * state) faults, and calling rt_mem_protect(R-X) on a MAP_JIT region is the wrong
+     * transition (its protections were fixed at creation; the write window is the supported
+     * handle). On an anonymous arena nothing changes: memcpy, flush, flip to R-X. */
+    if (arena_kind == RT_JIT_ARENA_MAP_JIT && rt_jit_begin_write(arena, header.code_len, &io_err) != 0) {
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_JIT_UNAVAILABLE;
+        }
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;
+        }
+        (void)rt_jit_free(arena, header.code_len);
+        return RT_BLOCKED;
+    }
     memcpy(arena, image + header.code_off, header.code_len);
+    if (arena_kind == RT_JIT_ARENA_MAP_JIT && rt_jit_end_write(arena, header.code_len, &io_err) != 0) {
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_JIT_UNAVAILABLE;
+        }
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;
+        }
+        (void)rt_jit_free(arena, header.code_len);
+        return RT_BLOCKED;
+    }
     if (rt_jit_invalidate(arena, header.code_len) != 0) {
         /* Our own step failed while both the module and the memory were fine. The platform
          * hook reports no errno, so the reason carries the fact and os_err stays 0 —
@@ -159,7 +185,8 @@ rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_
         (void)rt_jit_free(arena, header.code_len);
         return RT_FAIL;
     }
-    if (rt_mem_protect(arena, header.code_len, RT_PROT_READ | RT_PROT_EXEC, &io_err) != 0) {
+    if (arena_kind != RT_JIT_ARENA_MAP_JIT &&
+        rt_mem_protect(arena, header.code_len, RT_PROT_READ | RT_PROT_EXEC, &io_err) != 0) {
         /* Writable but not executable: report it as blocked, not as a failure of the
          * module, because the module itself is valid. */
         if (loader_err_out != NULL) {

@@ -184,9 +184,14 @@ def rule_errno_zero(root, out):
 def rule_jit_attempt_order(root, out):
     violations = []
     jit = (root / JIT_C).read_text()
-    fn = body(jit, "void *rt_jit_alloc(")
+    # Pass 03 split the allocator: rt_jit_alloc_ex() performs the mapping (and the W^X
+    # fallback) while rt_jit_alloc() stays as a compatibility wrapper. The invariant this rule
+    # protects is unchanged, so it is checked on the function that maps.
+    fn = body(jit, "void *rt_jit_alloc_ex(") or body(jit, "void *rt_jit_alloc(")
     if fn is None:
-        violations.append("rt_jit_alloc is missing")
+        violations.append("rt_jit_alloc_ex/rt_jit_alloc is missing")
+    elif "void *rt_jit_alloc(size_t" not in jit:
+        violations.append("the rt_jit_alloc compatibility entry point was removed")
     else:
         attempt = fn.find("*map_jit_attempted_out = 1")
         if attempt < 0:
@@ -195,7 +200,7 @@ def rule_jit_attempt_order(root, out):
             # The mapping itself, not the word MAP_JIT inside a comment or an #else branch.
             mapping = re.search(r"mmap\([^;]*MAP_JIT", fn)
             if mapping is None:
-                violations.append("no mmap() with MAP_JIT in rt_jit_alloc")
+                violations.append("no mmap() with MAP_JIT in the arena allocator")
             elif attempt > mapping.start():
                 violations.append("the MAP_JIT attempt is recorded after the mapping: a "
                                  "refusal would no longer be attributable to the capability")

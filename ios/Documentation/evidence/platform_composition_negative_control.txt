@@ -8,7 +8,7 @@ baseline : exit 0
            UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
            PLATFORM_COMPOSITION_AUDIT=0
 
----- control A (the CI run #5 condition, file taken from HEAD~4)
+---- control A (the CI run #5 condition, file taken from HEAD~2)
 patched file : RuntimeCore/src/linux_platform.c
 expectation  : APPLE_FORBIDDEN_SYMBOLS >= 1, naming the unguarded builtin
 APPLE_FORBIDDEN_SYMBOLS: RuntimeCore/src/linux_platform.c:154 [macos-arm64] __builtin___clear_cache — on every ARM target clang lowers it to an external call to __clear_cache, and the iPhoneOS SDK provides no such symbol (CI run #5 link failure); Apple cache maintenance goes through sys_icache_invalidate() in darwin_platform.c. On x86 it expands to no instruction, so the x86 branches of darwin_platform.c are legal

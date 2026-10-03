@@ -1,0 +1,16 @@
+ok   J1 PROBE_FIRST: jit.map_jit_probe measured first, errno handed to the microtest
+ok   J2 ATTEMPT_BEFORE_MMAP: the attempt is recorded before mmap()
+ok   J3 FALLBACK_SURFACED: refusal errno preserved and reported next to the arena that was obtained
+ok   J4 NO_RWX_REQUEST: the only RWX request is the platform's MAP_JIT creation; no generic path maps W+X
+ok   J5 WINDOW_PER_KIND: write window for MAP_JIT, rt_mem_protect for the anonymous arena
+ok   J6 LOADER_PROTOCOL: copy inside the window, R-X flip only for the anonymous arena
+ok   J7 ICACHE_BEFORE_EXEC: both executions are preceded by a flush
+ok   J8 PASS_REQUIRES_EXECUTION: the transition PASS is written after the call that proves it; the loader PASS carries the executed value
+ok   J9 APPLE_ICACHE: sys_icache_invalidate on Apple, __clear_cache only on Linux, no shim
+ok   J10 NO_MACOS_API_ON_IOS: target-guarded call, ENOTSUP elsewhere, NOT_APPLICABLE reported
+ok   J11 DEPENDENCY_NAMES: execution_allowed names its dependency and claims no verdict it did not measure
+ok   J12 CHAIN_STEPS: emit, alloc, write, sync, make executable, execute, rewrite, sync, execute, free - all present
+ok   J13 SECOND_VALUE: the rewrite emits 4242 and its result is checked
+ok   J14 NO_FAKE_SUCCESS: every terminal PASS compares an observed value
+ok   J15 FALLBACK_DOCUMENTED: the fallback is justified and its contract is published
+JIT_CAUSAL_GRAPH_AUDIT=0

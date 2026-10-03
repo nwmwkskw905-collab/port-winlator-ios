@@ -308,7 +308,11 @@ jobs:
             echo "lipo=$(lipo -info "$APP/$EXEC" 2>&1 || true)"
             echo "bridge_symbols=$(nm "$APP/$EXEC" 2>/dev/null | grep -c Phase02Bridge || true)"
             echo "size_kb=$(du -sk "$APP" | cut -f1)"
-            echo "--- requested entitlements (NOT granted: unsigned build) ---"
+            echo "--- requested entitlements, LEVEL 1 (NOT granted; unsigned build) ---"
+            echo "wiring: the file is deliberately not attached to CODE_SIGN_ENTITLEMENTS on"
+            echo "        iOS (profile allowlist; attaching it breaks the signed install) -"
+            echo "        opt-in documented in tools/build_ios.sh; see"
+            echo "        tools/audit_entitlement_config.py for the enforced rule"
             plutil -p RuntimePoC/WinlatorPhase02.entitlements || true
             echo "--- entitlements carried by the binary (expected: none) ---"
             codesign -d --entitlements :- "$APP" 2>&1 || echo "(not signed)"

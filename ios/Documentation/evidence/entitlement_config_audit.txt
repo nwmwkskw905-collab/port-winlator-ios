@@ -1,0 +1,8 @@
+ok   E1 L1_FILE: requested-entitlement file present, key named, no credentials
+ok   E2 WIRING_COHERENCE: not wired for any configuration, and the decision + opt-in are recorded (entitlements file, build script, harness)
+ok   E3 NO_GRANT_CLAIMS: no granted-capability claim; the four levels are reported separately and the wiring is explicitly not a grant
+ok   E4 UNSIGNED_FACT: unsigned build and its labelling intact (the product embeds nothing; level 2 stays a signing-step fact)
+ok   E5 INSPECT_SCOPE: key names and booleans only, honest UNTESTED label without an Apple toolchain, no certificate/profile dumps
+ok   E6 NO_SECRETS: no profile, certificate, private key or committed secret in the tree
+ok   E7 PHYSICAL_BASELINE: run #1 present and run #2 carries its verbatim counts (immutable history)
+ENTITLEMENT_CONFIG_AUDIT=0

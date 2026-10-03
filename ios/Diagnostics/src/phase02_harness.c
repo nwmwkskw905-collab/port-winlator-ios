@@ -366,7 +366,7 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
     int err = 0;
     int rc;
 
-    (void)workdir;
+    (void)workdir; /* used by the iOS dual-mapping backend below, see the note there */
 
     region = rt_mem_reserve(page, &err);
     if (region == NULL) {
@@ -450,16 +450,95 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
         phase02_log_record(log, "memory.release", RT_PASS, "munmap accepted");
     }
 
-    /* Dual mapping: two views of the same physical memory. */
+    /* Dual mapping: two views of the same physical memory.
+     *
+     * Two facts have to stay separate, because physical run #2 measured the first one and it
+     * would be wrong to read it as the second:
+     *   - the NAMED POSIX shared-memory namespace is refused to a third-party iOS app
+     *     (shm_open -> EPERM). That is a property of that namespace in the app sandbox;
+     *   - whether this device can hold two live views of one object at all (one writable,
+     *     one executable).
+     * On an Apple iOS target the first refusal therefore selects the iOS backend
+     * (rt_dual_map_create_file_backed: a regular file in the app container, mapped
+     * MAP_SHARED twice, unlinked immediately). Selection is explicit, per platform, and used
+     * only after the named path was refused; Linux and macOS keep the named path untouched.
+     * This experiment is a CAPABILITY EXPERIMENT, never an architectural requirement: the
+     * port's iOS strategy is a single view flipped RW <-> R-X with the instruction cache
+     * synchronised, which run #2 already proved works (memory.rw_to_rx_transition = PASS,
+     * memory.wx_policy = PASS). A refusal below is recorded with its real stage and errno and
+     * changes no architecture. */
     {
         rt_dual_map_t map;
         size_t dual_len = page;
-        if (rt_dual_map_create(dual_len, &map) != 0) {
-            /* The failing step is reported, not assumed: physical run #1 printed
-             * "second (executable) view refused" for an errno produced by an unknown step
-             * of the sequence (unique name, shm_open, ftruncate, first mmap, second mmap).
-             * The classification follows the measured stage and errno, and uses the same
-             * vocabulary as ipc.posix_shm: refused != absent != defective. */
+        int named_ok = (rt_dual_map_create(dual_len, &map) == 0);
+
+        if (!named_ok && phase02_apple_target_is_ios() != 0 && map.err != 0) {
+            char detail[512];
+            rt_dual_map_t ios_map;
+            int named_err = map.err;
+            rt_dual_stage_t named_stage = map.stage;
+            int ios_rc = rt_dual_map_create_file_backed(workdir, dual_len, &ios_map);
+
+            (void)snprintf(detail, sizeof(detail),
+                           "named POSIX object refused at stage=%s errno=%d (%s) - a property "
+                           "of the named namespace in the app sandbox, NOT \"shared memory is "
+                           "impossible\" and not \"dual mapping is impossible\"; the iOS "
+                           "backend (file-backed MAP_SHARED object inside the app container) "
+                           "was selected for this target",
+                           rt_dual_stage_name(named_stage), named_err, strerror(named_err));
+            phase02_log_line(log, "[PHASE02] NOTE=memory.dual_mapping_backend %s", detail);
+
+            if (ios_rc == 0) {
+                int aliased = rt_dual_map_views_aliased(&ios_map);
+                if (aliased == 1) {
+                    phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_PASS,
+                                       "iOS backend: RW and R-X views of a file-backed "
+                                       "MAP_SHARED object in the app container alias the same "
+                                       "memory (len=%zu, stage=%s); the named POSIX namespace "
+                                       "remains refused (stage=%s errno=%d, %s) and is not "
+                                       "used by the iOS backend",
+                                       ios_map.len, rt_dual_stage_name(ios_map.stage),
+                                       rt_dual_stage_name(named_stage), named_err,
+                                       strerror(named_err));
+                } else if (aliased == 0) {
+                    phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                       "iOS backend: both views were granted and they do NOT "
+                                       "alias the same memory (stage=%s errno=%d): defect of "
+                                       "this mapping, never a platform property",
+                                       rt_dual_stage_name(ios_map.stage), ios_map.err);
+                } else {
+                    phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                       "iOS backend reports itself usable but the alias check "
+                                       "could not run: defect of this code");
+                }
+                (void)rt_dual_map_destroy(&ios_map);
+            } else if (ios_map.err == 0) {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                   "iOS backend stage=%s failed with errno=0 (errno not "
+                                   "preserved): defect of the error path, not a platform "
+                                   "answer",
+                                   rt_dual_stage_name(ios_map.stage));
+            } else {
+                /* Classified from the iOS backend's own stage/errno. The record carries both
+                 * backends so neither result is hidden, and the capability verdict describes
+                 * this device's answer to the experiment, not a requirement of the port. */
+                rt_status_t status = phase02_classify(
+                    phase02_classify_dual_mapping_error((int)ios_map.stage, ios_map.err),
+                    RT_BLOCKED);
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", status,
+                                   "stage=%s (iOS backend) refused errno=%d (%s) after the "
+                                   "named object was refused at stage=%s errno=%d (%s) on "
+                                   "host=%s: the port does not depend on this experiment "
+                                   "(single-view RW <-> R-X is the iOS strategy and is proven "
+                                   "separately), and a refusal here is a capability this "
+                                   "process was not granted, not a port defect",
+                                   rt_dual_stage_name(ios_map.stage), ios_map.err,
+                                   strerror(ios_map.err), rt_dual_stage_name(named_stage),
+                                   named_err, strerror(named_err), rt_platform_name());
+            }
+        } else if (!named_ok) {
+            /* Non-Apple target (or a failure without an errno): the original path and its
+             * classification are unchanged. */
             rt_status_t status = phase02_classify(
                 phase02_classify_dual_mapping_error((int)map.stage, map.err), RT_BLOCKED);
             if (map.err == 0) {
@@ -556,6 +635,19 @@ static int phase02_jit_sync_icache(phase02_log_t *log, void *arena, size_t len,
     return -1;
 }
 
+static void phase02_jit_release(phase02_log_t *log, void *arena, size_t len)
+{
+    if (rt_jit_free(arena, len) == 0) {
+        phase02_log_record(log, "jit.free", RT_PASS,
+                           "arena released after execution (munmap accepted): no generated "
+                           "code stays mapped");
+    } else {
+        phase02_log_record(log, "jit.free", RT_FAIL,
+                           "releasing the arena failed: cleanup defect (the mapping may "
+                           "outlive this test)");
+    }
+}
+
 static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status,
                                   int map_jit_errno)
 {
@@ -570,8 +662,11 @@ static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status
     uint32_t value_first = 0u;
     uint32_t value_second = 0u;
     int err = 0;
-    int used_map_jit = 0;
-    int rc;
+    int map_jit_attempted = 0;
+    int map_jit_refused = 0;
+    int use_write_window;
+    int wrote_ok;
+    rt_jit_arena_kind_t arena_kind = RT_JIT_ARENA_ANON;
     rt_status_t alloc_status;
     rt_jit_fn_t fn;
 
@@ -600,14 +695,16 @@ static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status
                            "emitters produced a zero-length payload: defect of the emitter");
         return;
     }
-    arena = rt_jit_alloc(arena_len, &err, &used_map_jit);
+
+    arena = rt_jit_alloc_ex(arena_len, &err, &arena_kind, &map_jit_attempted, &map_jit_refused);
+    use_write_window = (arena_kind == RT_JIT_ARENA_MAP_JIT);
     if (arena == NULL) {
         /* Causality, stated and checked: the MAP_JIT path was attempted, the probe that
          * measures that capability was BLOCKED, and the refusals carry the same errno.
          * Only then is this "blocked by jit.map_jit_probe"; every other combination is
          * reported as a defect of this runtime. Never a zero errno presented as a fact. */
         alloc_status = phase02_classify(
-            phase02_classify_jit_alloc(used_map_jit, map_jit_status, map_jit_errno, err),
+            phase02_classify_jit_alloc(map_jit_attempted, map_jit_status, map_jit_errno, err),
             map_jit_status);
         if (alloc_status == RT_BLOCKED) {
             phase02_log_record(log, "jit.alloc", RT_BLOCKED,
@@ -615,93 +712,162 @@ static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status
                                "attempted=%s): one missing capability, not a second defect",
                                err, strerror(err),
                                phase02_dependency_note(PHASE02_DEP_JIT_MAP), map_jit_errno,
-                               (used_map_jit != 0) ? "yes" : "no");
+                               (map_jit_attempted != 0) ? "yes" : "no");
         } else if (err == 0) {
             phase02_log_record(log, "jit.alloc", RT_FAIL,
                                "arena allocation failed with errno=0 (errno not preserved): "
                                "defect of the error path, not a platform answer "
                                "(MAP_JIT attempted=%s)",
-                               (used_map_jit != 0) ? "yes" : "no");
+                               (map_jit_attempted != 0) ? "yes" : "no");
         } else {
             phase02_log_record(log, "jit.alloc", RT_FAIL,
                                "arena allocation failed errno=%d (%s) with MAP_JIT "
-                               "attempted=%s while jit.map_jit_probe reports %s: the "
-                               "capability was offered, so this is a defect",
-                               err, strerror(err), (used_map_jit != 0) ? "yes" : "no",
-                               rt_status_name(map_jit_status));
+                               "attempted=%s (MAP_JIT refusal errno=%d) while "
+                               "jit.map_jit_probe reports %s: both the MAP_JIT path and the "
+                               "W^X fallback failed, so this is a defect of the fallback, not "
+                               "the capability",
+                               err, strerror(err), (map_jit_attempted != 0) ? "yes" : "no",
+                               map_jit_refused, rt_status_name(map_jit_status));
         }
         return;
     }
-    phase02_log_record(log, "jit.alloc", RT_PASS, "arena of %zu bytes (MAP_JIT=%s)",
-                       arena_len, (used_map_jit != 0) ? "yes" : "no");
+    if (arena_kind == RT_JIT_ARENA_ANON_MAP_JIT_REFUSED) {
+        /* The arena is real and its semantics are the ones the port needs, and the refused
+         * capability is still visible: jit.map_jit_probe keeps reporting it BLOCKED. This is
+         * not "MAP_JIT works" and not a plain mmap added to green a test: the arena is
+         * writable now, never writable and executable at once, and the executable step below
+         * is verified by real execution. */
+        phase02_log_record(log, "jit.alloc", RT_PASS,
+                           "MAP_JIT refused errno=%d (%s) -> arena of %zu bytes obtained "
+                           "through the platform's supported single-view W^X mechanism "
+                           "(anonymous mapping; the payload is flipped to R-X and verified by "
+                           "execution). MAP_JIT remains BLOCKED at jit.map_jit_probe; no "
+                           "writable+executable mapping exists at any point",
+                           map_jit_refused, strerror(map_jit_refused), arena_len);
+    } else if (arena_kind == RT_JIT_ARENA_MAP_JIT) {
+        phase02_log_record(log, "jit.alloc", RT_PASS,
+                           "arena of %zu bytes from MAP_JIT (write-protect window is the "
+                           "write protocol for this arena)", arena_len);
+    } else {
+        phase02_log_record(log, "jit.alloc", RT_PASS,
+                           "arena of %zu bytes (anonymous W^X; MAP_JIT is not a capability of "
+                           "this platform/target)", arena_len);
+    }
 
-    /* The write window is opened and closed through the platform hook, and both answers
-     * are used: with MAP_JIT granted, writing while the window is closed is the classic
-     * way to take a SIGBUS outside any guard. A refusal here is reported, not discarded
-     * (the previous code cast both calls to void). */
-    if (used_map_jit != 0) {
+    /* ---- step: write the payload through the protocol the arena requires -------------- */
+    wrote_ok = 0;
+    if (use_write_window) {
         if (rt_jit_begin_write(arena, arena_len, &err) != 0) {
-            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
-                               "could not open the JIT write window errno=%d (%s): the "
-                               "payload was NOT written (write-protected arena untouched)",
+            phase02_log_record(log, "jit.write_payload", RT_BLOCKED,
+                               "could not open the JIT write window errno=%d (%s): the payload "
+                               "was NOT written (write-protected arena untouched)",
                                err, strerror(err));
-            (void)rt_jit_free(arena, arena_len);
+            phase02_jit_release(log, arena, arena_len);
             return;
         }
     }
     memcpy(arena, payload_first, first_len);
-    if (used_map_jit != 0) {
+    wrote_ok = (memcmp(arena, payload_first, first_len) == 0);
+    if (use_write_window) {
         if (rt_jit_end_write(arena, arena_len, &err) != 0) {
-            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
-                               "could not close the JIT write window errno=%d (%s): the "
-                               "payload may not be executable yet (nothing was executed)",
+            phase02_log_record(log, "jit.write_payload", RT_BLOCKED,
+                               "could not close the JIT write window errno=%d (%s): the payload "
+                               "may not be executable yet (nothing was executed)",
                                err, strerror(err));
-            (void)rt_jit_free(arena, arena_len);
+            phase02_jit_release(log, arena, arena_len);
             return;
         }
     }
-    if (phase02_jit_sync_icache(log, arena, first_len, PHASE02_ICACHE_FIRST_WRITE) != 0) {
-        (void)rt_jit_free(arena, arena_len);
+    phase02_log_record(log, "jit.write_payload", wrote_ok ? RT_PASS : RT_FAIL,
+                       wrote_ok
+                           ? "%zu bytes written %s and read back identical"
+                           : "%zu bytes written %s and read back DIFFERENT: defect of this "
+                             "runtime, nothing may be executed",
+                       first_len,
+                       use_write_window ? "inside the MAP_JIT write window" : "into the RW arena");
+    if (!wrote_ok) {
+        phase02_jit_release(log, arena, arena_len);
         return;
     }
 
-    if (used_map_jit == 0) {
-        if (rt_mem_protect(arena, first_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
-            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
-                               "mprotect(R-X) refused errno=%d (%s): this process may not "
-                               "execute memory it wrote", err, strerror(err));
-            (void)rt_jit_free(arena, arena_len);
-            return;
-        }
+    if (phase02_jit_sync_icache(log, arena, first_len, PHASE02_ICACHE_FIRST_WRITE) != 0) {
+        phase02_jit_release(log, arena, arena_len);
+        return;
     }
-    phase02_log_record(log, "jit.make_executable", RT_PASS,
-                       "payload is in executable memory (%s)",
-                       (used_map_jit != 0) ? "MAP_JIT + write-protect window" : "mprotect R-X");
 
+    if (!use_write_window &&
+        rt_mem_protect(arena, first_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
+        phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
+                           "mprotect(R-X) refused errno=%d (%s): this process may not "
+                           "execute memory it wrote", err, strerror(err));
+        phase02_jit_release(log, arena, arena_len);
+        return;
+    }
+
+    /* ---- execute, then decide what "executable" may claim --------------------------
+     * The record is written AFTER the call on purpose. On this class of Apple device the
+     * kernel can accept mprotect(R-X) and still not honour it (execute is stripped, the page
+     * stays r--), so a PASS taken from a successful mprotect() would be exactly the "PASS
+     * without execution" this pass must not produce. PASS here means: the payload ran and the
+     * value came back from the CPU. */
     target = arena;
     memcpy(&fn, &target, sizeof(fn));
-    rc = rt_signal_call_guarded(fn, &value_first, &fault, &err);
-    if (rc == -2) {
-        /* The guard could not be installed, so nothing was executed. Reporting a fault
-         * with si_addr=NULL here (the previous behaviour) claimed an execution that never
-         * happened: cause undetermined, never PASS and never FAIL. */
-        phase02_log_record(log, "jit.execute_return_42", RT_UNTESTED,
-                           "nothing was executed: the fault guard could not be installed "
-                           "(errno=%d, %s) - cause undetermined, this is neither a fault "
-                           "nor a permission result", err, strerror(err));
-        (void)rt_jit_free(arena, arena_len);
-        return;
+    {
+        int rc = rt_signal_call_guarded(fn, &value_first, &fault, &err);
+        if (rc == -2) {
+            phase02_log_record(log, "jit.make_executable", RT_UNTESTED,
+                               "the transition to executable was requested but nothing was "
+                               "executed to verify it: the fault guard could not be installed "
+                               "(errno=%d, %s)", err, strerror(err));
+            phase02_log_record(log, "jit.execute_return_42", RT_UNTESTED,
+                               "nothing was executed: the fault guard could not be installed "
+                               "(errno=%d, %s) - cause undetermined, this is neither a fault "
+                               "nor a permission result", err, strerror(err));
+            phase02_jit_release(log, arena, arena_len);
+            return;
+        }
+        if (rc != 0) {
+            int inside = ((const uint8_t *)fault >= (const uint8_t *)arena &&
+                          (const uint8_t *)fault < (const uint8_t *)arena + arena_len);
+            if (inside) {
+                phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
+                                   "%s accepted the transition to executable but executing "
+                                   "the payload faulted inside the arena (si_addr=%p): this "
+                                   "device did not honour the permission change, so the "
+                                   "payload is NOT executable here (nothing was faked: the "
+                                   "value was never returned)",
+                                   use_write_window ? "closing the MAP_JIT write window"
+                                                    : "mprotect(R-X)",
+                                   fault);
+                phase02_log_record(log, "jit.execute_return_42", RT_BLOCKED,
+                                   "calling generated code faulted (si_addr=%p): %s",
+                                   fault, phase02_dependency_note(PHASE02_DEP_EXEC_MAPPING));
+            } else {
+                phase02_log_record(log, "jit.make_executable", RT_FAIL,
+                                   "the transition to executable succeeded, but the payload "
+                                   "faulted OUTSIDE the arena (si_addr=%p): defect of the "
+                                   "emitted code or of the call, not a permission verdict",
+                                   fault);
+                phase02_log_record(log, "jit.execute_return_42", RT_FAIL,
+                                   "generated code faulted at si_addr=%p (outside the arena)",
+                                   fault);
+            }
+            phase02_jit_release(log, arena, arena_len);
+            return;
+        }
+        phase02_log_record(log, "jit.make_executable", RT_PASS,
+                           "payload is in executable memory and PROVEN executable by real "
+                           "execution returning %u (%s)", value_first,
+                           use_write_window ? "MAP_JIT + write-protect window"
+                                            : "mprotect R-X");
+        phase02_log_record(log, "jit.execute_return_42",
+                           (value_first == 42u) ? RT_PASS : RT_FAIL,
+                           "generated function returned %u (expected 42)", value_first);
+        if (value_first != 42u) {
+            phase02_jit_release(log, arena, arena_len);
+            return;
+        }
     }
-    if (rc != 0) {
-        phase02_log_record(log, "jit.execute_return_42", RT_BLOCKED,
-                           "calling generated code faulted (si_addr=%p): executable-memory "
-                           "permission missing - physical-device validation required", fault);
-        (void)rt_jit_free(arena, arena_len);
-        return;
-    }
-    phase02_log_record(log, "jit.execute_return_42",
-                       (value_first == 42u) ? RT_PASS : RT_FAIL,
-                       "generated function returned %u (expected 42)", value_first);
 
     /* Rewrite the payload, synchronise the icache, run it again. The second payload was
      * emitted before the allocation, so this is a capacity check, not a silent clamp:
@@ -711,70 +877,82 @@ static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status
                            "rewrite payload (%zu bytes) does not fit the arena (%zu bytes): "
                            "defect of the sizing, nothing was written",
                            second_len, arena_len);
-        (void)rt_jit_free(arena, arena_len);
+        phase02_jit_release(log, arena, arena_len);
         return;
     }
 
-    if (used_map_jit != 0) {
+    if (use_write_window) {
         if (rt_jit_begin_write(arena, arena_len, &err) != 0) {
             phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                                "could not open the JIT write window for the rewrite "
                                "errno=%d (%s)", err, strerror(err));
-            (void)rt_jit_free(arena, arena_len);
+            phase02_jit_release(log, arena, arena_len);
             return;
         }
     } else if (rt_mem_protect(arena, arena_len, RT_PROT_READ | RT_PROT_WRITE, &err) != 0) {
         phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                            "could not reopen the arena for writing errno=%d (%s)",
                            err, strerror(err));
-        (void)rt_jit_free(arena, arena_len);
+        phase02_jit_release(log, arena, arena_len);
         return;
     }
     memcpy(arena, payload_second, second_len);
-    if (used_map_jit != 0) {
+    wrote_ok = (memcmp(arena, payload_second, second_len) == 0);
+    if (use_write_window) {
         if (rt_jit_end_write(arena, arena_len, &err) != 0) {
             phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                                "could not close the JIT write window after the rewrite "
                                "errno=%d (%s): the rewritten payload was NOT executed",
                                err, strerror(err));
-            (void)rt_jit_free(arena, arena_len);
+            phase02_jit_release(log, arena, arena_len);
             return;
         }
     } else if (rt_mem_protect(arena, arena_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
         phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                            "could not re-protect the arena errno=%d (%s)", err, strerror(err));
-        (void)rt_jit_free(arena, arena_len);
+        phase02_jit_release(log, arena, arena_len);
+        return;
+    }
+    if (!wrote_ok) {
+        phase02_log_record(log, "jit.rewrite_payload", RT_FAIL,
+                           "the rewritten payload did not read back identical (defect of "
+                           "this runtime): nothing was executed");
+        phase02_jit_release(log, arena, arena_len);
         return;
     }
     if (phase02_jit_sync_icache(log, arena, second_len, PHASE02_ICACHE_REWRITE) != 0) {
-        (void)rt_jit_free(arena, arena_len);
+        phase02_jit_release(log, arena, arena_len);
         return;
     }
     phase02_log_record(log, "jit.rewrite_payload", RT_PASS,
-                       "payload rewritten (%zu bytes), write window closed and instruction "
-                       "cache synchronised", second_len);
+                       "payload rewritten (%zu bytes), window closed and instruction cache "
+                       "synchronised", second_len);
 
     target = arena;
     memcpy(&fn, &target, sizeof(fn));
-    rc = rt_signal_call_guarded(fn, &value_second, &fault, &err);
-    if (rc == -2) {
-        phase02_log_record(log, "jit.execute_return_4242", RT_UNTESTED,
-                           "nothing was executed: the fault guard could not be installed "
-                           "(errno=%d, %s) - cause undetermined", err, strerror(err));
-        (void)rt_jit_free(arena, arena_len);
-        return;
+    {
+        int rc = rt_signal_call_guarded(fn, &value_second, &fault, &err);
+        if (rc == -2) {
+            phase02_log_record(log, "jit.execute_return_4242", RT_UNTESTED,
+                               "nothing was executed: the fault guard could not be installed "
+                               "(errno=%d, %s) - cause undetermined", err, strerror(err));
+            phase02_jit_release(log, arena, arena_len);
+            return;
+        }
+        if (rc != 0) {
+            phase02_log_record(log, "jit.execute_return_4242", RT_BLOCKED,
+                               "second call faulted (si_addr=%p): the rewritten payload did "
+                               "not become executable", fault);
+            phase02_jit_release(log, arena, arena_len);
+            return;
+        }
+        phase02_log_record(log, "jit.execute_return_4242",
+                           (value_second == 4242u) ? RT_PASS : RT_FAIL,
+                           "rewritten generated function returned %u (expected 4242)",
+                           value_second);
     }
-    if (rc != 0) {
-        phase02_log_record(log, "jit.execute_return_4242", RT_BLOCKED,
-                           "second call faulted (si_addr=%p)", fault);
-        (void)rt_jit_free(arena, arena_len);
-        return;
-    }
-    phase02_log_record(log, "jit.execute_return_4242",
-                       (value_second == 4242u) ? RT_PASS : RT_FAIL,
-                       "rewritten generated function returned %u (expected 4242)", value_second);
 
-    (void)rt_jit_free(arena, arena_len);
+    phase02_jit_release(log, arena, arena_len);
 }
 
 static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
@@ -820,18 +998,31 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
      * not a measurement of the runtime — it changes no count and grants nothing. */
     phase02_log_line(log,
                      "[PHASE02] NOTE=jit.entitlement_levels "
-                     "requested_in_repo=com.apple.security.cs.allow-jit "
-                     "(RuntimePoC/WinlatorPhase02.entitlements exists but is NOT wired to "
-                     "CODE_SIGN_ENTITLEMENTS: nothing is applied by itself) "
-                     "present_before_signing=external to this process (the signing step; no "
-                     "key material or provisioning profile is in the repository) "
-                     "granted_to_signature=NOT observable in-process: read it on the built "
-                     "product with tools/inspect_entitlements.sh (key names only, never "
-                     "certificate data) "
-                     "observed_at_runtime=MAP_JIT %s%s (target=%s)",
-                     (map_jit_status == RT_PASS) ? "accepted" : "refused",
-                     (map_jit_status == RT_PASS) ? ""
-                                                 : (map_jit_errno != 0) ? " with a real errno" : " with errno 0 (defect)",
+                     "L1_requested_in_repo=com.apple.security.cs.allow-jit "
+                     "(RuntimePoC/WinlatorPhase02.entitlements) and the wiring decision: the "
+                     "file is DELIBERATELY NOT attached to CODE_SIGN_ENTITLEMENTS, because on "
+                     "iOS-based platforms every entitlement must be allowlisted by the "
+                     "provisioning profile and an entitlements file that requests one the "
+                     "profile does not allow makes the signed build/install fail (Xcode: "
+                     "\"provisioning profile does not include the ... entitlement\"; device: "
+                     "0xE8008016) - attaching it would break the only install path that can "
+                     "validate anything, for a capability it cannot obtain. The opt-in for a "
+                     "signing context that can carry it is documented in tools/build_ios.sh. "
+                     "L2_embedded_at_build=decided by the signing step: this project builds "
+                     "UNSIGNED_IPA (CODE_SIGNING_ALLOWED=NO), so the built product embeds "
+                     "nothing - a fact, not a failure "
+                     "L3_granted_to_signature=NOT observable in-process; read it off the built "
+                     "product with tools/inspect_entitlements.sh (key names and booleans only, "
+                     "never certificate or profile data) "
+                     "L4_observed_at_runtime=MAP_JIT %s%s (target=%s) "
+                     "the wiring grants nothing and is never claimed to: only signing, "
+                     "installation and a physical run can decide L3/L4",
+                     (map_jit_status == RT_PASS) ? "accepted"
+                                                 : (map_jit_status == RT_BLOCKED) ? "refused"
+                                                                                  : "not applicable (no MAP_JIT on this platform/target)",
+                     (map_jit_status != RT_BLOCKED) ? ""
+                                                    : (map_jit_errno != 0) ? " with a real errno"
+                                                                           : " with errno 0 (defect)",
                      rt_platform_apple_target_name());
 
     /* Four outcomes, kept apart on purpose:
@@ -869,13 +1060,23 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
     allowed = rt_jit_execution_allowed();
     if (allowed == 1) {
         phase02_log_record(log, "jit.execution_allowed", RT_PASS,
-                           "this process executed memory it wrote");
+                           "this process executed memory it wrote (emitted fetch/return "
+                           "payload, made it executable through the arena's own mechanism and "
+                           "got 1 back from the CPU)");
     } else if (allowed == 0) {
         phase02_log_record(log, "jit.execution_allowed", RT_BLOCKED,
-                           "this process could NOT execute memory it wrote");
+                           "this process could NOT execute memory it wrote: the payload was "
+                           "written through the arena's own protocol and the executable step "
+                           "was refused or not honoured (see jit.make_executable and "
+                           "jit.execute_return_42); %s",
+                           phase02_dependency_note(PHASE02_DEP_EXEC_MAPPING));
     } else {
         phase02_log_record(log, "jit.execution_allowed", RT_UNTESTED,
-                           "not determined on this platform/ISA");
+                           "not determined here: a step of the probe itself did not complete "
+                           "(emitter, arena, write window, icache flush or the fault guard) - "
+                           "no verdict about the platform is claimed; on this target the "
+                           "result also depends on %s",
+                           phase02_dependency_note(PHASE02_DEP_JIT_MAP));
     }
 
     return RT_PASS;
@@ -1317,6 +1518,22 @@ static rt_status_t phase02_suite_ipc(phase02_log_t *log, const char *workdir)
     {
         rt_ipc_stage_t shm_stage = RT_IPC_STAGE_NONE;
         int shm_rc = rt_ipc_shm_ex(&err, &shm_stage);
+        if (shm_rc != 0 && (err == EPERM || err == EACCES)) {
+            /* Scope of this record, stated where the refusal is recorded: it measures the
+             * NAMED POSIX namespace, nothing more. Shared memory on such a platform is not
+             * "impossible": anonymous MAP_SHARED, file-backed MAP_SHARED objects inside the
+             * app container and mach VM are all unaffected, and this runtime depends on none
+             * of the named-namespace calls - the iOS memory backend uses single-view W^X and
+             * the dual-mapping experiment has its own iOS backend (see
+             * NOTE=memory.dual_mapping_backend). */
+            phase02_log_line(log,
+                             "[PHASE02] NOTE=ipc.posix_shm_scope stage=%s errno=%d (%s): the "
+                             "named POSIX namespace is refused to this process/sandbox - "
+                             "this is not \"shared memory is impossible\" and not a defect "
+                             "of the port; other shared-memory mechanisms are unaffected and "
+                             "the runtime does not depend on this namespace",
+                             rt_ipc_stage_name(shm_stage), err, strerror(err));
+        }
         if (shm_rc == 0 && shm_stage == RT_IPC_STAGE_UNLINK) {
             phase02_log_record(log, "ipc.posix_shm", RT_PASS,
                                "shared memory object created, mapped twice, written through one "

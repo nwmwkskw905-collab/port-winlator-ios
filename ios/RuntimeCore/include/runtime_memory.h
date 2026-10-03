@@ -64,6 +64,7 @@ typedef enum {
     RT_DUAL_STAGE_NONE = 0,   /* success */
     RT_DUAL_STAGE_NAME,       /* composing the unique object name failed */
     RT_DUAL_STAGE_SHM_OPEN,   /* shm_open(3) */
+    RT_DUAL_STAGE_FILE_OPEN,  /* open(2) of the file-backed object (iOS backend) */
     RT_DUAL_STAGE_FTRUNCATE,  /* ftruncate(2) */
     RT_DUAL_STAGE_MAP_RW,     /* first mmap(2), the writable view */
     RT_DUAL_STAGE_MAP_RX,     /* second mmap(2), the executable view */
@@ -82,6 +83,26 @@ typedef struct rt_dual_map {
 } rt_dual_map_t;
 
 int rt_dual_map_create(size_t len, rt_dual_map_t *out);
+
+/*
+ * Same experiment with the backing object an iOS app *can* create: a regular file inside a
+ * directory this process may write (the app container / workdir), mapped MAP_SHARED twice.
+ *
+ * Why this exists: physical run #2 recorded `shm_open refused errno=1` (EPERM) on the
+ * iPhone. That is a statement about the *named POSIX* namespace — the iOS sandbox refuses
+ * system-wide names to third-party apps — and it must not be read as "this device cannot
+ * share memory" or "dual mapping is impossible". This backend keeps exactly the semantics
+ * the experiment needs (one physical object, two live views, one writable and one
+ * executable, aliasing verified, object unlinked immediately so nothing is left behind)
+ * while using only mechanisms the app sandbox does grant.
+ *
+ * Selection is explicit and per platform: rt_dual_map_create() stays the first and default
+ * mechanism on every platform (Linux and macOS are untouched); callers select this one only
+ * for Apple targets after the named path was refused, and record both stage results.
+ * Being a capability experiment, a refusal here is reported with its real stage and errno —
+ * never converted into success, and never treated as a requirement of the port.
+ */
+int rt_dual_map_create_file_backed(const char *dir, size_t len, rt_dual_map_t *out);
 int rt_dual_map_destroy(rt_dual_map_t *map);
 
 /* Writes a known pattern through `rw` and reads it back through `rx`.

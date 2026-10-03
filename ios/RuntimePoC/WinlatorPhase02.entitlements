@@ -3,24 +3,52 @@
 <plist version="1.0">
 <dict>
 	<!--
-	  PHASE_02_RECONSTRUCTED_POC — REQUESTED_ENTITLEMENT, not GRANTED_ENTITLEMENT.
+	  PHASE_02_RECONSTRUCTED_POC — LEVEL 1 of the entitlement investigation:
+	  REQUESTED_IN_REPO. This file is a record of what the PoC would ASK FOR.
 
-	  This file records what the PoC would ASK FOR. Nothing here is granted by
-	  existing: an entitlement only exists after a profile that carries it signs the
-	  build, and the free/personal-team path does not carry the JIT entitlement.
+	  It is NOT a granted capability, it is NOT evidence that JIT works, and it must
+	  never be reported as "JIT enabled". The four levels this project keeps apart:
+	     1 requested_in_repo      this file, a repository fact (readable anywhere);
+	     2 embedded_at_build      decided by the signing step (see tools/build_ios.sh);
+	     3 granted_to_signature   readable only off a built, signed product
+	                              (tools/inspect_entitlements.sh);
+	     4 observed_at_runtime    what the app measured: jit.map_jit_probe.
 
-	  Consequence for the physical validation: build the IPA unsigned (as the CI
-	  does), sign it however you normally sideload, and let the app REPORT what it
-	  actually got. The jit suite answers with:
-	      jit.map_jit_probe      PASS      -> MAP_JIT was granted
-	      jit.map_jit_probe      BLOCKED   -> refused, with the real errno
+	  WIRING DECISION (pass 03, resolved and audited — tools/audit_entitlement_config.py):
+	  this file is deliberately NOT referenced by CODE_SIGN_ENTITLEMENTS, in Debug or in
+	  Release. Reasons, both measured or documented, not stylistic:
+
+	   * On iOS-based platforms every entitlement must be allowlisted by the provisioning
+	     profile. A free/personal-team or sideload profile cannot allowlist a JIT
+	     entitlement, so attaching it cannot obtain anything.
+	   * Attaching an entitlement the profile does not allow makes the signed build or the
+	     installation fail ("provisioning profile does not include the ... entitlement";
+	     device error 0xE8008016 "The entitlements specified ... do not match those
+	     specified in your provisioning profile"). That would break the ONLY path that can
+	     validate anything — the user's own install on the iPhone — in exchange for a
+	     capability that is not obtainable there anyway (physical run #2 measured
+	     MAP_JIT refused errno=1 on the device).
+
+	  The wiring was investigated as a possible project error and is classified as a
+	  DOCUMENTED CONFIGURATION DECISION, not a defect: the file's own history already said
+	  it was intentional, and the evidence above makes the decision correct. What was
+	  missing — and what pass 03 added — is the audit and the explicit opt-in below, so the
+	  state can no longer be "a file nothing references".
+
+	  OPT-IN (only for a signing context that really can carry it, e.g. a macOS runner
+	  experiment with a profile that allows the entitlement; never for the phone):
+	      xcodebuild ... CODE_SIGN_ENTITLEMENTS=RuntimePoC/WinlatorPhase02.entitlements
+	  If it is ever wired into the project, it must be set for Debug AND Release together
+	  (never for a single configuration: that produces two products with different
+	  entitlement requests from one project) — the audit enforces exactly that.
+
+	  The physical validation keeps signing however the device owner signs it and letting
+	  the app REPORT what it got:
+	      jit.map_jit_probe      PASS     -> MAP_JIT was granted
+	      jit.map_jit_probe      BLOCKED  -> refused, with the real errno
 	      jit.execution_allowed  PASS/BLOCKED
-	  A refusal there is a finding about the signing context, not proof that the
-	  port is broken.
-
-	  Deliberately NOT wired into CODE_SIGN_ENTITLEMENTS: attaching an entitlement
-	  you cannot be granted would break sideloading, and the test must measure the
-	  context the build actually runs in.
+	  A refusal there is a finding about the signing context, not proof that the port is
+	  broken.
 	-->
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
