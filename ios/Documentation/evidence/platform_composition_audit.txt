@@ -1,0 +1,48 @@
+== platform composition audit (configuration-based, not filename-based) ==
+configurations : linux-x86_64, linux-aarch64, macos-arm64, iphoneos-arm64, iphonesimulator-x86_64
+project root   : /home/user/winlator/ios
+
+TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+
+what each source really is (content-based, not filename-based):
+  ContentView.swift          apple=yes            platform conditionals: (none)
+  Phase02Bridge.m            apple=yes            platform conditionals: (none)
+  WinlatorPhase02App.swift   apple=yes            platform conditionals: (none)
+  darwin_platform.c          apple=yes linux=yes  platform conditionals: __APPLE__, __aarch64__, MAP_JIT, RT_APPLE_HAS_JIT_WRITE_PROTECT, __x86_64__, __i386__
+  linux_platform.c           apple=yes linux=yes  platform conditionals: __linux__, __aarch64__
+  main.c                     linux=yes            platform conditionals: (none)
+  phase02_harness.c          apple=yes linux=yes  platform conditionals: (none)
+  phase02_log.c              apple=yes linux=yes  platform conditionals: (none)
+  runtime_context.c          apple=yes linux=yes  platform conditionals: (none)
+  runtime_cpu_abi.c          apple=yes linux=yes  platform conditionals: __x86_64__, __i386__, __aarch64__, __arm__, __APPLE__, __linux__
+  runtime_dual_mapping.c     apple=yes linux=yes  platform conditionals: (none)
+  runtime_filesystem.c       apple=yes linux=yes  platform conditionals: __APPLE__
+  runtime_ipc.c              apple=yes linux=yes  platform conditionals: __APPLE__
+  runtime_jit.c              apple=yes linux=yes  platform conditionals: __APPLE__, __aarch64__, __x86_64__, __i386__, __arm__, MAP_JIT
+  runtime_loader.c           apple=yes linux=yes  platform conditionals: (none)
+  runtime_memory.c           apple=yes linux=yes  platform conditionals: __APPLE__, __linux__
+  runtime_signals.c          apple=yes linux=yes  platform conditionals: (none)
+  runtime_threads.c          apple=yes linux=yes  platform conditionals: (none)
+  test_runtime_core.c        linux=yes            platform conditionals: __x86_64__, __i386__, __aarch64__, __APPLE__
+
+APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+LINUX_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+
+cache maintenance reached by each configuration:
+  darwin_platform.c    [macos-arm64             ] 208:sys_icache_invalidate
+  darwin_platform.c    [iphoneos-arm64          ] 208:sys_icache_invalidate
+  darwin_platform.c    [iphonesimulator-x86_64  ] 208:sys_icache_invalidate
+  linux_platform.c     [linux-x86_64            ] 169:__builtin___clear_cache
+  linux_platform.c     [linux-aarch64           ] 169:__builtin___clear_cache
+  runtime_jit.c        [linux-x86_64            ] 91:icache_flush, 94:icache_flush
+  runtime_jit.c        [linux-aarch64           ] 91:icache_flush, 94:icache_flush
+  runtime_jit.c        [macos-arm64             ] 91:icache_flush, 94:icache_flush
+  runtime_jit.c        [iphoneos-arm64          ] 91:icache_flush, 94:icache_flush
+  runtime_jit.c        [iphonesimulator-x86_64  ] 91:icache_flush, 94:icache_flush
+
+BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+
+UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+
+PLATFORM_COMPOSITION_AUDIT=0
+note: static pre-check — the Apple compiler and linker remain the authority for the iphoneos build.

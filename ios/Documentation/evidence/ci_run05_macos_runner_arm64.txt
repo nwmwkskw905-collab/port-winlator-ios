@@ -1,0 +1,69 @@
+Apple CI run #5 — TRANSCRIPTION of the failing output reported for the iphoneos build
+=====================================================================================
+source      : user-provided CI log (Actions, "iOS Runtime PoC (unsigned IPA)", job
+              "Build WinlatorPhase02 for iphoneos and package an unsigned IPA")
+runner class: MACOS_RUNNER_ARM64 (macOS runner, arm64) — never an iPhone result
+transcribed : reconstructed Phase 02, Fix 04 applied (commit c31e60a)
+marking     : transcribed verbatim from the report; no Apple log was produced in this
+              environment and none is claimed here.
+
+--- what the previous run's blocker did -------------------------------------------------
+
+  The Fix 01/02/03/04 blockers did NOT reappear:
+    * `sys/random.h file not found`                -> absent (Fix 02)
+    * `pthread_jit_write_protect_np unavailable`   -> absent (Fix 03)
+    * `Phase02Bridge.m: rt_jit_isa() undeclared`   -> absent (Fix 04)
+  The bridge line 75 compiled; the build advanced from compiling to LINKING.
+
+--- the new failure (compilation of all translation units succeeded) --------------------
+
+      "___clear_cache", referenced from:
+            _linux_icache_flush in linux_platform.o
+      ld: symbol(s) not found for architecture arm64
+      clang: error: linker command failed with exit code 1
+      ** BUILD FAILED **
+
+--- analysis (verified in this repository, not assumed) ---------------------------------
+
+1. `_linux_icache_flush` is the static C function `linux_icache_flush()` of
+   RuntimeCore/src/linux_platform.c. Its address is stored in the `rt_platform_linux`
+   structure, so the function —— and the call it makes —— is always emitted in the object.
+
+2. `linux_platform.o` is in the link because of the TARGET COMPOSITION, not because of a
+   real reference: tools/generate_xcodeproj.py globs `RuntimeCore/src/*.c` (all 12 files,
+   linux_platform.c included) into the PBXSourcesBuildPhase of WinlatorPhase02, and Xcode
+   hands those objects directly to the linker. An object given directly to the linker must
+   resolve every symbol it references, even when nothing calls it; inside a static archive
+   it would simply never be pulled in. (Demonstrated in
+   Documentation/evidence/clang_clear_cache_lowering.txt, step 2.)
+
+3. Nothing in the Apple product calls the Linux backend: rt_platform_current() returns
+   &rt_platform_darwin under `__APPLE__` (RuntimeCore/src/runtime_memory.c:129-134), and
+   the only reference to linux_icache_flush in the whole tree is the
+   `rt_platform_linux` initialiser itself.
+
+4. `__builtin___clear_cache` is not inlined on ARM: clang lowers it to an external call to
+   `__clear_cache` (Mach-O `___clear_cache`). The iPhoneOS SDK provides no such symbol.
+   Measured lowering for every relevant target in
+   Documentation/evidence/clang_clear_cache_lowering.txt.
+
+5. The Darwin/iOS implementation of the same operation already existed and is correct:
+   darwin_icache_flush() calls sys_icache_invalidate() (libkern/OSCacheControl.h, present
+   on macOS and iOS, provided by libSystem). The defect was therefore NOT a missing Apple
+   API: it was Linux-only code emitting a platform-specific sequence while compiled for
+   Apple, in a file that the target composition legitimately includes.
+
+6. Fix (root cause, not symptom): the cache-maintenance sequence of the Linux backend is
+   now Linux-only, exactly like linux_random_bytes() in the same file, and returns failure
+   elsewhere instead of pretending; darwin_platform.c keeps sys_icache_invalidate() and
+   refuses to compile — #error, not a silent no-op — in the one Apple configuration where
+   no honest implementation exists (Apple arm without <libkern/OSCacheControl.h>). The x86
+   Apple branch stays legal because the builtin expands to no instruction there.
+
+--- what the next Apple CI must show, at minimum ---------------------------------------
+
+  The iphoneos link no longer failing with
+      "___clear_cache", referenced from _linux_icache_flush in linux_platform.o
+  It is NOT claimed that the build, the .app, or the unsigned IPA will succeed: any
+  further SDK/compiler/linker blocker will be reported unmasked.
+  IPHONE_VALIDATION_PENDING remains: nothing here is an iPhone result.

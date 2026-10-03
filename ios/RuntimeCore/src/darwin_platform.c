@@ -26,6 +26,11 @@
  *   - MAP_JIT is defined by both SDKs but is gated at runtime by entitlements, so it
  *     stays a runtime probe on both;
  *   - sys_icache_invalidate (libkern/OSCacheControl.h) is available on both.
+ *
+ * This backend is the authority for cache maintenance on Apple:
+ * __builtin___clear_cache() is deliberately NOT used on Apple ARM, because clang lowers
+ * it to an external call to __clear_cache, a symbol the iPhoneOS SDK does not provide
+ * (Apple CI run #5; see linux_platform.c and tools/audit_platform_composition.py).
  */
 #include "runtime_platform.h"
 
@@ -198,11 +203,26 @@ static int darwin_jit_write_protect_set(void *addr, size_t len, int enable, int 
 static int darwin_icache_flush(void *addr, size_t len)
 {
 #if defined(__APPLE__) && defined(RT_HAVE_OSCACHECONTROL)
+    /* sys_icache_invalidate(3) is the documented Apple cache-maintenance entry point
+     * (libkern/OSCacheControl.h, provided by libSystem on macOS and iOS alike). */
     sys_icache_invalidate(addr, len);
     return 0;
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && (defined(__x86_64__) || defined(__i386__))
+    /* Apple x86 without <libkern/OSCacheControl.h>: on these cores the instruction cache
+     * is coherent with the data cache, so no cache maintenance is required — the builtin
+     * states the intent and expands to no instruction at all (measured with clang 19 on
+     * x86_64-apple-macos and x86_64-apple-ios-simulator). */
     __builtin___clear_cache((char *)addr, (char *)addr + len);
     return 0;
+#elif defined(__APPLE__)
+    /* Apple arm without <libkern/OSCacheControl.h>: there is no honest implementation in
+     * this configuration. sys_icache_invalidate() is not declared, and the builtin is not
+     * an option either: on every ARM target clang lowers __builtin___clear_cache() to an
+     * external call to __clear_cache (Mach-O ___clear_cache), which the iPhoneOS SDK does
+     * not provide — that is the CI run #5 link failure, produced by the same construct in
+     * linux_platform.c. A silent return -1 would be a no-op that skips the flush that
+     * generated code requires, so this configuration refuses to compile instead. */
+#error "Apple arm needs <libkern/OSCacheControl.h> for sys_icache_invalidate()"
 #else
     (void)addr;
     (void)len;

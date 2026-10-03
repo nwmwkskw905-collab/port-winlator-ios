@@ -194,6 +194,26 @@ jobs:
           mkdir -p "$EVIDENCE_DIR"
           sh tools/check_bridge_syntax.sh 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_bridge_syntax.log"
 
+      # ---- 4f. platform composition audit: which files each target compiles, which
+      # platform symbols each configuration reaches, and which backend is selected.
+      # CI run #5 failed in the LINKER ("___clear_cache", referenced from
+      # _linux_icache_flush in linux_platform.o) although nothing in the Apple product
+      # calls it: linux_platform.c is legitimately part of the target, but its
+      # cache-maintenance sequence was not Linux-only. This audit evaluates the real
+      # conditionals per target configuration, so the regression is reported here — with
+      # file and line — instead of costing another runner cycle.
+      - name: 4f. Platform composition audit (targets, forbidden symbols, backend)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          python3 tools/audit_platform_composition.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_platform_composition.log"
+          grep -q "^PLATFORM_COMPOSITION_AUDIT=0" "$EVIDENCE_DIR/ci_ipa_platform_composition.log" \
+            || { echo "FAIL: platform composition audit reported problems"; exit 1; }
+          grep -q "^APPLE_FORBIDDEN_SYMBOLS=0" "$EVIDENCE_DIR/ci_ipa_platform_composition.log" \
+            || { echo "FAIL: a symbol the Apple SDK does not provide is reachable in the Apple build"; exit 1; }
+
       # ---- 5. authoritative gate: the real Xcode parser must accept the project
       - name: 5. GATE — xcodebuild must be able to read the project
         working-directory: ${{ github.workspace }}/ios

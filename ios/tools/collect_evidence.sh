@@ -31,6 +31,16 @@ python3 "$ROOT/tools/audit_interfaces.py" 2>&1 | tee "$EVIDENCE/interface_audit.
 echo "[evidence] bridge syntax check (clang + stub Foundation)"
 sh "$ROOT/tools/check_bridge_syntax.sh" 2>&1 | tee "$EVIDENCE/bridge_syntax_stdout.txt"
 
+echo "[evidence] platform composition audit (targets, forbidden symbols, backend selection)"
+python3 "$ROOT/tools/audit_platform_composition.py" 2>&1 | tee "$EVIDENCE/platform_composition_audit.txt"
+
+echo "[evidence] negative controls for the composition audit (CI run #5 condition included)"
+python3 "$ROOT/tools/platform_composition_negative_control.py" \
+    2>&1 | tee "$EVIDENCE/platform_composition_negative_control.txt" | tail -6
+
+echo "[evidence] object-level link audit (AArch64 objects; the Apple link stays UNTESTED)"
+sh "$ROOT/tools/audit_link_symbols.sh" 2>&1 | tee "$EVIDENCE/link_symbol_audit.txt" | tail -6
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true

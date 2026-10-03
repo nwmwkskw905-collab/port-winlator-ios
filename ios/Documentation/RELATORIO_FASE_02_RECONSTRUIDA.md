@@ -163,14 +163,19 @@ emissor AArch64 produz instruções corretas; nada além disso.
 4. ~~Aplicar a correção 03~~ e ~~reexecutar~~ — **feitos**: a execução 04 ultrapassou
    `darwin_platform.c` e parou em `Phase02Bridge.m`, corrigido no pacote
    `phase02-apple-ci-fix-04.tar.gz` (ver §13).
-5. Aplicar a correção 04 e reexecutar. Esperado: as quatro pré-checagens em 0, portão PASS, e o
-   build `iphoneos` **ultrapassando** `Phase02Bridge.m` e a chamada de `rt_jit_isa()`. Não há
-   afirmação de que o build completo sairá: se o SDK revelar outro bloqueador, ele será reportado
+5. ~~Aplicar a correção 04~~ e ~~reexecutar~~ — **feitos**: a execução 05 confirmou as correções
+   01 a 04 (nenhum dos três bloqueadores anteriores reapareceu, e o build passou da compilação
+   para a **linkedição**), onde surgiu o defeito de composição de plataforma corrigido no pacote
+   `phase02-apple-ci-fix-05.tar.gz` (ver §14).
+6. Aplicar a correção 05 e reexecutar. Esperado: as cinco pré-checagens em 0 (4b–4f), portão PASS,
+   e a linkedição `iphoneos` **não voltando a falhar** com
+   `"___clear_cache", referenced from _linux_icache_flush in linux_platform.o`. Não há afirmação
+   de que o build completo ou a IPA sairão: se o SDK revelar outro bloqueador, ele será reportado
    sem mascaramento.
-5. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
-6. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
+7. Assinar/instalar a IPA no iPhone 13 pelo processo habitual (a IPA sai **não assinada**).
+8. Abrir o app, rodar `Run All Tests`, exportar o relatório e trazê-lo de volta
    (Arquivos › No meu iPhone › Winlator PoC, ou `xcrun devicectl device copy from`).
-7. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
+9. Só então classificar cada capacidade como `CONFIRMADA EM DISPOSITIVO FÍSICO`.
 
 ## 9. Como reproduzir (host, sem Apple)
 
@@ -697,3 +702,134 @@ a variável local.)*
 * Não prova nada sobre o iPhone 13: `IPHONE_VALIDATION_PENDING` permanece, e continua valendo
   que JIT no aparelho depende de assinatura/entitlements — a suíte responde
   `NOT_APPLICABLE`/`BLOCKED` com o motivo real, nunca `PASS` por otimismo.
+
+## 14. Correção 05 — `linux_platform.o` no produto Apple (execução 05)
+
+A quinta execução real confirmou as Correções 01 a 04 — nem `sys/random.h`,
+`pthread_jit_write_protect_np unavailable on iOS`, nem `call to undeclared function 'rt_jit_isa'`
+reapareceram — e o build `iphoneos` avançou da compilação para a **linkedição**, onde parou:
+
+```
+    "___clear_cache", referenced from:
+          _linux_icache_flush in linux_platform.o
+    ld: symbol(s) not found for architecture arm64
+    clang: error: linker command failed with exit code 1
+    ** BUILD FAILED **
+```
+
+### 14.1 Por que `linux_platform.o` está no link do `iphoneos`
+
+`tools/generate_xcodeproj.py` **descobre** os fontes por glob (`RuntimeCore/src/*.c`, 12 arquivos)
+e os coloca todos na `PBXSourcesBuildPhase` do target `WinlatorPhase02` — `linux_platform.c`
+incluído. Isso é **intencional** e está documentado em `runtime_platform.h`:
+
+> Both backends are always compiled, so the harness can report what a platform would do without
+> pretending that this host is that platform.
+
+O que **não** era intencional: `linux_icache_flush()` chamava `__builtin___clear_cache()` sem
+qualquer guarda de plataforma. Em ARM esse builtin **não é inline**: o clang o baixa para uma
+chamada externa a `__clear_cache` (Mach-O `___clear_cache`), símbolo que o SDK do iPhoneOS não
+fornece. Como o Xcode entrega os objetos **diretamente** ao linker (não há biblioteca estática no
+projeto gerado), todo símbolo indefinido do objeto precisa resolver — mesmo que nada chame a
+função. **Demonstrado em `Documentation/evidence/clang_clear_cache_lowering.txt`, passo 2:** o
+mesmo objeto ligado direto falha (`undefined reference to 'totally_missing_symbol'`), e dentro de
+um arquivo `.a` nunca é puxado (`main ran`).
+
+Nada no produto Apple chama o backend Linux: `rt_platform_current()` retorna `&rt_platform_darwin`
+sob `__APPLE__` (`runtime_memory.c:129-134`), e a única referência a `linux_icache_flush` em toda a
+árvore é o inicializador de `rt_platform_linux`. O linker não estava "mantendo" o objeto por
+referência real: ele o recebeu na fase de sources.
+
+### 14.2 Qual das três opções foi escolhida, e por quê
+
+| Opção | Decisão | Motivo |
+| --- | --- | --- |
+| Excluir `linux_platform.c` do target Apple | **não** | contradiz a regra documentada da camada (os dois backends são sempre compilados para que o harness possa relatar o que a outra plataforma *faria*) e mudaria a composição de ambos os sistemas de build |
+| Compilar o arquivo com as implementações Linux **inativas** fora do Linux | **sim** | é exatamente o padrão que o próprio arquivo já usa em `linux_random_bytes()` (`#if defined(__linux__)` … `#else` → `ENOTSUP`); não há símbolo novo, nem shim, nem cabeçalho inventado |
+| Reorganizar a abstração de plataforma | não nesta correção | mudança grande, fora do escopo incremental; a regra "implementação de plataforma só compila naquela plataforma" já é verificável por auditoria |
+
+### 14.3 `__clear_cache` — o que foi medido e o que foi preservado
+
+Baixamento real do builtin (Debian clang 19.1.7, sonda sem headers; tabela completa na evidência
+`clang_clear_cache_lowering.txt`):
+
+| Alvo | Emitido |
+| --- | --- |
+| `aarch64-linux-gnu`, `armv7-linux` | `bl __clear_cache` |
+| `armv7-apple-ios`, `arm64-apple-macos`, `arm64-apple-ios`, `arm64_32-apple-watchos` | `bl ___clear_cache` |
+| `x86_64`/`i386` (Linux, macOS e simulador iOS) | **nenhuma instrução** (icache coerente) |
+
+Preservado e **não** tocado: `darwin_icache_flush()` → `sys_icache_invalidate()`
+(`libkern/OSCacheControl.h`, disponível em macOS **e** iOS, fornecido pelo libSystem) — a
+implementação correta para Darwin/iOS. Nada de símbolo falso, shim vazio, no-op silencioso,
+biblioteca aleatória no linker ou redirecionar Apple para código Linux. Pelo contrário, a única
+configuração onde **não** existe implementação honesta (Apple ARM sem
+`<libkern/OSCacheControl.h>`) agora **recusa compilar** (`#error`) em vez de gerar um binário que
+falha ao ligar ou que pula a sincronização que código gerado exige; o ramo Apple x86 continua
+legal porque ali o builtin se expande para *nenhuma instrução*.
+
+### 14.4 Nova auditoria — composição, símbolos e seleção de backend (passo **4f**)
+
+`tools/audit_platform_composition.py` avalia os **condicionais reais** de cada arquivo para cada
+configuração de alvo (`linux-x86_64`, `linux-aarch64`, `macos-arm64`, `iphoneos-arm64`,
+`iphonesimulator-x86_64`) e reporta:
+
+| Verificação | Resultado |
+| --- | --- |
+| `TARGET_COMPOSITION` | a lista de fontes do `.xcodeproj` (lida do projeto gerado) e a do CMake conferem com o que existe em disco; nada de `Tests/`, `tools/`, Fase 04 ou `build/` dentro do app; fonte em disco sem target é reportada |
+| `APPLE_FORBIDDEN_SYMBOLS` | **0** — nenhum símbolo/header proibido alcançável na configuração Apple (`__builtin___clear_cache` e `__clear_cache` valem para ARM; no x86 o builtin não emite instrução) |
+| `LINUX_FORBIDDEN_SYMBOLS` | **0** — nenhum API Apple alcançável no Linux (`sys_icache_invalidate`, `arc4random_buf`, `pthread_jit_write_protect_np`, `kqueue/kevent`, `MAP_JIT`) |
+| `BACKEND_SELECTION` | **OK** — `rt_platform_current()` decide por `__APPLE__`/`__linux__`, e cada backend é definido uma única vez, no seu próprio arquivo, e declarado no header |
+| `UNDECIDED_CONDITIONS` | **0** — nenhuma condição ficou sem resposta; o que não puder ser decidido é reportado, e a região conta como alcançável (nunca "chutada" como inativa) |
+
+A tabela final lista, por configuração, qual manutenção de cache cada uma alcança:
+`darwin_platform.c: sys_icache_invalidate` nas três Apple; `linux_platform.c:
+__builtin___clear_cache` **só** nas Linux.
+
+**Controle negativo** (`tools/platform_composition_negative_control.py`, transcrição em
+`Documentation/evidence/platform_composition_negative_control.txt`), com a árvore restaurada em
+`finally`: (A) `linux_platform.c` exatamente como na execução 05 → `APPLE_FORBIDDEN_SYMBOLS=2`
+apontando `linux_platform.c:154`; (B) guarda removida de `sys_icache_invalidate` →
+`LINUX_FORBIDDEN_SYMBOLS=2`; (C) `rt_platform_current()` devolvendo o backend Linux sob `__APPLE__`
+→ `BACKEND_SELECTION=FAILED`; (D) fonte em disco fora de qualquer target →
+`TARGET_COMPOSITION=2`. `PLATFORM_COMPOSITION_NEGATIVE_CONTROL=PASS`.
+
+### 14.5 Auditoria de link (`tools/audit_link_symbols.sh`)
+
+Sem toolchain Apple, examina o que **é** examinável e não inventa o resto: compila os mesmos
+arquivos com o cross compiler, lista os símbolos indefinidos de cada objeto, mostra que
+`__clear_cache` é referenciado **apenas** por `linux_platform.o`, localiza quem o fornece
+(`/usr/lib/gcc-cross/aarch64-linux-gnu/14/libgcc.a`, `T __clear_cache`), desmonta a função real
+(`bf … bl 0 <__clear_cache>` / `ret`), imprime os pontos de chamada de icache e a seleção de
+backend — e então declara `APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN`, porque o link
+`iphoneos` é veredito do linker da Apple. `LINK_SYMBOL_AUDIT=PASS`.
+
+### 14.6 Regressão após a Correção 05
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | **0 warnings / 0 errors** · ctest **2/2** · **145 checks, 0 falhas** · suíte `records=56 pass=52 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (cross + qemu), rebuild limpo | **0 warnings** · **144 checks, 0 falhas** · `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Cabeçalho do relatório | `platform=linux page_size=4096 apple_target=none` · `# host: platform=linux page_size=4096 isa=x86-64 apple_target=none` |
+| Composição/plataforma (4f, nova) | `TARGET_COMPOSITION=0` · `APPLE_FORBIDDEN_SYMBOLS=0` · `LINUX_FORBIDDEN_SYMBOLS=0` · `BACKEND_SELECTION=OK` · `UNDECIDED_CONDITIONS=0` · `PLATFORM_COMPOSITION_AUDIT=0` |
+| Controle negativo da nova auditoria | 4/4 controles pegos (`PLATFORM_COMPOSITION_NEGATIVE_CONTROL=PASS`) |
+| Auditoria de link | `LINK_SYMBOL_AUDIT=PASS` · `APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN` |
+| Auditoria de includes (4b, Correção 02) | `UNGUARDED_LINUX_INCLUDES=0` |
+| Auditoria de APIs (4c, Correção 03) | `UNGUARDED_MACOS_ONLY_APIS=0` |
+| Auditoria de interfaces (4d, Correção 04) | `INTERFACE_AUDIT=0` |
+| Sintaxe da bridge (4e, Correção 04) | `BRIDGE_SYNTAX=PASS` 0/0 |
+| `.xcodeproj` | `PLIST_SYNTAX=PASS` (69 objetos) · preflight **62 checagens, 0 falhas** |
+| Correção 01 | `EVIDENCE_DIR` absoluto · `mkdir -p` antes de cada `tee` · `pipefail` · portão `xcodebuild -list` intacto |
+| **Ponto único mais forte da correção** | o pré-processado AArch64 de `linux_platform.c` e `darwin_platform.c` é **idêntico** antes e depois (`sha256` do `-E -P` inalterado): nada muda no que se compila em Linux |
+| Fase 04 | 86 arquivos byte-idênticos fora dos 2 `.txt` de inventário · 0 alterações no git |
+| Toolchain Apple | `IOS_BUILD=UNTESTED REASON=NO_APPLE_TOOLCHAIN` — nenhum resultado de Xcode fabricado |
+
+### 14.7 O que a Correção 05 **não** prova
+
+* Não prova que o build `iphoneos` completa nem que a IPA sai. Prova que **a causa demonstrada foi
+  removida na camada certa** e que agora existem cinco pré-checagens (4b–4f) cobrindo as quatro
+  classes de falha já vistas: header ausente, símbolo indisponível no alvo, declaração invisível e
+  **símbolo de plataforma errada alcançando outro alvo / objeto direto no link**.
+* Não prova nada sobre o iPhone 13: `IPHONE_VALIDATION_PENDING` permanece. JIT no aparelho continua
+  dependendo de assinatura/entitlements, e a suíte responde `NOT_APPLICABLE`/`BLOCKED` com o motivo
+  real — nunca `PASS` por otimismo.

@@ -1,0 +1,97 @@
+How clang lowers __builtin___clear_cache(), and why an unreferenced object still has to
+=======================================================================================
+link: the mechanism behind Apple CI run #5
+environment : Debian clang 19.1.7 on x86-64 Linux. NO Apple SDK is present here, so this
+              file proves the COMPILER behaviour and the generic linker behaviour; the
+              iphoneos link itself remains the Apple linker's verdict (reported UNTESTED).
+
+--- step 1: lowering per target (single header-free probe, -O0 -S) ---------------------
+
+probe:
+    static int flush(void *addr, unsigned long len) {
+        __builtin___clear_cache((char *)addr, (char *)addr + len);
+        return 0;
+    }
+    typedef struct { const char *name; int (*icache_flush)(void *, unsigned long); } ops_t;
+    const ops_t ops = { "probe", flush };
+
+  target                                 emitted call / instruction
+  -------------------------------------- --------------------------------------------
+  aarch64-linux-gnu                      bl	__clear_cache
+  x86_64-linux-gnu                       <none: no instruction at all>
+  armv7-linux-gnueabihf                  bl	__clear_cache
+  armv7-apple-ios9.0                     bl	___clear_cache
+  arm64-apple-macos13.0                  bl	___clear_cache
+  arm64-apple-ios16.0                    bl	___clear_cache
+  arm64_32-apple-watchos9.0              bl	___clear_cache
+  x86_64-apple-ios16.0-simulator         <none: no instruction at all>
+  x86_64-apple-macos13.0                 <none: no instruction at all>
+  i386-apple-ios9.0                      <none: no instruction at all>
+
+  Reading: on EVERY ARM target the builtin becomes a call to an external symbol
+  (ELF `__clear_cache`, Mach-O `___clear_cache`); on x86-64/i386 it vanishes entirely
+  because the caches are coherent. That is why the defect only appeared when the
+  iphoneos (arm64) link ran, and why the same source is harmless on the x86 simulator.
+
+--- step 2: why linux_platform.o is in the link even though nothing calls it -----------
+
+  A. object handed DIRECTLY to the linker (what the Xcode target does with every .c):
+       $ gcc -c dead.c -o dead.o && gcc -c main.c -o main.o
+       $ nm -u dead.o
+                          U totally_missing_symbol
+       $ gcc main.o dead.o -o prova
+       /usr/bin/ld: dead.o: in function `never_called':
+       dead.c:(.text+0x5): undefined reference to `totally_missing_symbol'
+       collect2: error: ld returned 1 exit status
+
+  B. the same object inside a static ARCHIVE (what CMake produces for
+     phase02_runtime_core):
+       $ ar rcs libdead.a dead.o && gcc main.o libdead.a -o prova_ar && ./prova_ar
+       main ran
+
+  Reading: dead code inside an object that is passed directly to the linker must still
+  resolve its symbols; the same code inside an archive is never pulled in. The generated
+  Xcode project lists all 12 RuntimeCore sources in the app target's Sources phase, so the
+  Linux backend's undefined ___clear_cache became a hard link error on arm64.
+
+--- step 3: the same object on Linux, where the symbol exists --------------------------
+
+  $ clang -target aarch64-linux-gnu ... -c RuntimeCore/src/linux_platform.c -o lp.o
+  $ nm -u lp.o | grep clear_cache
+                   U __clear_cache
+
+  $ aarch64-linux-gnu-objdump -d lp.o | sed -n '/<linux_icache_flush>:/,/^$/p'
+     3e8:  94000000   bl   0 <__clear_cache>
+     3f4:  d65f03c0   ret
+
+  $ aarch64-linux-gnu-gcc -print-file-name=libgcc.a
+  /usr/lib/gcc-cross/aarch64-linux-gnu/14/libgcc.a
+  $ nm /usr/lib/gcc-cross/aarch64-linux-gnu/14/libgcc.a | grep __clear_cache
+  0000000000000000 T __clear_cache
+
+  Reading: on Linux the symbol comes from the compiler runtime that every Linux link pulls
+  in, which is why the AArch64 build never noticed. The iPhoneOS SDK ships no such symbol,
+  hence the failure. (Full object inventory: Documentation/evidence/link_symbol_audit.txt.)
+
+--- step 4: the fix, verified as a property of the configuration -----------------------
+
+  tools/audit_platform_composition.py evaluates the real conditionals of every source the
+  Apple target compiles and reports which cache-maintenance construct each configuration
+  reaches:
+
+    darwin_platform.c  [macos-arm64 / iphoneos-arm64 / iphonesimulator-x86_64]
+                       208:sys_icache_invalidate
+    linux_platform.c   [linux-x86_64 / linux-aarch64]   169:__builtin___clear_cache
+
+  and with runtimeCore/src/linux_platform.c taken from the CI run #5 revision, the same
+  audit reports APPLE_FORBIDDEN_SYMBOLS=2 (see
+  Documentation/evidence/platform_composition_negative_control.txt, control A).
+
+--- step 5: the Linux builds are provably unchanged ------------------------------------
+
+  $ git show HEAD:ios/RuntimeCore/src/linux_platform.c | clang -target aarch64-linux-gnu
+        -I RuntimeCore/include -E -P -x c - | sha256sum
+  $ clang -target aarch64-linux-gnu -I RuntimeCore/include -E -P -x c
+        ios/RuntimeCore/src/linux_platform.c | sha256sum
+  -> identical (c4cfdc291f5c54ed...), i.e. the fix changes nothing that is compiled on
+     Linux; it only removes code that was never meant to be compiled for Apple.

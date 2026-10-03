@@ -1,0 +1,52 @@
+== object-level link audit (AArch64 Linux: real objects) ==
+compiler: aarch64-linux-gnu-gcc (Debian 14.2.0-19) 14.2.0
+
+-- cache-maintenance symbols demanded by each object (undefined symbols) --
+  linux_platform.o         __clear_cache __errno_location close getauxval getrandom mmap mprotect munmap open read sysconf 
+  runtime_dual_mapping.o   __errno_location close ftruncate memset mmap munmap rt_platform_page_size rt_platform_unique_shm_name shm_open shm_unlink 
+  runtime_ipc.o            __cmsg_nxthdr __errno_location accept bind close connect epoll_create1 epoll_ctl epoll_wait ftruncate listen memcmp memset mmap munmap pipe read recvmsg rt_platform_unique_shm_name sendmsg shm_open shm_unlink snprintf socket socketpair unlink write 
+CLEAR_CACHE_REFERENCED_BY= linux_platform.o
+
+-- where the cross toolchain provides __clear_cache --
+  /usr/lib/gcc-cross/aarch64-linux-gnu/14/libgcc.a (0000000000000000 T __clear_cache)
+  (on Linux the symbol comes from the compiler runtime every Linux link pulls in;
+   the iPhoneOS SDK ships no such symbol, hence Apple CI run #5)
+
+-- icache call sites in the platform layer --
+  darwin_platform.c     
+     47:#if __has_include(<libkern/OSCacheControl.h>)
+     48:#include <libkern/OSCacheControl.h>
+     203:static int darwin_icache_flush(void *addr, size_t len)
+     206:    /* sys_icache_invalidate(3) is the documented Apple cache-maintenance entry point
+     208:    sys_icache_invalidate(addr, len);
+     211:    /* Apple x86 without <libkern/OSCacheControl.h>: on these cores the instruction cache
+     215:    __builtin___clear_cache((char *)addr, (char *)addr + len);
+     218:    /* Apple arm without <libkern/OSCacheControl.h>: there is no honest implementation in
+     225:#error "Apple arm needs <libkern/OSCacheControl.h> for sys_icache_invalidate()"
+     271:    darwin_icache_flush,
+  linux_platform.c      
+     163:static int linux_icache_flush(void *addr, size_t len)
+     169:    __builtin___clear_cache((char *)addr, (char *)addr + len);
+     241:    linux_icache_flush,
+
+-- backend selection --
+  130:    return &rt_platform_darwin;
+  132:    return &rt_platform_linux;
+  134:    return &rt_platform_linux;
+  48:#if defined(__APPLE__)
+  50:#else
+  129:#if defined(__APPLE__)
+  131:#elif defined(__linux__)
+  133:#else
+  169:#if defined(__APPLE__)
+  171:#else
+
+objdump proof for the AArch64 Linux object (the call the linker resolves):
+   3e8:	94000000 	bl	0 <__clear_cache>
+   3f4:	d65f03c0 	ret
+  (the bl target is __clear_cache, resolved from libgcc above)
+
+APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN
+  the iphoneos link is decided by the Apple linker; the static policy that catches the
+  run #5 condition before a runner is in tools/audit_platform_composition.py
+LINK_SYMBOL_AUDIT=PASS

@@ -7,6 +7,19 @@
  * pthread_jit_write_protect_np as absent because Linux has no such API. There is no
  * emulation of either, and the write-protect hook returns -1/ENOTSUP so callers are
  * forced to handle its absence explicitly.
+ *
+ * Foreign-host rule (Apple CI run #5): this file is compiled on every host so the
+ * harness can report what Linux *would* do, but a backend must not emit code for a
+ * platform it is not running on. linux_icache_flush() used to call
+ * __builtin___clear_cache() unguarded; on ARM that builtin becomes an external call to
+ * __clear_cache — a symbol the iPhoneOS SDK does not provide — and the Xcode target
+ * links this object directly, so the whole build failed at the link step:
+ *
+ *     ld: "___clear_cache", referenced from: _linux_icache_flush in linux_platform.o
+ *
+ * Measured lowering (clang 19, Documentation/evidence/clang_clear_cache_lowering.txt):
+ * aarch64/armv7 -> `bl __clear_cache` (Mach-O `___clear_cache`), x86-64/i386 -> no
+ * instruction at all. The flush is now Linux-only, exactly like linux_random_bytes().
  */
 #include "runtime_platform.h"
 
@@ -149,10 +162,26 @@ static int linux_jit_write_protect_set(void *addr, size_t len, int enable, int *
 
 static int linux_icache_flush(void *addr, size_t len)
 {
-    /* GCC/Clang expand this to the architecture's cache maintenance sequence
-     * (dc cvau / ic ivau on AArch64, nothing on x86 where icache is coherent). */
+#if defined(__linux__)
+    /* GCC/Clang expand this to the architecture's cache maintenance sequence on Linux,
+     * where the compiler runtime provides __clear_cache (aarch64/armv7) or where no
+     * instruction is needed at all (x86: coherent icache). */
     __builtin___clear_cache((char *)addr, (char *)addr + len);
     return 0;
+#else
+    /* Not a Linux host: the Linux backend must not emit a cache-maintenance sequence
+     * for a platform it is not running on. On Apple arm64 the builtin above lowers to
+     * an external call to ___clear_cache, which the iPhoneOS SDK does not provide, and
+     * because the Xcode target links this object directly the whole app failed to link
+     * (Apple CI run #5). On Apple the operation belongs to darwin_icache_flush()
+     * (sys_icache_invalidate) and this entry point is never reached anyway:
+     * rt_platform_current() returns &rt_platform_darwin under __APPLE__. Reporting
+     * failure is the honest answer — there is no Linux instruction cache here to
+     * synchronise — and matches darwin_icache_flush()'s behaviour on a non-Apple host. */
+    (void)addr;
+    (void)len;
+    return -1;
+#endif
 }
 
 static int linux_random_bytes(void *buffer, size_t length, int *err_out)

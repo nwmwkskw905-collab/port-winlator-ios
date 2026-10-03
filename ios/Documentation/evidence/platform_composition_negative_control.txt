@@ -1,0 +1,70 @@
+== negative controls for the platform composition audit ==
+audit    : tools/audit_platform_composition.py
+baseline : exit 0
+           TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+           APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+           LINUX_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+           BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+           UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+           PLATFORM_COMPOSITION_AUDIT=0
+
+---- control A (the CI run #5 condition, file taken from HEAD)
+patched file : RuntimeCore/src/linux_platform.c
+expectation  : APPLE_FORBIDDEN_SYMBOLS >= 1, naming the unguarded builtin
+APPLE_FORBIDDEN_SYMBOLS: RuntimeCore/src/linux_platform.c:154 [macos-arm64] __builtin___clear_cache — on every ARM target clang lowers it to an external call to __clear_cache, and the iPhoneOS SDK provides no such symbol (CI run #5 link failure); Apple cache maintenance goes through sys_icache_invalidate() in darwin_platform.c. On x86 it expands to no instruction, so the x86 branches of darwin_platform.c are legal
+APPLE_FORBIDDEN_SYMBOLS: RuntimeCore/src/linux_platform.c:154 [iphoneos-arm64] __builtin___clear_cache — on every ARM target clang lowers it to an external call to __clear_cache, and the iPhoneOS SDK provides no such symbol (CI run #5 link failure); Apple cache maintenance goes through sys_icache_invalidate() in darwin_platform.c. On x86 it expands to no instruction, so the x86 branches of darwin_platform.c are legal
+TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+APPLE_FORBIDDEN_SYMBOLS=2 (REACHABLE — must be guarded)
+LINUX_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+PLATFORM_COMPOSITION_AUDIT=2
+audit exit   : 1 (non-zero means the regression was caught)
+
+---- control B
+patched file : RuntimeCore/src/darwin_platform.c
+expectation  : LINUX_FORBIDDEN_SYMBOLS >= 1 (sys_icache_invalidate reachable on Linux)
+LINUX_FORBIDDEN_SYMBOLS: RuntimeCore/src/darwin_platform.c:208 [linux-x86_64] sys_icache_invalidate — libkern/OSCacheControl.h — Apple-only; the Linux backend uses the compiler builtin
+LINUX_FORBIDDEN_SYMBOLS: RuntimeCore/src/darwin_platform.c:208 [linux-aarch64] sys_icache_invalidate — libkern/OSCacheControl.h — Apple-only; the Linux backend uses the compiler builtin
+TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+LINUX_FORBIDDEN_SYMBOLS=2 (REACHABLE — must be guarded)
+BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+UNDECIDED_CONDITIONS=10 (add the fact to CONFIGS instead of guessing)
+PLATFORM_COMPOSITION_AUDIT=2
+audit exit   : 1 (non-zero means the regression was caught)
+
+---- control C
+patched file : RuntimeCore/src/runtime_memory.c
+expectation  : BACKEND_SELECTION=FAILED (Apple selecting the Linux backend)
+BACKEND_SELECTION: macos-arm64: rt_platform_current() selects ['rt_platform_linux'] instead of rt_platform_darwin
+BACKEND_SELECTION: iphoneos-arm64: rt_platform_current() selects ['rt_platform_linux'] instead of rt_platform_darwin
+BACKEND_SELECTION: iphonesimulator-x86_64: rt_platform_current() selects ['rt_platform_linux'] instead of rt_platform_darwin
+TARGET_COMPOSITION=0 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+LINUX_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+BACKEND_SELECTION=FAILED (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+PLATFORM_COMPOSITION_AUDIT=3
+audit exit   : 1 (non-zero means the regression was caught)
+
+---- control D (source on disk that the Xcode project does not compile)
+patched file : RuntimeCore/src/iphone_only_probe.c (scratch copy only)
+expectation  : TARGET_COMPOSITION >= 1
+TARGET_COMPOSITION: iphone_only_probe.c is on disk but not compiled by the Xcode target
+TARGET_COMPOSITION: iphone_only_probe.c is missing from the CMake library
+TARGET_COMPOSITION=2 (17 files in the Xcode target, 14 in the CMake library, 2 executables)
+APPLE_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+LINUX_FORBIDDEN_SYMBOLS=0 (no forbidden reference is reachable in this configuration)
+BACKEND_SELECTION=OK (Apple -> rt_platform_darwin, Linux -> rt_platform_linux, both declared, no runtime picking)
+UNDECIDED_CONDITIONS=0 (every condition was decided for every configuration)
+PLATFORM_COMPOSITION_AUDIT=2
+audit exit   : 1 (non-zero means the regression was caught)
+
+== summary ==
+  CAUGHT  A: CI #5 __builtin___clear_cache
+  CAUGHT  B: Apple symbol reachable on Linux
+  CAUGHT  C: wrong backend under __APPLE__
+  CAUGHT  D: uncompiled source on disk
+
+PLATFORM_COMPOSITION_NEGATIVE_CONTROL=PASS
