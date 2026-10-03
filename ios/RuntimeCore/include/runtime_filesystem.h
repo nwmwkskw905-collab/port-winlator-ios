@@ -33,6 +33,33 @@ int rt_fs_roundtrip(const char *root, int *err_out);
  * probe fail with EEXIST instead of the real limit). */
 int rt_fs_deep_paths(const char *root, size_t depth, size_t *path_len_out, int *err_out);
 
+/* Which step of the deep-path probe failed. Physical run #1 (iPhone 13, 2026-10-02)
+ * reported "unexpected errno=0 (Undefined error: 0) at depth=103": the failing call's
+ * errno had been thrown away by the error path, so the record could not say WHAT failed
+ * or WHY. The stage removes that blindness: the probe reports the step and the errno of
+ * the failing call, captured immediately after it. */
+typedef enum {
+    RT_FS_STAGE_NONE = 0,     /* success */
+    RT_FS_STAGE_ROOT,         /* root rejected: NULL, empty depth, or longer than the buffer */
+    RT_FS_STAGE_SEGMENT,      /* a level name could not be formatted (never expected) */
+    RT_FS_STAGE_PATH_CAP,     /* this implementation's own path buffer is the limit */
+    RT_FS_STAGE_MKDIR,        /* mkdir(2) refused */
+    RT_FS_STAGE_LEAF_JOIN,    /* composing <path>/leaf.bin overflowed the buffer */
+    RT_FS_STAGE_LEAF_WRITE,   /* open(2)/write(2)/close(2) of leaf.bin failed */
+    RT_FS_STAGE_LEAF_READ,    /* read-back failed */
+    RT_FS_STAGE_LEAF_COMPARE, /* read-back succeeded and the content differed (defect) */
+    RT_FS_STAGE_LEAF_UNLINK,  /* unlink(2) failed */
+    RT_FS_STAGE_ERRNO_LOST    /* invariant breach: a failure returned errno 0 (defect) */
+} rt_fs_stage_t;
+
+const char *rt_fs_stage_name(rt_fs_stage_t stage);
+
+/* Same probe, reporting the failing stage. On failure *err_out is always non-zero: an
+ * error path that cannot name its errno sets EIO and RT_FS_STAGE_ERRNO_LOST rather than
+ * reporting a zero. */
+int rt_fs_deep_paths_ex(const char *root, size_t depth, size_t *path_len_out, int *err_out,
+                        rt_fs_stage_t *stage_out);
+
 /* The three limits that decide how deep a path may go, so callers can measure
  * capacity instead of assuming a depth that only holds on one platform. */
 typedef struct rt_fs_limits {

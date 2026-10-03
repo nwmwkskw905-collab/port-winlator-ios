@@ -106,25 +106,28 @@ uint32_t rt_jit_call_u32(const void *code)
     return fn();
 }
 
-void *rt_jit_alloc(size_t len, int *err_out, int *used_map_jit_out)
+void *rt_jit_alloc(size_t len, int *err_out, int *map_jit_attempted_out)
 {
-    if (used_map_jit_out != NULL) {
-        *used_map_jit_out = 0;
+    if (map_jit_attempted_out != NULL) {
+        *map_jit_attempted_out = 0;
     }
 #if defined(__APPLE__) && defined(__aarch64__) && defined(MAP_JIT)
     {
         size_t page = (size_t)rt_platform_page_size();
         size_t rounded = ((len + page - 1u) / page) * page;
-        void *addr = mmap(NULL, rounded, PROT_READ | PROT_WRITE | PROT_EXEC,
-                          MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
+        void *addr;
+        /* The MAP_JIT path is taken (and reported as taken) before the call is made, so a
+         * refusal can be attributed to it instead of looking like a generic failure. */
+        if (map_jit_attempted_out != NULL) {
+            *map_jit_attempted_out = 1;
+        }
+        addr = mmap(NULL, rounded, PROT_READ | PROT_WRITE | PROT_EXEC,
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
         if (addr == MAP_FAILED) {
             if (err_out != NULL) {
-                *err_out = errno;
+                *err_out = errno;       /* captured immediately */
             }
             return NULL;
-        }
-        if (used_map_jit_out != NULL) {
-            *used_map_jit_out = 1;
         }
         if (err_out != NULL) {
             *err_out = 0;
@@ -133,7 +136,9 @@ void *rt_jit_alloc(size_t len, int *err_out, int *used_map_jit_out)
     }
 #else
     /* No MAP_JIT here: a plain RW mapping that the caller must flip with
-     * rt_mem_protect(). This is deliberately not presented as a JIT arena. */
+     * rt_mem_protect(). This is deliberately not presented as a JIT arena, and
+     * map_jit_attempted_out stays 0 — a failure of this path is not the MAP_JIT
+     * capability. */
     return rt_mem_reserve(len, err_out);
 #endif
 }
@@ -227,7 +232,14 @@ int rt_jit_probe_write_protect_np(void)
 int rt_jit_execution_allowed(void)
 {
     /* Answerable only by trying: emit a payload, make it executable, call it under
-     * the fault guard. Returns 1 (yes), 0 (no) or -1 (not determined here). */
+     * the fault guard. Returns 1 (yes), 0 (no) or -1 (not determined here).
+     *
+     * Every step is checked, and the MAP_JIT path is driven the way the platform requires:
+     * when the arena came from a MAP_JIT mapping, the payload is written inside the
+     * write-protect window (begin/end write) instead of straight into a possibly
+     * write-protected region, and the instruction-cache flush is honoured. Failure of any
+     * of those is "not determined" (-1), never a false "this process may not execute
+     * memory it wrote". */
     uint8_t payload[16];
     size_t len = 0u;
     void *arena = NULL;
@@ -235,18 +247,31 @@ int rt_jit_execution_allowed(void)
     void *fault = NULL;
     uint32_t value = 0u;
     int err = 0;
+    int used_map_jit = 0;
     int result;
     rt_jit_fn_t fn;
 
     if (rt_jit_emit_return_imm(payload, sizeof(payload), 1u, &len) != 0) {
         return -1;
     }
-    arena = rt_jit_alloc(len, &err, NULL);
+    arena = rt_jit_alloc(len, &err, &used_map_jit);
     if (arena == NULL) {
         return -1;
     }
+    if (used_map_jit != 0 && rt_jit_begin_write(arena, len, &err) != 0) {
+        (void)rt_jit_free(arena, len);
+        return -1; /* no write window: nothing was written, nothing was measured */
+    }
     memcpy(arena, payload, len);
-    (void)rt_jit_invalidate(arena, len);
+    if (used_map_jit != 0 && rt_jit_end_write(arena, len, &err) != 0) {
+        (void)rt_jit_free(arena, len);
+        return -1;
+    }
+    if (rt_jit_invalidate(arena, len) != 0 && (rt_platform_capabilities() & RT_CAP_ICACHE_FLUSH) != 0u) {
+        /* The platform can flush and the flush failed: executing would be untrustworthy. */
+        (void)rt_jit_free(arena, len);
+        return -1;
+    }
 
     if (rt_mem_protect(arena, len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
         (void)rt_jit_free(arena, len);
@@ -258,6 +283,9 @@ int rt_jit_execution_allowed(void)
     result = rt_signal_call_guarded(fn, &value, &fault, &err);
     (void)rt_jit_free(arena, len);
 
+    if (result == -2) {
+        return -1; /* the guard could not be installed: nothing was executed */
+    }
     if (result != 0) {
         return 0; /* faulted: no permission, or the payload was refused */
     }

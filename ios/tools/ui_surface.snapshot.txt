@@ -1,0 +1,58 @@
+var body: some View {
+        NavigationView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Phase 02 Reconstructed Runtime PoC")
+                    .font(.headline)
+                Text("PHASE_02_RECONSTRUCTED_POC — host results are not iOS results.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Text(Phase02Bridge.platformDescription())
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                Picker("Suite", selection: $suite) {
+                    ForEach(suites, id: \.self) { name in
+                        Text(name).tag(name)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+
+                HStack {
+                    Button("Run All Tests") { run("all") }
+                        .disabled(isRunning)
+                    Button("Run Selected") { run(suite) }
+                        .disabled(isRunning)
+                }
+
+                Text("status: \(status)").font(.footnote)
+
+                ScrollView {
+                    Text(report.isEmpty ? "No report yet." : report)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .border(Color.gray.opacity(0.3))
+
+                HStack {
+                    Button("Copy report") {
+                        UIPasteboard.general.string = report
+                        status = "copied \(report.count) characters"
+                    }
+                    .disabled(report.isEmpty)
+
+                    Button("Save report") { save() }
+                        .disabled(report.isEmpty)
+
+                    ShareLink(item: report) {
+                        Text("Share")
+                    }
+                    .disabled(report.isEmpty)
+                }
+            }
+            .padding()
+            .navigationTitle("Runtime PoC")
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+    }

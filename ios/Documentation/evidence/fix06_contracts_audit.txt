@@ -1,0 +1,11 @@
+--- Fix 06 contracts (each rule comes from a physical failure of run #1)
+ok   LOADER_REASON: no rejection without a reason; a blocked execution names its dependency
+ok   SHM_STAGE: the failing syscall is named, not only its errno
+ok   DEPTH_STAGE: the errno is captured where it happens, with its stage
+ok   ERRNO_ZERO_DEFECT: errno 0 is a defect of the error path, never an answer
+ok   JIT_ATTEMPT_ORDER: the attempt is recorded before the mapping, refusals included
+ok   COMPAT_SURFACE: existing entry points survive: Fix 06 adds, never breaks
+ok   PHYSICAL_BASELINE: run #1 is present, verbatim, and still FAIL
+
+FIX06_CONTRACTS_AUDIT=0
+note: static pre-check — the device remains the authority for the physical result.

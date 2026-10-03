@@ -1,0 +1,24 @@
+== Fix 06 negative controls (each one reintroduces a run #1 defect) ==
+CONTROL_A=DETECTED by audit LOADER_REASON; DETECTED by unit tests (arena refused path)
+  what: loader loses the reason => 'rejected: OK' returns
+CONTROL_B=DETECTED by audit DEPTH_STAGE (the failure branch must report the captured errno); DETECTED by unit tests (errno-preservation regression)
+  what: the deep-path probe stops preserving the errno => errno=0 again
+CONTROL_C=DETECTED by audit JIT_ATTEMPT_ORDER
+  what: MAP_JIT attempt recorded only after success (the pre-Fix-06 shape)
+CONTROL_D=DETECTED by audit SHM_STAGE
+  what: the shm record drops the failing stage (run #1 shape: errno with no syscall)
+CONTROL_E=DETECTED by audit PHYSICAL_BASELINE
+  what: the run #1 baseline rewritten to PASS
+CONTROL_F=DETECTED by audit ERRNO_ZERO_DEFECT; DETECTED by unit tests
+  what: errno 0 accepted as a verdict (silent failure as PASS)
+
+== restoration ==
+  ok   RuntimeCore/src/runtime_loader.c 29b701ade74e47f0
+  ok   RuntimeCore/src/runtime_filesystem.c 052b434126dd5baf
+  ok   RuntimeCore/src/runtime_jit.c 9940ff05bd38e6bf
+  ok   Diagnostics/src/phase02_harness.c 59e4ce3b0d0844f1
+  ok   Documentation/IPHONE13_PHYSICAL_RUN_01.md 8f10c579584e5079
+  after restore: build rc=0, tests == 274 checks, 0 failures ==
+  after restore: FIX06_CONTRACTS_AUDIT=0
+
+FIX06_NEGATIVE_CONTROLS=6/6

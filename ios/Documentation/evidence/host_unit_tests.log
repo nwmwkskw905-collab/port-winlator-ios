@@ -136,6 +136,98 @@ ok   POSIX shared memory round trip
 ok   readiness multiplexing works
 ok   read end closed
 ok   read on a closed descriptor fails
+ok   observed success is the only source of PASS
+ok   a defect stays a defect even when something else is blocked
+ok   a capability the platform refused is BLOCKED, never FAIL
+ok   an API the target cannot call is NOT_APPLICABLE
+ok   an absent mechanism is UNSUPPORTED
+ok   an unestablished cause is UNTESTED - never PASS, never FAIL
+ok   a dependent of a blocked capability is BLOCKED
+ok   …and also when the dependency is UNSUPPORTED
+ok   …but when the dependency PASSED the capability was there: that is a defect
+ok   outcome names are stable for the report
+ok   a dependency names the test that measures it
+ok   physical run #1: MAP_JIT attempted + probe EPERM + alloc EPERM => dependency
+ok   …and that dependency maps to BLOCKED, not FAIL
+ok   a different errno is a different failure: not excused by the probe
+ok   a non-MAP_JIT allocation failure is never blamed on the MAP_JIT capability
+ok   probe PASSED and the allocation still failed => defect
+ok   an allocation error with errno lost is a defect, not a capability verdict
+ok   physical run #1: error with errno=0 => defect, not a platform answer
+ok   …and that defect is FAIL, with the reason named in the record
+ok   reaching PATH_MAX is the platform limit: a measurement, not a failure
+ok   the probe's own buffer as ceiling is PASS with the provenance stated
+ok   …same for the leaf join
+ok   a sandbox refusal is a capability, not a defect
+ok   a full filesystem is a resource limit, reported as BLOCKED
+ok   an errno that fits no contract is a defect
+ok   the failing stage has a stable name for the report
+ok   no failing stage means the probe succeeded
+ok   shm_open refused with EPERM is a capability the sandbox did not grant
+ok   the second view refused is the same class, and the stage tells them apart
+ok   an absent mechanism is UNSUPPORTED
+ok   two views of one object disagreeing is our defect, never a platform property
+ok   an error with errno 0 is a defect of the error path
+ok   the stage name identifies the syscall in the record
+ok   a broken image is still rejected
+ok   …with a real reason (the reason is never left at OK)
+ok   a rejection reason can never read as a success
+ok   arena refused: a valid module is BLOCKED, not rejected (physical #1)
+ok   …the reason names the missing capability, not a rejection
+ok   …so the detail can never print 'rejected: OK'
+ok   …and the errno of the failing allocation is reported (never 0)
+ok   no value is reported for a module that did not run
+ok   physical #1 combination classifies as a blocked dependency (see also loader E2E)
+ok   …and the report says BLOCKED, not FAIL
+ok   physical #1 symptom: a rejection with reason OK is a defect, never a verdict
+ok   a rejection that names its reason is correct behaviour
+ok   probe PASSED and the arena still failed: that is ours, not the capability
+ok   an arena failure with errno lost cannot be blamed on the capability
+ok   the same image is accepted once memory is available again
+ok   …and it still returns the emitted immediate
+ok   …with OK as the reason for a successful run
+ok   the probe fails on a read-only root
+ok   …and the caller receives a non-zero errno (physical #1: it was 0)
+ok   …which is the failing call's errno, not the caller's old value
+ok   …and the failing stage is named
+ok   …with EACCES/EPERM/EROFS for a read-only directory
+ok   the capacity ceiling also carries a real, non-zero errno
+ok   …and a stage
+ok   …which is the probe's own buffer, or the errno-lost invariant breach
+ok   NULL root is refused
+ok   …with EINVAL, not with the caller's stale value
+ok   …and the stage says which argument
+ok   the run #1 symptom (errno=0) is FAIL with 'errno not preserved', not PASS
+ok   the 42 payload is emitted and its length is reported
+ok   the 4242 payload is emitted into its own buffer
+ok   the two payloads differ: they were emitted into separate buffers
+ok   an arena sized max(first, second) holds both payloads
+ok   the sizing rule used by the microtest covers both writes
+ok   an undersized buffer is refused by the emitter
+ok   a guard that cannot be installed is a failure of ours
+ok   …reported as INTERNAL, not as EXEC_FAULT (no fault ever happened)
+ok   …with the errno of the guard failure
+ok   …and the output value is left untouched
+ok   the executable-view stage has a stable name
+ok   EPERM on the executable view is a capability this process was not granted
+ok   …and the report says BLOCKED, not UNSUPPORTED (the same rule as ipc.posix_shm)
+ok   shm_open refused is the same class, and the stage tells the two apart
+ok   an absent mechanism is UNSUPPORTED
+ok   two views that disagree although both were granted is our defect
+ok   an errno that fits no contract is a defect, never a platform limit
+ok   an error with errno 0 is a defect of the error path
+ok   no failing stage means the experiment succeeded
+ok   a successful dual map reports no failing stage
+ok   …and its two views alias the same memory
+ok   the cleanup stage has a stable name
+ok   a failing cleanup never turns a proven capability into a refusal
+ok   …while a refusal at shm_open still is one
+ok   the shared-memory probe succeeds on this host
+ok   …and reports either no failing stage or the cleanup one
+ok   a fully successful probe reports no errno
+ok   the log can be allocated
+ok   an over-long DETAIL carries an explicit truncation marker
+ok   …and the record itself is still identifiable
 ok   context initialised
 ok   context carries the page size
 ok   module added
@@ -145,4 +237,41 @@ ok   module marked as executed
 ok   marking an absent module fails
 ok   context describes itself
 ok   module table refuses to overflow
-== 145 checks, 0 failures ==
+ok   region reserved for the overflow probe
+ok   rt_mem_protect refuses a length that would overflow the rounding
+ok   …with EOVERFLOW as the documented errno
+ok   a normal length is still protected
+ok   …and reports no error
+ok   region released
+ok   links probe on a missing root fails
+ok   …with ENOENT (the failing open), not a stale errno
+ok   the file root path fits its buffer
+ok   links probe under a file fails
+ok   …with ENOTDIR (the failing open), not a stale errno
+ok   temp file name into a too-small buffer fails
+ok   …with ENAMETOOLONG
+ok   temp file created for the success case
+ok   …and the success path clears errno
+ok   SIGUSR1 round trip still succeeds
+ok   …and clears errno
+ok   an invalid signal number fails
+ok   …and the failure carries an errno (never 0, never untouched)
+ok   thread round trip succeeds with errno cleared
+ok   TLS round trip succeeds with errno cleared
+ok   mutex counter succeeds with errno cleared
+ok   condition ping-pong succeeds with errno cleared
+ok   atomics round trip succeeds with errno cleared
+ok   SCM_RIGHTS probe still succeeds
+ok   …and clears errno
+ok   cpu facts collected for the truncation test
+ok   cpu facts summary returns the caller's buffer
+ok   a cpu summary that does not fit says it was truncated
+ok   …and a summary that fits carries no marker
+ok   context initialised for the truncation test
+ok   context description returns the caller's buffer
+ok   a truncated context description is marked
+ok   summary line returns the caller's buffer
+ok   a truncated summary line is marked
+ok   …and a summary that fits starts with its counts
+ok   …without a marker
+== 274 checks, 0 failures ==

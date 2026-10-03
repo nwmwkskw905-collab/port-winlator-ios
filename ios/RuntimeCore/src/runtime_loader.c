@@ -27,6 +27,9 @@ const char *rt_loader_error_name(rt_loader_error_t err)
     case RT_LOADER_ERR_RANGE:      return "OUT_OF_RANGE";
     case RT_LOADER_ERR_CODE_SIZE:  return "BAD_CODE_SIZE";
     case RT_LOADER_ERR_ENTRY:      return "BAD_ENTRY";
+    case RT_LOADER_ERR_JIT_UNAVAILABLE: return "JIT_UNAVAILABLE";
+    case RT_LOADER_ERR_EXEC_FAULT: return "EXEC_FAULT";
+    case RT_LOADER_ERR_INTERNAL:   return "INTERNAL";
     }
     return "UNKNOWN";
 }
@@ -92,8 +95,9 @@ size_t rt_loader_build_return_image(uint8_t *out, size_t cap, uint32_t imm)
     return (size_t)RT_MODULE_HEADER_SIZE + code_len;
 }
 
-rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out,
-                          rt_loader_error_t *loader_err_out, void **fault_addr_out)
+rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_out,
+                             rt_loader_error_t *loader_err_out, void **fault_addr_out,
+                             int *os_err_out, int *map_jit_attempted_out)
 {
     rt_module_header_t header;
     rt_loader_error_t err;
@@ -102,6 +106,7 @@ rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out
     void *fault = NULL;
     uint32_t value = 0u;
     int io_err = 0;
+    int map_jit_attempted = 0;
     int rc;
     rt_jit_fn_t fn;
 
@@ -111,27 +116,58 @@ rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out
     if (loader_err_out != NULL) {
         *loader_err_out = RT_LOADER_OK;
     }
+    if (os_err_out != NULL) {
+        *os_err_out = 0;
+    }
+    if (map_jit_attempted_out != NULL) {
+        *map_jit_attempted_out = 0;
+    }
 
     err = rt_loader_validate(image, size, &header);
     if (err != RT_LOADER_OK) {
         if (loader_err_out != NULL) {
             *loader_err_out = err;
         }
-        return RT_FAIL;
+        return RT_FAIL;                 /* the image itself was rejected */
     }
 
-    arena = rt_jit_alloc(header.code_len, &io_err, NULL);
+    arena = rt_jit_alloc(header.code_len, &io_err, &map_jit_attempted);
+    if (map_jit_attempted_out != NULL) {
+        *map_jit_attempted_out = map_jit_attempted;
+    }
     if (arena == NULL) {
-        return RT_FAIL;
+        /* The image validated; the platform refused the executable arena. That is not a
+         * rejection of the module and not a defect of this code: it is a missing
+         * capability, reported as BLOCKED with a reason and the errno of the failed
+         * allocation. Physical run #1 left both unset, which printed "rejected: OK". */
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_JIT_UNAVAILABLE;
+        }
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;
+        }
+        return RT_BLOCKED;
     }
     memcpy(arena, image + header.code_off, header.code_len);
     if (rt_jit_invalidate(arena, header.code_len) != 0) {
+        /* Our own step failed while both the module and the memory were fine. The platform
+         * hook reports no errno, so the reason carries the fact and os_err stays 0 —
+         * never a made-up errno. */
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_INTERNAL;
+        }
         (void)rt_jit_free(arena, header.code_len);
         return RT_FAIL;
     }
     if (rt_mem_protect(arena, header.code_len, RT_PROT_READ | RT_PROT_EXEC, &io_err) != 0) {
         /* Writable but not executable: report it as blocked, not as a failure of the
          * module, because the module itself is valid. */
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_JIT_UNAVAILABLE;
+        }
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;
+        }
         (void)rt_jit_free(arena, header.code_len);
         return RT_BLOCKED;
     }
@@ -141,9 +177,27 @@ rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out
     rc = rt_signal_call_guarded(fn, &value, &fault, &io_err);
     (void)rt_jit_free(arena, header.code_len);
 
+    if (rc == -2) {
+        /* The fault guard could not be installed, so the entry point was never called and no
+         * fault happened. The previous code reported this as EXEC_FAULT with si_addr=NULL —
+         * a fault that never occurred. This is a defect of our own step. */
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;
+        }
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_INTERNAL;
+        }
+        return RT_FAIL;
+    }
     if (rc != 0) {
         if (fault_addr_out != NULL) {
             *fault_addr_out = fault;
+        }
+        if (os_err_out != NULL) {
+            *os_err_out = io_err;   /* 0 when the fault carried no syscall errno */
+        }
+        if (loader_err_out != NULL) {
+            *loader_err_out = RT_LOADER_ERR_EXEC_FAULT;
         }
         return RT_BLOCKED;
     }
@@ -151,4 +205,10 @@ rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out
         *value_out = value;
     }
     return RT_PASS;
+}
+
+rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out,
+                          rt_loader_error_t *loader_err_out, void **fault_addr_out)
+{
+    return rt_loader_run_ex(image, size, value_out, loader_err_out, fault_addr_out, NULL, NULL);
 }

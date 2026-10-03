@@ -1,0 +1,3 @@
+ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_MACOS_HOST host=Linux
+note: level 3 of the entitlement investigation cannot be read off Darwin; run this
+      on a macOS host (or in the CI job) over the produced product

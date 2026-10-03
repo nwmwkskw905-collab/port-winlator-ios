@@ -265,17 +265,26 @@ int rt_ipc_scm_rights(const char *sockdir, int *err_out)
     }
 
     /* Read through the received descriptor: this proves the fd itself travelled. */
-    if (write(pipe_fds[1], rt_ipc_pattern, sizeof(rt_ipc_pattern)) != (ssize_t)sizeof(rt_ipc_pattern)) {
-        if (err_out != NULL) {
-            *err_out = errno;
+    {
+        /* A short transfer is not an errno-producing failure, so it is reported as EIO
+         * instead of publishing whatever errno happens to hold — the same rule the pair
+         * round trip above already follows. */
+        ssize_t wrote = write(pipe_fds[1], rt_ipc_pattern, sizeof(rt_ipc_pattern));
+        if (wrote != (ssize_t)sizeof(rt_ipc_pattern)) {
+            if (err_out != NULL) {
+                *err_out = (wrote < 0) ? errno : EIO;
+            }
+            goto done;
         }
-        goto done;
     }
-    if (read(received_fd, buffer, sizeof(rt_ipc_pattern)) != (ssize_t)sizeof(rt_ipc_pattern)) {
-        if (err_out != NULL) {
-            *err_out = errno;
+    {
+        ssize_t got = read(received_fd, buffer, sizeof(rt_ipc_pattern));
+        if (got != (ssize_t)sizeof(rt_ipc_pattern)) {
+            if (err_out != NULL) {
+                *err_out = (got < 0) ? errno : EIO;
+            }
+            goto done;
         }
-        goto done;
     }
     if (memcmp(buffer, rt_ipc_pattern, sizeof(rt_ipc_pattern)) != 0) {
         if (err_out != NULL) {
@@ -327,7 +336,22 @@ int rt_ipc_pipe(int *err_out)
     return rc;
 }
 
-int rt_ipc_shm(int *err_out)
+const char *rt_ipc_stage_name(rt_ipc_stage_t stage)
+{
+    switch (stage) {
+    case RT_IPC_STAGE_NONE:       return "none";
+    case RT_IPC_STAGE_NAME:       return "unique-name";
+    case RT_IPC_STAGE_SHM_OPEN:   return "shm_open";
+    case RT_IPC_STAGE_FTRUNCATE:  return "ftruncate";
+    case RT_IPC_STAGE_MAP_FIRST:  return "mmap(first view)";
+    case RT_IPC_STAGE_MAP_SECOND: return "mmap(second view)";
+    case RT_IPC_STAGE_COMPARE:    return "compare(two views)";
+    case RT_IPC_STAGE_UNLINK:     return "shm_unlink(cleanup)";
+    }
+    return "unknown";
+}
+
+int rt_ipc_shm_ex(int *err_out, rt_ipc_stage_t *stage_out)
 {
     char name[64];
     int fd;
@@ -337,23 +361,37 @@ int rt_ipc_shm(int *err_out)
     size_t length = 4096u;
     int rc = -1;
 
+    if (stage_out != NULL) {
+        *stage_out = RT_IPC_STAGE_NONE;
+    }
+
     /* Same reasoning as rt_dual_map_create(): a name derived only from the pid is
      * predictable and survives a crashed previous run, where O_EXCL then turns a
      * leftover object into a spurious failure. 64 bits from the platform CSPRNG. */
     if (rt_platform_unique_shm_name(name, sizeof(name), "/rt_shm", err_out) != 0) {
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_NAME;
+        }
         return -1;
     }
     (void)shm_unlink(name);
     fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd < 0) {
         if (err_out != NULL) {
-            *err_out = errno;
+            *err_out = errno;              /* captured immediately */
+        }
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_SHM_OPEN;
         }
         return -1;
     }
     if (ftruncate(fd, (off_t)length) != 0) {
+        int saved = errno;
         if (err_out != NULL) {
-            *err_out = errno;
+            *err_out = saved;
+        }
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_FTRUNCATE;
         }
         (void)close(fd);
         (void)shm_unlink(name);
@@ -361,8 +399,12 @@ int rt_ipc_shm(int *err_out)
     }
     view_one = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (view_one == MAP_FAILED) {
+        int saved = errno;
         if (err_out != NULL) {
-            *err_out = errno;
+            *err_out = saved;
+        }
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_MAP_FIRST;
         }
         (void)close(fd);
         (void)shm_unlink(name);
@@ -370,8 +412,12 @@ int rt_ipc_shm(int *err_out)
     }
     view_two = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
     if (view_two == MAP_FAILED) {
+        int saved = errno;
         if (err_out != NULL) {
-            *err_out = errno;
+            *err_out = saved;
+        }
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_MAP_SECOND;
         }
         (void)munmap(view_one, length);
         (void)close(fd);
@@ -386,15 +432,39 @@ int rt_ipc_shm(int *err_out)
         if (err_out != NULL) {
             *err_out = 0;
         }
-    } else if (err_out != NULL) {
-        *err_out = EILSEQ;
+    } else {
+        /* The platform accepted every syscall and the two views still disagree: a defect
+         * of this mapping, never reported as a platform property. */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        if (stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_COMPARE;
+        }
     }
 
     (void)munmap(view_two, length);
     (void)munmap(view_one, length);
     (void)close(fd);
-    (void)shm_unlink(name);
+    /* The final unlink is checked. Its failure cannot be ignored (a leftover object in the
+     * shared-memory namespace is a real side effect) and it cannot turn a proven capability
+     * into a failure either, so it is reported through the stage/errno pair as a cleanup
+     * fact — see the contract in runtime_ipc.h. */
+    if (shm_unlink(name) != 0) {
+        int cleanup_err = errno;          /* captured immediately */
+        if (rc == 0 && err_out != NULL) {
+            *err_out = cleanup_err;
+        }
+        if (rc == 0 && stage_out != NULL) {
+            *stage_out = RT_IPC_STAGE_UNLINK;
+        }
+    }
     return rc;
+}
+
+int rt_ipc_shm(int *err_out)
+{
+    return rt_ipc_shm_ex(err_out, NULL);
 }
 
 int rt_ipc_sun_path_limit(size_t *limit_out, int *err_out)

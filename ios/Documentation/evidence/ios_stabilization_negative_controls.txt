@@ -1,0 +1,56 @@
+== stabilization negative controls (each one puts a found defect back) ==
+CONTROL_A=DETECTED by audit DISCARDED_RESULTS
+  what: a JIT result discarded again with (void) (write window)
+CONTROL_B=DETECTED by audit ARENA_SIZING
+  what: the arena sized from the first payload only
+CONTROL_C=DETECTED by audit GUARD_VS_FAULT; DETECTED by unit tests
+  what: a guard that could not be installed reported as a caught fault
+CONTROL_D=DETECTED by audit DUAL_MAP_STAGE
+  what: the dual mapping back to an unnamed failing step
+CONTROL_E=DETECTED by audit CAPABILITY_WORDS; DETECTED by unit tests
+  what: EPERM classified as UNSUPPORTED again in the dual-mapping probe
+CONTROL_F=DETECTED by audit SHM_CLEANUP
+  what: the final shm_unlink result discarded again
+CONTROL_G=DETECTED by audit RANDOM_PROGRESS
+  what: a random source allowed to return nothing and spin the loop
+CONTROL_H=DETECTED by audit LOG_INTEGRITY; DETECTED by unit tests
+  what: a truncated DETAIL left unmarked
+CONTROL_I=DETECTED by audit SAVE_REPORT_TARGET
+  what: the saved report written into tmp/ again
+CONTROL_J=DETECTED by audit SAVE_REPORT_TARGET
+  what: the bundle no longer exposing its Documents directory
+CONTROL_K=DETECTED by audit UI_SURFACE_FROZEN
+  what: a visible interface label changed
+CONTROL_L=DETECTED by audit PROTECT_OVERFLOW; DETECTED by unit tests
+  what: rt_mem_protect without the overflow guard again
+CONTROL_M=DETECTED by audit ERRNO_CAPTURED_NOW
+  what: the captured errno overwritten again
+CONTROL_N=DETECTED by audit ERRNO_CAPTURED_NOW
+  what: a short write reported with a stale errno again
+CONTROL_O=DETECTED by audit ERRNO_CAPTURED_NOW
+  what: a thread round trip returning -1 with *err_out = 0 again
+CONTROL_P=DETECTED by audit TRUNCATION_MARKED; DETECTED by unit tests
+  what: a truncated summary left unmarked again
+CONTROL_Q=DETECTED by audit ERRNO_CAPTURED_NOW
+  what: the signal disposition restore discarded again
+CONTROL_R=DETECTED by audit PAGE_SIZE_MEASURED
+  what: a page size written into the source instead of measured
+
+== restoration ==
+  ok   Diagnostics/src/phase02_harness.c 59e4ce3b0d0844f1
+  ok   RuntimeCore/src/runtime_jit.c 9940ff05bd38e6bf
+  ok   RuntimeCore/src/runtime_loader.c 29b701ade74e47f0
+  ok   RuntimeCore/src/runtime_dual_mapping.c 9e2d272a9ff35cb0
+  ok   RuntimeCore/src/runtime_ipc.c d4ad9ef4ee3c187a
+  ok   RuntimeCore/src/linux_platform.c d189d066569926a5
+  ok   Diagnostics/src/phase02_log.c db31afbd142eb2e0
+  ok   RuntimePoC/ContentView.swift 0d7a04b1fe41830e
+  ok   RuntimePoC/Info.plist 667f0796888635cb
+  ok   RuntimeCore/src/runtime_memory.c c63c737a84026d56
+  ok   RuntimeCore/src/runtime_signals.c 52ec41544fc356cf
+  ok   RuntimeCore/src/runtime_threads.c 80e2689c8803f142
+  ok   RuntimeCore/src/darwin_platform.c 4cda982ec085e300
+  after restore: build rc=0, tests == 274 checks, 0 failures ==
+  after restore: IOS_STABILIZATION_AUDIT=0
+
+STABILIZATION_NEGATIVE_CONTROLS=18/18

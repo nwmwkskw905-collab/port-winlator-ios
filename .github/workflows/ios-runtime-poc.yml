@@ -214,6 +214,33 @@ jobs:
           grep -q "^APPLE_FORBIDDEN_SYMBOLS=0" "$EVIDENCE_DIR/ci_ipa_platform_composition.log" \
             || { echo "FAIL: a symbol the Apple SDK does not provide is reachable in the Apple build"; exit 1; }
 
+      - name: 4g. Fix 06 contracts (loader reason, stages, errno 0) + negative controls
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          python3 tools/audit_fix06_contracts.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_fix06_contracts.log"
+          grep -q "^FIX06_CONTRACTS_AUDIT=0" "$EVIDENCE_DIR/ci_ipa_fix06_contracts.log" \
+            || { echo "FAIL: a Fix 06 contract is broken (reason/stage/errno/attempt order)"; exit 1; }
+          python3 tools/fix06_negative_controls.py --skip-build \
+            2>&1 | tee "$EVIDENCE_DIR/ci_ipa_fix06_negative_controls.log"
+          grep -q "^FIX06_NEGATIVE_CONTROLS=6/6" "$EVIDENCE_DIR/ci_ipa_fix06_negative_controls.log" \
+            || { echo "FAIL: a run #1 defect is no longer detected by the controls"; exit 1; }
+
+      - name: 4h. iOS stabilization audit (JIT results, arena, guard, dual map, shm, log)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          python3 tools/audit_ios_stabilization.py 2>&1 | tee "$EVIDENCE_DIR/ci_ipa_ios_stabilization.log"
+          grep -q "^IOS_STABILIZATION_AUDIT=0" "$EVIDENCE_DIR/ci_ipa_ios_stabilization.log" \
+            || { echo "FAIL: an audited defect of the stabilization pass is back"; exit 1; }
+          python3 tools/stabilization_negative_controls.py --skip-build \
+            2>&1 | tee "$EVIDENCE_DIR/ci_ipa_ios_stabilization_controls.log"
+          grep -q "^STABILIZATION_NEGATIVE_CONTROLS=18/18" \
+            "$EVIDENCE_DIR/ci_ipa_ios_stabilization_controls.log" \
+            || { echo "FAIL: a stabilization control no longer detects its defect"; exit 1; }
+
       # ---- 5. authoritative gate: the real Xcode parser must accept the project
       - name: 5. GATE — xcodebuild must be able to read the project
         working-directory: ${{ github.workspace }}/ios
@@ -317,6 +344,18 @@ jobs:
           unzip -l "$IPA" | grep -q "Payload/.*\.app/Info.plist" || { echo "FAIL: no Info.plist in Payload"; exit 1; }
           shasum -a 256 "$IPA" | tee "$EVIDENCE_DIR/ci_ipa_sha256.txt"
           echo "size_bytes=$(stat -f%z "$IPA")" | tee -a "$EVIDENCE_DIR/ci_ipa_sha256.txt"
+
+      # ---- 11b. entitlement levels 1-4 (diagnostic; never fails the build)
+      - name: 11b. Entitlement levels of the built product (diagnostic)
+        working-directory: ${{ github.workspace }}/ios
+        run: |
+          set -eu
+          set -o pipefail
+          # Level 3 is the only one that can be read off the product; with the UNSIGNED_IPA
+          # this project produces on purpose it must come back absent, which is precisely the
+          # limitation of the current validation. Key names only, never certificate data.
+          sh tools/inspect_entitlements.sh Winlator-iOS-RuntimePoC-unsigned.ipa \
+            2>&1 | tee "$EVIDENCE_DIR/ci_ipa_entitlement_levels.txt"
 
       # ---- 13. upload the artifact
       - name: 13. Upload the artifact (IPA + logs + manifest)

@@ -52,11 +52,32 @@ int rt_mem_fault_probe(void *addr, int write, void **fault_addr_out, int *err_ou
  * Success here is a *host* observation only; iOS behaviour is UNTESTED until a device
  * runs the same code.
  */
+/* Which step of the dual-mapping experiment failed. Physical run #1 (iPhone 13,
+ * 2026-10-02) recorded `memory.dual_mapping_rw_rx = UNSUPPORTED` with
+ * "second (executable) view refused errno=1" — but the old code could not know that: it
+ * returned -1 from four different places (the unique name, shm_open, ftruncate, the first
+ * mmap, the second mmap) and the report *assumed* it was the executable view. On iOS
+ * EPERM at shm_open (a sandbox refusal of the object itself) and EPERM at the second mmap
+ * (a refusal of the executable view) are different findings, and the record has to say
+ * which one happened. */
+typedef enum {
+    RT_DUAL_STAGE_NONE = 0,   /* success */
+    RT_DUAL_STAGE_NAME,       /* composing the unique object name failed */
+    RT_DUAL_STAGE_SHM_OPEN,   /* shm_open(3) */
+    RT_DUAL_STAGE_FTRUNCATE,  /* ftruncate(2) */
+    RT_DUAL_STAGE_MAP_RW,     /* first mmap(2), the writable view */
+    RT_DUAL_STAGE_MAP_RX,     /* second mmap(2), the executable view */
+    RT_DUAL_STAGE_ALIAS_CHECK /* both views exist and disagree about their contents */
+} rt_dual_stage_t;
+
+const char *rt_dual_stage_name(rt_dual_stage_t stage);
+
 typedef struct rt_dual_map {
     void  *rw;        /* writable view */
     void  *rx;        /* executable/readable view */
     size_t len;       /* page-rounded length */
     int    err;       /* errno of the failing step, when supported == 0 */
+    rt_dual_stage_t stage; /* which step failed, when supported == 0 */
     int    supported; /* 1 only when both views exist */
 } rt_dual_map_t;
 

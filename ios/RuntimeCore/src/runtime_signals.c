@@ -132,7 +132,6 @@ int rt_signal_roundtrip(int signal_number, int *err_out)
     struct sigaction action;
     struct sigaction queried;
     struct sigaction saved;
-    int result = -1;
 
     memset(&action, 0, sizeof(action));
     action.sa_handler = rt_benign_handler;
@@ -144,20 +143,37 @@ int rt_signal_roundtrip(int signal_number, int *err_out)
         }
         return -1;
     }
-    if (sigaction(signal_number, NULL, &queried) == 0) {
-        if (queried.sa_handler == rt_benign_handler) {
-            result = 0;
+    if (sigaction(signal_number, NULL, &queried) != 0) {
+        int saved_errno = errno;
+        (void)sigaction(signal_number, &saved, NULL);
+        if (err_out != NULL) {
+            *err_out = saved_errno;
         }
-    } else if (err_out != NULL) {
-        *err_out = errno;
+        return -1;
     }
-    if (sigaction(signal_number, &saved, NULL) != 0 && err_out != NULL) {
-        *err_out = errno;
+    if (queried.sa_handler != rt_benign_handler) {
+        /* The handler that came back is not the one just installed: a failure of this
+         * function, and a failure always carries an errno. Returning -1 with the caller's
+         * err_out untouched published "errno=0" and read like a platform answer. */
+        (void)sigaction(signal_number, &saved, NULL);
+        if (err_out != NULL) {
+            *err_out = EIO;
+        }
+        return -1;
     }
-    if (result == 0 && err_out != NULL) {
+    if (sigaction(signal_number, &saved, NULL) != 0) {
+        /* Restoring the previous disposition is part of the round trip. Discarding this
+         * result — as the previous code did, with err_out forced to 0 afterwards — reported
+         * PASS for a signal disposition left modified. */
+        if (err_out != NULL) {
+            *err_out = errno;
+        }
+        return -1;
+    }
+    if (err_out != NULL) {
         *err_out = 0;
     }
-    return result;
+    return 0;
 }
 
 int rt_signal_mask_roundtrip(int signal_number, int *err_out)

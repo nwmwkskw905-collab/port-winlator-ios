@@ -56,12 +56,14 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
     out->len = rt_dual_round_up(len);
 
     if (rt_platform_unique_shm_name(name, sizeof(name), "/rt_dual", &out->err) != 0) {
+        out->stage = RT_DUAL_STAGE_NAME;
         return -1;   /* no unpredictable name -> no experiment (never a fixed name) */
     }
 
     fd = shm_open(name, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd < 0) {
-        out->err = errno;
+        out->err = errno;               /* captured immediately */
+        out->stage = RT_DUAL_STAGE_SHM_OPEN;
         return -1;
     }
     /* Unlink immediately: the mapping keeps the object alive, and a crash cannot
@@ -70,6 +72,7 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
 
     if (ftruncate(fd, (off_t)out->len) != 0) {
         out->err = errno;
+        out->stage = RT_DUAL_STAGE_FTRUNCATE;
         (void)close(fd);
         return -1;
     }
@@ -77,6 +80,7 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
     rw = mmap(NULL, out->len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (rw == MAP_FAILED) {
         out->err = errno;
+        out->stage = RT_DUAL_STAGE_MAP_RW;
         (void)close(fd);
         return -1;
     }
@@ -84,6 +88,7 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
     rx = mmap(NULL, out->len, PROT_READ | PROT_EXEC, MAP_SHARED, fd, 0);
     if (rx == MAP_FAILED) {
         out->err = errno; /* the interesting case on hardened platforms */
+        out->stage = RT_DUAL_STAGE_MAP_RX;
         (void)munmap(rw, out->len);
         (void)close(fd);
         return -1;
@@ -94,6 +99,20 @@ int rt_dual_map_create(size_t len, rt_dual_map_t *out)
     out->rx = rx;
     out->supported = 1;
     return 0;
+}
+
+const char *rt_dual_stage_name(rt_dual_stage_t stage)
+{
+    switch (stage) {
+    case RT_DUAL_STAGE_NONE:       return "none";
+    case RT_DUAL_STAGE_NAME:       return "unique-name";
+    case RT_DUAL_STAGE_SHM_OPEN:   return "shm_open";
+    case RT_DUAL_STAGE_FTRUNCATE:  return "ftruncate";
+    case RT_DUAL_STAGE_MAP_RW:     return "mmap(read/write view)";
+    case RT_DUAL_STAGE_MAP_RX:     return "mmap(executable view)";
+    case RT_DUAL_STAGE_ALIAS_CHECK:return "alias-check";
+    }
+    return "unknown";
 }
 
 int rt_dual_map_destroy(rt_dual_map_t *map)
@@ -131,6 +150,8 @@ int rt_dual_map_views_aliased(rt_dual_map_t *map)
     memcpy(observed, map->rx, sizeof(observed));
     for (i = 0; i < sizeof(pattern); i++) {
         if (observed[i] != pattern[i]) {
+            map->err = EILSEQ;
+            map->stage = RT_DUAL_STAGE_ALIAS_CHECK;
             return 0;
         }
     }

@@ -115,6 +115,16 @@ const char *rt_cpu_facts_summary(char *buf, size_t cap, const rt_cpu_facts_t *fa
                        facts->cache_line);
     if (written < 0) {
         buf[0] = '\0';
+    } else if ((size_t)written >= cap) {
+        /* snprintf reports what it would have needed: a summary that does not fit is marked,
+         * never silently cut — the report is evidence (same rule as the DETAIL marker). */
+        static const char truncation[] = " [SUMMARY TRUNCATED]";
+        if (cap > sizeof(truncation)) {
+            size_t room = cap - sizeof(truncation);
+            memcpy(buf + room, truncation, sizeof(truncation));
+        } else {
+            buf[cap - 1u] = '\0';
+        }
     }
     return buf;
 }

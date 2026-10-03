@@ -54,7 +54,12 @@ typedef enum {
     RT_LOADER_ERR_FLAGS,
     RT_LOADER_ERR_RANGE,      /* code_off/code_len outside the image */
     RT_LOADER_ERR_CODE_SIZE,  /* code_len == 0 or > RT_MODULE_MAX_CODE */
-    RT_LOADER_ERR_ENTRY       /* entry_off >= code_len */
+    RT_LOADER_ERR_ENTRY,      /* entry_off >= code_len */
+    RT_LOADER_ERR_JIT_UNAVAILABLE, /* the module is VALID and the platform refused the
+                                    * executable arena (errno reported separately): the
+                                    * image was not rejected — it cannot be executed here */
+    RT_LOADER_ERR_EXEC_FAULT, /* the entry point ran and faulted (si_addr reported) */
+    RT_LOADER_ERR_INTERNAL    /* our own step failed after a valid image was accepted */
 } rt_loader_error_t;
 
 const char *rt_loader_error_name(rt_loader_error_t err);
@@ -75,6 +80,23 @@ rt_loader_error_t rt_loader_validate(const uint8_t *image, size_t size,
  *    RT_UNSUPPORTED this ISA has no emitter and no loader path. */
 rt_status_t rt_loader_run(const uint8_t *image, size_t size, uint32_t *value_out,
                           rt_loader_error_t *loader_err_out, void **fault_addr_out);
+
+/* Same call, also reporting the errno of the failing step and whether the MAP_JIT path was
+ * attempted. Physical run #1 (iPhone 13, 2026-10-02) recorded
+ *     loader.run_valid_module = FAIL  "rejected: OK"
+ * for a structurally valid module: the arena allocation had failed, the reason was never
+ * written (so it stayed RT_LOADER_OK and printed as "OK") and the errno was lost.
+ *
+ * Contract, enforced by the unit tests:
+ *   - every non-RT_PASS return carries a reason that is NOT RT_LOADER_OK;
+ *   - RT_LOADER_ERR_JIT_UNAVAILABLE means "valid module, no executable memory here" and
+ *     comes back as RT_BLOCKED (never as RT_FAIL): the image was accepted, the capability
+ *     was not. RT_FAIL is reserved for a rejected image or a defect of this code;
+ *   - *os_err_out (when non-NULL) holds the errno of the failing step, or 0 when the step
+ *     was not a syscall. */
+rt_status_t rt_loader_run_ex(const uint8_t *image, size_t size, uint32_t *value_out,
+                             rt_loader_error_t *loader_err_out, void **fault_addr_out,
+                             int *os_err_out, int *map_jit_attempted_out);
 
 /* Builds a well-formed image containing the ISA's `return imm` payload.
  * Returns the image length, or 0 when it does not fit / the ISA is unsupported. */

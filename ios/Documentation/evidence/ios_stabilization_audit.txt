@@ -1,0 +1,19 @@
+--- iOS stabilization contracts (each rule comes from an audited defect)
+ok   DISCARDED_RESULTS: no JIT result is silently thrown away
+ok   ICACHE_REPORTED: the icache flush is measured, reported and honoured
+ok   ARENA_SIZING: the arena holds both payloads, in separate buffers
+ok   GUARD_VS_FAULT: 'could not install the guard' is never a caught fault
+ok   DUAL_MAP_STAGE: the failing step of the dual mapping is measured
+ok   CAPABILITY_WORDS: a refusal is a capability in every probe
+ok   SHM_CLEANUP: the shared-memory cleanup step is checked and named
+ok   RANDOM_PROGRESS: a random source cannot spin the loop forever
+ok   LOG_INTEGRITY: truncated evidence is marked as truncated
+ok   SAVE_REPORT_TARGET: the saved report lands where it can be recovered
+ok   UI_SURFACE_FROZEN: the visible interface is byte-identical to pass 01
+ok   ERRNO_CAPTURED_NOW: every failure carries the errno of the failing call
+ok   PROTECT_OVERFLOW: the length rounding cannot overflow silently
+ok   TRUNCATION_MARKED: truncated summaries are marked as truncated
+ok   PAGE_SIZE_MEASURED: the page size comes from the platform, not the source
+
+IOS_STABILIZATION_AUDIT=0
+note: static pre-check — the device and the Apple toolchain remain the authority.

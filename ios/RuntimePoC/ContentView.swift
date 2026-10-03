@@ -101,7 +101,15 @@ struct ContentView: View {
 
     private func save() {
         let name = Phase02Bridge.reportFileName()
-        let url = URL(fileURLWithPath: workdir).appendingPathComponent(name)
+        // File sharing (UIFileSharingEnabled + LSSupportsOpeningDocumentsInPlace) exposes the
+        // app's Documents directory, not tmp/: the suites keep using `workdir` (tmp) for their
+        // scratch files, and the saved report goes where it can actually be recovered.
+        guard let documents = FileManager.default.urls(for: .documentDirectory,
+                                                      in: .userDomainMask).first else {
+            status = "save failed: no Documents directory"
+            return
+        }
+        let url = documents.appendingPathComponent(name)
         do {
             try report.write(to: url, atomically: true, encoding: .utf8)
             status = "saved to \(url.lastPathComponent)"

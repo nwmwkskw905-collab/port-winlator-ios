@@ -108,6 +108,249 @@ static int phase02_apple_target_is_ios(void)
             target == RT_APPLE_TARGET_IPHONE_SIMULATOR) ? 1 : 0;
 }
 
+/* ------------------------------------------------- causal classification (see header) */
+
+rt_status_t phase02_classify(phase02_outcome_t outcome, rt_status_t dependency_status)
+{
+    switch (outcome) {
+    case PHASE02_OUTCOME_OK:
+        /* PASS requires observed success: this is the only path to it — plus the case below,
+         * which is also an observation (a measured capacity), never an assumption. */
+        return RT_PASS;
+    case PHASE02_OUTCOME_OK_PROBE_LIMIT:
+        return RT_PASS;
+    case PHASE02_OUTCOME_RUNTIME_DEFECT:
+        /* Including the case where the dependency PROVED the capability was available. */
+        return RT_FAIL;
+    case PHASE02_OUTCOME_CAPABILITY_MISSING:
+        return RT_BLOCKED;
+    case PHASE02_OUTCOME_NOT_APPLICABLE:
+        return RT_NOT_APPLICABLE;
+    case PHASE02_OUTCOME_UNSUPPORTED:
+        return RT_UNSUPPORTED;
+    case PHASE02_OUTCOME_DEPENDENCY_BLOCKED:
+        /* Explicit causality: only a dependency that did NOT pass makes this BLOCKED.
+         * If the dependency passed, the capability is present and this is a defect. */
+        return (dependency_status == RT_PASS) ? RT_FAIL : RT_BLOCKED;
+    case PHASE02_OUTCOME_UNDETERMINED:
+        return RT_UNTESTED;
+    }
+    return RT_UNTESTED;
+}
+
+const char *phase02_outcome_name(phase02_outcome_t outcome)
+{
+    switch (outcome) {
+    case PHASE02_OUTCOME_OK:                return "ok";
+    case PHASE02_OUTCOME_OK_PROBE_LIMIT:    return "ok(probe-limit)";
+    case PHASE02_OUTCOME_RUNTIME_DEFECT:    return "runtime-defect";
+    case PHASE02_OUTCOME_CAPABILITY_MISSING:return "capability-missing";
+    case PHASE02_OUTCOME_NOT_APPLICABLE:    return "not-applicable";
+    case PHASE02_OUTCOME_UNSUPPORTED:       return "unsupported";
+    case PHASE02_OUTCOME_DEPENDENCY_BLOCKED:return "dependency-blocked";
+    case PHASE02_OUTCOME_UNDETERMINED:      return "undetermined";
+    }
+    return "undetermined";
+}
+
+const char *phase02_dependency_name(phase02_dependency_t dependency)
+{
+    switch (dependency) {
+    case PHASE02_DEP_NONE:                return "none";
+    case PHASE02_DEP_JIT_MAP:             return "MAP_JIT";
+    case PHASE02_DEP_JIT_WRITE_PROTECT:   return "pthread_jit_write_protect_np";
+    case PHASE02_DEP_EXEC_MAPPING:        return "executable mapping";
+    case PHASE02_DEP_POSIX_SHM:           return "POSIX shared memory";
+    }
+    return "none";
+}
+
+const char *phase02_dependency_test(phase02_dependency_t dependency)
+{
+    switch (dependency) {
+    case PHASE02_DEP_NONE:                return "<none>";
+    case PHASE02_DEP_JIT_MAP:             return "jit.map_jit_probe";
+    case PHASE02_DEP_JIT_WRITE_PROTECT:   return "jit.write_protect_np";
+    case PHASE02_DEP_EXEC_MAPPING:        return "jit.make_executable";
+    case PHASE02_DEP_POSIX_SHM:           return "ipc.posix_shm";
+    }
+    return "<none>";
+}
+
+phase02_outcome_t phase02_classify_jit_alloc(int map_jit_attempted,
+                                             rt_status_t map_jit_probe_status,
+                                             int map_jit_probe_errno,
+                                             int alloc_errno)
+{
+    /* Not the MAP_JIT path at all: a plain mapping failed. That has nothing to do with the
+     * MAP_JIT capability and must be reported as a defect. */
+    if (map_jit_attempted == 0) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    /* MAP_JIT was requested and the probe that measures exactly that capability passed:
+     * the platform offered it and the allocation still failed -> defect. */
+    if (map_jit_probe_status == RT_PASS) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    /* MAP_JIT was requested, the probe was blocked, and both saw the same refusal: one
+     * missing capability, one cause. Equality is required so that a *different* failure
+     * cannot be folded into the probe's verdict. */
+    if (map_jit_probe_status == RT_BLOCKED && alloc_errno != 0 &&
+        alloc_errno == map_jit_probe_errno) {
+        return PHASE02_OUTCOME_DEPENDENCY_BLOCKED;
+    }
+    /* Everything else — including a refusal whose errno we could not compare, because it
+     * was lost — is reported as a defect, not excused as "the capability". */
+    return PHASE02_OUTCOME_RUNTIME_DEFECT;
+}
+
+phase02_outcome_t phase02_classify_fs_depth_error(int stage, int err, int longest_path,
+                                                  int path_max, int path_max_from_pathconf)
+{
+    (void)path_max_from_pathconf;
+
+    /* An error whose errno was not preserved is a defect of the error path that reported
+     * it: it tells us nothing about the platform, and it is exactly what physical run #1
+     * printed as "unexpected errno=0 (Undefined error: 0)". It must never become PASS and
+     * must never be excused as a platform limit. */
+    if (err == 0) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    /* Our own probe buffer ran out before the platform did. This is checked BEFORE the
+     * ENAMETOOLONG rule below, because that branch also reports ENAMETOOLONG: the ceiling
+     * that was reached is this probe's, not the platform's. The depth that WAS created is a
+     * real measurement, so this is PASS — but the record must say where the ceiling came
+     * from, and the caller branches on the stage to say exactly that. Reporting it as "the
+     * platform limit" would be a false claim; reporting it as BLOCKED would throw away a
+     * measurement that did happen. */
+    if (stage == RT_FS_STAGE_PATH_CAP || stage == RT_FS_STAGE_LEAF_JOIN) {
+        return PHASE02_OUTCOME_OK_PROBE_LIMIT;
+    }
+    /* The platform's documented limit: reaching it IS the measurement. */
+    if (err == ENAMETOOLONG) {
+        return PHASE02_OUTCOME_OK;
+    }
+    /* The platform refused for a permission/resource reason: capability not granted to
+     * this process, not a defect of the port. */
+    if (err == EPERM || err == EACCES || err == ENOSPC || err == EDQUOT || err == EROFS) {
+        return PHASE02_OUTCOME_CAPABILITY_MISSING;
+    }
+    if (err == ENOTSUP || err == ENOSYS) {
+        return PHASE02_OUTCOME_UNSUPPORTED;
+    }
+    (void)longest_path;
+    (void)path_max;
+    return PHASE02_OUTCOME_RUNTIME_DEFECT;
+}
+
+phase02_outcome_t phase02_classify_loader_result(rt_status_t status, rt_loader_error_t reason,
+                                                 int map_jit_attempted,
+                                                 rt_status_t probe_status, int os_err)
+{
+    if (status == RT_PASS) {
+        return PHASE02_OUTCOME_OK;
+    }
+    if (reason == RT_LOADER_OK) {
+        /* The physical run #1 symptom: a non-PASS result carrying no reason. A rejection must
+         * always name its cause; "rejected: OK" is a contradiction, not a finding. */
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    if (reason == RT_LOADER_ERR_JIT_UNAVAILABLE) {
+        /* A valid module that could not get an executable arena is the same capability
+         * jit.map_jit_probe measures — but only if that probe really saw a refusal in this
+         * process and the errno of the failing allocation is known. If the probe PASSED, the
+         * capability was granted and the failure is ours. */
+        if (map_jit_attempted != 0 && probe_status != RT_PASS && os_err != 0) {
+            return PHASE02_OUTCOME_DEPENDENCY_BLOCKED;
+        }
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    if (reason == RT_LOADER_ERR_EXEC_FAULT) {
+        /* The module was accepted and mapped and its entry point still could not execute:
+         * the platform did not give this process executable memory. */
+        return PHASE02_OUTCOME_CAPABILITY_MISSING;
+    }
+    if (status == RT_FAIL) {
+        /* A rejected image: the loader did its job and said why. Correct behaviour. */
+        return PHASE02_OUTCOME_OK;
+    }
+    if (reason == RT_LOADER_ERR_INTERNAL) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    /* BLOCKED with none of the reasons above: cause not established here. */
+    return PHASE02_OUTCOME_UNDETERMINED;
+}
+
+phase02_outcome_t phase02_classify_dual_mapping_error(int stage, int err)
+{
+    if (stage == RT_DUAL_STAGE_NONE) {
+        return PHASE02_OUTCOME_OK;
+    }
+    if (err == 0) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;   /* an error with no errno is a defect */
+    }
+    if (stage == RT_DUAL_STAGE_ALIAS_CHECK) {
+        /* Both mappings were granted and the contents disagree: this is our mapping, not
+         * the platform. */
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    if (err == ENOSYS || err == ENOTSUP || err == EOPNOTSUPP) {
+        return PHASE02_OUTCOME_UNSUPPORTED;
+    }
+    if (err == EPERM || err == EACCES) {
+        /* Refused, not missing: the mechanism exists and this process may not use it —
+         * the same classification the POSIX shared-memory probe applies to EPERM. */
+        return PHASE02_OUTCOME_CAPABILITY_MISSING;
+    }
+    /* EINVAL, EFAULT, EOVERFLOW …: an errno that fits no contract is not a platform
+     * answer, it is a defect of the call. */
+    return PHASE02_OUTCOME_RUNTIME_DEFECT;
+}
+
+phase02_outcome_t phase02_classify_shm_error(int stage, int err)
+{
+    if (stage == RT_IPC_STAGE_NONE) {
+        return PHASE02_OUTCOME_OK;
+    }
+    if (stage == RT_IPC_STAGE_UNLINK) {
+        /* Only the cleanup failed: the capability was proven by the probe that reached
+         * this stage. Reported as a cleanup fact, never as the capability verdict. */
+        return PHASE02_OUTCOME_OK;
+    }
+    if (err == 0) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;   /* an error with no errno is a defect */
+    }
+    /* The two views of the same object disagreed: the platform accepted every syscall and
+     * our mapping is not actually shared. That is a defect of this PoC, not a limit. */
+    if (stage == RT_IPC_STAGE_COMPARE) {
+        return PHASE02_OUTCOME_RUNTIME_DEFECT;
+    }
+    if (err == ENOSYS || err == ENOTSUP || err == EOPNOTSUPP) {
+        return PHASE02_OUTCOME_UNSUPPORTED;
+    }
+    if (err == EPERM || err == EACCES) {
+        /* Measured refusal in this sandbox/signing context: the capability was not
+         * granted. Not a defect of the port — and not "unsupported" either, because the
+         * mechanism exists; this process may not use it. */
+        return PHASE02_OUTCOME_CAPABILITY_MISSING;
+    }
+    return PHASE02_OUTCOME_RUNTIME_DEFECT;
+}
+
+/* Composed one-line note that a record can print, so every causal verdict carries the
+ * name of the test that measured the capability it depends on. */
+static const char *phase02_dependency_note(phase02_dependency_t dependency)
+{
+    switch (dependency) {
+    case PHASE02_DEP_NONE:              return "no dependency";
+    case PHASE02_DEP_JIT_MAP:           return "depends on jit.map_jit_probe (MAP_JIT capability)";
+    case PHASE02_DEP_JIT_WRITE_PROTECT: return "depends on jit.write_protect_np";
+    case PHASE02_DEP_EXEC_MAPPING:      return "depends on jit.make_executable";
+    case PHASE02_DEP_POSIX_SHM:         return "depends on ipc.posix_shm";
+    }
+    return "no dependency";
+}
+
 static int phase02_platform_has(uint32_t capability)
 {
     return ((rt_platform_capabilities() & capability) != 0u) ? 1 : 0;
@@ -212,20 +455,46 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
         rt_dual_map_t map;
         size_t dual_len = page;
         if (rt_dual_map_create(dual_len, &map) != 0) {
-            rt_status_t status =
-                (map.err == EPERM || map.err == EACCES || map.err == ENOTSUP ||
-                 map.err == ENOSYS || map.err == EINVAL)
-                    ? RT_UNSUPPORTED
-                    : RT_BLOCKED;
-            phase02_log_record(log, "memory.dual_mapping_rw_rx", status,
-                               "second (executable) view refused errno=%d (%s); host=%s",
-                               map.err, strerror(map.err), rt_platform_name());
+            /* The failing step is reported, not assumed: physical run #1 printed
+             * "second (executable) view refused" for an errno produced by an unknown step
+             * of the sequence (unique name, shm_open, ftruncate, first mmap, second mmap).
+             * The classification follows the measured stage and errno, and uses the same
+             * vocabulary as ipc.posix_shm: refused != absent != defective. */
+            rt_status_t status = phase02_classify(
+                phase02_classify_dual_mapping_error((int)map.stage, map.err), RT_BLOCKED);
+            if (map.err == 0) {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                   "stage=%s failed with errno=0 (errno not preserved): "
+                                   "defect of the error path, not a platform answer",
+                                   rt_dual_stage_name(map.stage));
+            } else {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", status,
+                                   "stage=%s refused errno=%d (%s) on host=%s: %s",
+                                   rt_dual_stage_name(map.stage), map.err, strerror(map.err),
+                                   rt_platform_name(),
+                                   (status == RT_UNSUPPORTED)
+                                       ? "no dual-mapping mechanism on this platform"
+                                       : "the mechanism exists and this process/signing "
+                                         "context was not granted it - capability, not a "
+                                         "port defect");
+            }
         } else {
             int aliased = rt_dual_map_views_aliased(&map);
-            phase02_log_record(log, "memory.dual_mapping_rw_rx",
-                               (aliased == 1) ? RT_PASS : RT_FAIL,
-                               "RW and R-X views %s aliasing the same memory (len=%zu)",
-                               (aliased == 1) ? "are" : "are NOT", map.len);
+            if (aliased == 1) {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_PASS,
+                                   "RW and R-X views are aliasing the same memory (len=%zu, "
+                                   "stage=%s)", map.len, rt_dual_stage_name(map.stage));
+            } else if (aliased == 0) {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                   "stage=%s: both views were granted and they are NOT "
+                                   "aliasing the same memory (errno=%d): defect of this "
+                                   "mapping, never a platform property",
+                                   rt_dual_stage_name(map.stage), map.err);
+            } else {
+                phase02_log_record(log, "memory.dual_mapping_rw_rx", RT_FAIL,
+                                   "alias check could not run on a map that reports itself "
+                                   "as usable: defect of this code");
+            }
             (void)rt_dual_map_destroy(&map);
         }
     }
@@ -235,9 +504,63 @@ static rt_status_t phase02_suite_memory(phase02_log_t *log, const char *workdir)
 
 /* ----------------------------------------------------------------------- jit */
 
-static void phase02_jit_microtest(phase02_log_t *log)
+/* `map_jit_status`/`map_jit_errno` are the outcome of jit.map_jit_probe, measured by the
+ * caller. They are what makes the causal verdict possible: an allocation failure on the
+ * MAP_JIT path with the same errno the probe saw is ONE missing capability, not a second
+ * defect (IPHONE13_PHYSICAL_RUN_01 reported it as jit.alloc = FAIL). */
+/* Instruction-cache synchronisation, reported instead of discarded.
+ *
+ * The old code called rt_jit_invalidate() through `(void)`: if the platform could not
+ * synchronise the instruction cache, the JIT still executed the payload and the result was
+ * presented as if the flush had happened. A no-op flush is exactly what this project
+ * forbids, and an unreported failure is the same defect with a nicer face.
+ *
+ * Three outcomes, kept apart:
+ *   PASS            the platform hook flushed the range;
+ *   NOT_APPLICABLE  the platform advertises no icache maintenance at all (coherent
+ *                   instruction cache, e.g. x86): execution remains meaningful;
+ *   FAIL            the platform HAS the capability and the flush failed: executing code
+ *                   whose instructions were never synchronised yields untrustworthy
+ *                   results, so nothing is executed and the record says why.
+ */
+typedef enum {
+    PHASE02_ICACHE_FIRST_WRITE = 0,
+    PHASE02_ICACHE_REWRITE     = 1
+} phase02_icache_phase_t;
+
+static int phase02_jit_sync_icache(phase02_log_t *log, void *arena, size_t len,
+                                   phase02_icache_phase_t phase)
 {
-    uint8_t payload[16];
+    const char *when = (phase == PHASE02_ICACHE_REWRITE) ? "rewrite" : "first write";
+    int rc = rt_jit_invalidate(arena, len);
+
+    if (rc == 0) {
+        phase02_log_record(log, "jit.icache_sync", RT_PASS,
+                           "%zu bytes flushed through the %s backend hook after the %s",
+                           len, rt_platform_name(), when);
+        return 0;
+    }
+    if (phase02_platform_has(RT_CAP_ICACHE_FLUSH) == 0) {
+        phase02_log_record(log, "jit.icache_sync", RT_NOT_APPLICABLE,
+                           "platform '%s' advertises no instruction-cache maintenance "
+                           "(coherent icache): no flush is required after the %s, and the "
+                           "execution below is still meaningful on this architecture",
+                           rt_platform_name(), when);
+        return 0;
+    }
+    phase02_log_record(log, "jit.icache_sync", RT_FAIL,
+                       "the %s backend hook exists (capability bit set) and the flush failed "
+                       "after the %s: executing code whose instructions were never "
+                       "synchronised would yield an untrustworthy result, so nothing was "
+                       "executed", rt_platform_name(), when);
+    return -1;
+}
+
+static void phase02_jit_microtest(phase02_log_t *log, rt_status_t map_jit_status,
+                                  int map_jit_errno)
+{
+    uint8_t payload_first[16];
+    uint8_t payload_second[16];
     size_t first_len = 0u;
     size_t second_len = 0u;
     size_t arena_len;
@@ -249,9 +572,10 @@ static void phase02_jit_microtest(phase02_log_t *log)
     int err = 0;
     int used_map_jit = 0;
     int rc;
+    rt_status_t alloc_status;
     rt_jit_fn_t fn;
 
-    if (rt_jit_emit_return_imm(payload, sizeof(payload), 42u, &first_len) != 0) {
+    if (rt_jit_emit_return_imm(payload_first, sizeof(payload_first), 42u, &first_len) != 0) {
         phase02_log_record(log, "jit.emit_payload", RT_UNSUPPORTED,
                            "no payload emitter for ISA %s", rt_jit_isa());
         return;
@@ -259,24 +583,87 @@ static void phase02_jit_microtest(phase02_log_t *log)
     phase02_log_record(log, "jit.emit_payload", RT_PASS,
                        "ISA=%s emitted %zu bytes for 'return 42'", rt_jit_isa(), first_len);
 
-    arena_len = (first_len > second_len) ? first_len : first_len;
+    /* Both payloads are emitted BEFORE the arena is allocated: the arena has to be
+     * large enough for the second one too. The previous expression was
+     * `(first_len > second_len) ? first_len : first_len` — it could never choose the
+     * second payload, and since `second_len` was still 0 at that point the size was
+     * "the first payload" by accident. A longer rewrite payload would then have been
+     * memcpy'd past the end of the mapping. */
+    if (rt_jit_emit_return_imm(payload_second, sizeof(payload_second), 4242u, &second_len) != 0) {
+        phase02_log_record(log, "jit.emit_payload", RT_UNSUPPORTED,
+                           "second payload not emittable for ISA %s", rt_jit_isa());
+        return;
+    }
+    arena_len = (first_len > second_len) ? first_len : second_len;
+    if (arena_len == 0u) {
+        phase02_log_record(log, "jit.alloc", RT_FAIL,
+                           "emitters produced a zero-length payload: defect of the emitter");
+        return;
+    }
     arena = rt_jit_alloc(arena_len, &err, &used_map_jit);
     if (arena == NULL) {
-        phase02_log_record(log, "jit.alloc", RT_FAIL, "arena allocation failed errno=%d (%s)",
-                           err, strerror(err));
+        /* Causality, stated and checked: the MAP_JIT path was attempted, the probe that
+         * measures that capability was BLOCKED, and the refusals carry the same errno.
+         * Only then is this "blocked by jit.map_jit_probe"; every other combination is
+         * reported as a defect of this runtime. Never a zero errno presented as a fact. */
+        alloc_status = phase02_classify(
+            phase02_classify_jit_alloc(used_map_jit, map_jit_status, map_jit_errno, err),
+            map_jit_status);
+        if (alloc_status == RT_BLOCKED) {
+            phase02_log_record(log, "jit.alloc", RT_BLOCKED,
+                               "arena allocation refused errno=%d (%s); %s (errno=%d, MAP_JIT "
+                               "attempted=%s): one missing capability, not a second defect",
+                               err, strerror(err),
+                               phase02_dependency_note(PHASE02_DEP_JIT_MAP), map_jit_errno,
+                               (used_map_jit != 0) ? "yes" : "no");
+        } else if (err == 0) {
+            phase02_log_record(log, "jit.alloc", RT_FAIL,
+                               "arena allocation failed with errno=0 (errno not preserved): "
+                               "defect of the error path, not a platform answer "
+                               "(MAP_JIT attempted=%s)",
+                               (used_map_jit != 0) ? "yes" : "no");
+        } else {
+            phase02_log_record(log, "jit.alloc", RT_FAIL,
+                               "arena allocation failed errno=%d (%s) with MAP_JIT "
+                               "attempted=%s while jit.map_jit_probe reports %s: the "
+                               "capability was offered, so this is a defect",
+                               err, strerror(err), (used_map_jit != 0) ? "yes" : "no",
+                               rt_status_name(map_jit_status));
+        }
         return;
     }
     phase02_log_record(log, "jit.alloc", RT_PASS, "arena of %zu bytes (MAP_JIT=%s)",
                        arena_len, (used_map_jit != 0) ? "yes" : "no");
 
+    /* The write window is opened and closed through the platform hook, and both answers
+     * are used: with MAP_JIT granted, writing while the window is closed is the classic
+     * way to take a SIGBUS outside any guard. A refusal here is reported, not discarded
+     * (the previous code cast both calls to void). */
     if (used_map_jit != 0) {
-        (void)rt_jit_begin_write(arena, arena_len, &err);
+        if (rt_jit_begin_write(arena, arena_len, &err) != 0) {
+            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
+                               "could not open the JIT write window errno=%d (%s): the "
+                               "payload was NOT written (write-protected arena untouched)",
+                               err, strerror(err));
+            (void)rt_jit_free(arena, arena_len);
+            return;
+        }
     }
-    memcpy(arena, payload, first_len);
+    memcpy(arena, payload_first, first_len);
     if (used_map_jit != 0) {
-        (void)rt_jit_end_write(arena, arena_len, &err);
+        if (rt_jit_end_write(arena, arena_len, &err) != 0) {
+            phase02_log_record(log, "jit.make_executable", RT_BLOCKED,
+                               "could not close the JIT write window errno=%d (%s): the "
+                               "payload may not be executable yet (nothing was executed)",
+                               err, strerror(err));
+            (void)rt_jit_free(arena, arena_len);
+            return;
+        }
     }
-    (void)rt_jit_invalidate(arena, first_len);
+    if (phase02_jit_sync_icache(log, arena, first_len, PHASE02_ICACHE_FIRST_WRITE) != 0) {
+        (void)rt_jit_free(arena, arena_len);
+        return;
+    }
 
     if (used_map_jit == 0) {
         if (rt_mem_protect(arena, first_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
@@ -294,6 +681,17 @@ static void phase02_jit_microtest(phase02_log_t *log)
     target = arena;
     memcpy(&fn, &target, sizeof(fn));
     rc = rt_signal_call_guarded(fn, &value_first, &fault, &err);
+    if (rc == -2) {
+        /* The guard could not be installed, so nothing was executed. Reporting a fault
+         * with si_addr=NULL here (the previous behaviour) claimed an execution that never
+         * happened: cause undetermined, never PASS and never FAIL. */
+        phase02_log_record(log, "jit.execute_return_42", RT_UNTESTED,
+                           "nothing was executed: the fault guard could not be installed "
+                           "(errno=%d, %s) - cause undetermined, this is neither a fault "
+                           "nor a permission result", err, strerror(err));
+        (void)rt_jit_free(arena, arena_len);
+        return;
+    }
     if (rc != 0) {
         phase02_log_record(log, "jit.execute_return_42", RT_BLOCKED,
                            "calling generated code faulted (si_addr=%p): executable-memory "
@@ -305,17 +703,26 @@ static void phase02_jit_microtest(phase02_log_t *log)
                        (value_first == 42u) ? RT_PASS : RT_FAIL,
                        "generated function returned %u (expected 42)", value_first);
 
-    /* Rewrite the payload, synchronise the icache, run it again. */
-    if (rt_jit_emit_return_imm(payload, sizeof(payload), 4242u, &second_len) != 0) {
-        phase02_log_record(log, "jit.rewrite_payload", RT_UNSUPPORTED,
-                           "second payload not emittable for ISA %s", rt_jit_isa());
+    /* Rewrite the payload, synchronise the icache, run it again. The second payload was
+     * emitted before the allocation, so this is a capacity check, not a silent clamp:
+     * clamping the length would have executed a half-written instruction stream. */
+    if (second_len > arena_len) {
+        phase02_log_record(log, "jit.rewrite_payload", RT_FAIL,
+                           "rewrite payload (%zu bytes) does not fit the arena (%zu bytes): "
+                           "defect of the sizing, nothing was written",
+                           second_len, arena_len);
         (void)rt_jit_free(arena, arena_len);
         return;
     }
-    second_len = (second_len > arena_len) ? arena_len : second_len;
 
     if (used_map_jit != 0) {
-        (void)rt_jit_begin_write(arena, arena_len, &err);
+        if (rt_jit_begin_write(arena, arena_len, &err) != 0) {
+            phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
+                               "could not open the JIT write window for the rewrite "
+                               "errno=%d (%s)", err, strerror(err));
+            (void)rt_jit_free(arena, arena_len);
+            return;
+        }
     } else if (rt_mem_protect(arena, arena_len, RT_PROT_READ | RT_PROT_WRITE, &err) != 0) {
         phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                            "could not reopen the arena for writing errno=%d (%s)",
@@ -323,22 +730,40 @@ static void phase02_jit_microtest(phase02_log_t *log)
         (void)rt_jit_free(arena, arena_len);
         return;
     }
-    memcpy(arena, payload, second_len);
+    memcpy(arena, payload_second, second_len);
     if (used_map_jit != 0) {
-        (void)rt_jit_end_write(arena, arena_len, &err);
+        if (rt_jit_end_write(arena, arena_len, &err) != 0) {
+            phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
+                               "could not close the JIT write window after the rewrite "
+                               "errno=%d (%s): the rewritten payload was NOT executed",
+                               err, strerror(err));
+            (void)rt_jit_free(arena, arena_len);
+            return;
+        }
     } else if (rt_mem_protect(arena, arena_len, RT_PROT_READ | RT_PROT_EXEC, &err) != 0) {
         phase02_log_record(log, "jit.rewrite_payload", RT_BLOCKED,
                            "could not re-protect the arena errno=%d (%s)", err, strerror(err));
         (void)rt_jit_free(arena, arena_len);
         return;
     }
-    (void)rt_jit_invalidate(arena, second_len);
+    if (phase02_jit_sync_icache(log, arena, second_len, PHASE02_ICACHE_REWRITE) != 0) {
+        (void)rt_jit_free(arena, arena_len);
+        return;
+    }
     phase02_log_record(log, "jit.rewrite_payload", RT_PASS,
-                       "payload rewritten and icache synchronised (%zu bytes)", second_len);
+                       "payload rewritten (%zu bytes), write window closed and instruction "
+                       "cache synchronised", second_len);
 
     target = arena;
     memcpy(&fn, &target, sizeof(fn));
     rc = rt_signal_call_guarded(fn, &value_second, &fault, &err);
+    if (rc == -2) {
+        phase02_log_record(log, "jit.execute_return_4242", RT_UNTESTED,
+                           "nothing was executed: the fault guard could not be installed "
+                           "(errno=%d, %s) - cause undetermined", err, strerror(err));
+        (void)rt_jit_free(arena, arena_len);
+        return;
+    }
     if (rc != 0) {
         phase02_log_record(log, "jit.execute_return_4242", RT_BLOCKED,
                            "second call faulted (si_addr=%p)", fault);
@@ -357,28 +782,57 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
     void *map_jit_addr = NULL;
     int err = 0;
     int allowed;
+    rt_status_t map_jit_status;
+    int map_jit_errno = 0;
 
     (void)workdir;
 
     if (phase02_platform_has(RT_CAP_MAP_JIT) != 0) {
         if (rt_jit_probe_map_jit(&map_jit_addr, &err) == 0) {
+            map_jit_status = RT_PASS;
             phase02_log_record(log, "jit.map_jit_probe", RT_PASS,
                                "MAP_JIT mapping accepted by the kernel (target=%s). "
                                "On iOS a simulator accepts it more readily than a device: "
                                "this line alone never proves device behaviour",
                                rt_platform_apple_target_name());
         } else {
+            map_jit_status = RT_BLOCKED;
+            map_jit_errno = err;
             phase02_log_record(log, "jit.map_jit_probe", RT_BLOCKED,
                                "MAP_JIT refused errno=%d (%s) (target=%s) — on iOS this is "
                                "the signature of a missing JIT entitlement, recorded as "
-                               "capability-not-granted, not as a port defect",
+                               "capability-not-granted, not as a port defect; every test "
+                               "that needs this capability reports it as BLOCKED with this "
+                               "test named as its dependency",
                                err, strerror(err), rt_platform_apple_target_name());
         }
     } else {
+        map_jit_status = RT_UNSUPPORTED;
         phase02_log_record(log, "jit.map_jit_probe", RT_UNSUPPORTED,
                            "platform '%s' has no MAP_JIT (capability bit absent, target=%s)",
                            rt_platform_name(), rt_platform_apple_target_name());
     }
+
+    /* Mandatory entitlement investigation (Fix 06), as four separate levels. Nobody may read
+     * this as "the app has JIT": level 1 is a repository fact, level 2 belongs to the signing
+     * step, level 3 is only readable from a signed product and NOT from inside the process, and
+     * level 4 is what this run actually observed. Reported as a NOTE because it is evidence,
+     * not a measurement of the runtime — it changes no count and grants nothing. */
+    phase02_log_line(log,
+                     "[PHASE02] NOTE=jit.entitlement_levels "
+                     "requested_in_repo=com.apple.security.cs.allow-jit "
+                     "(RuntimePoC/WinlatorPhase02.entitlements exists but is NOT wired to "
+                     "CODE_SIGN_ENTITLEMENTS: nothing is applied by itself) "
+                     "present_before_signing=external to this process (the signing step; no "
+                     "key material or provisioning profile is in the repository) "
+                     "granted_to_signature=NOT observable in-process: read it on the built "
+                     "product with tools/inspect_entitlements.sh (key names only, never "
+                     "certificate data) "
+                     "observed_at_runtime=MAP_JIT %s%s (target=%s)",
+                     (map_jit_status == RT_PASS) ? "accepted" : "refused",
+                     (map_jit_status == RT_PASS) ? ""
+                                                 : (map_jit_errno != 0) ? " with a real errno" : " with errno 0 (defect)",
+                     rt_platform_apple_target_name());
 
     /* Four outcomes, kept apart on purpose:
      *   PASS           the API exists for this target and the hook answered 0;
@@ -410,7 +864,7 @@ static rt_status_t phase02_suite_jit(phase02_log_t *log, const char *workdir)
                            rt_platform_apple_target_name());
     }
 
-    phase02_jit_microtest(log);
+    phase02_jit_microtest(log, map_jit_status, map_jit_errno);
 
     allowed = rt_jit_execution_allowed();
     if (allowed == 1) {
@@ -600,7 +1054,8 @@ typedef struct phase02_depth_probe {
     unsigned deepest_ok;   /* deepest depth that was created successfully */
     size_t   deepest_len;  /* path length (characters) of that success */
     unsigned first_fail;   /* first depth that failed (0 = none inside the cap) */
-    int      fail_errno;   /* errno reported there */
+    int      fail_errno;   /* errno reported there, captured by the probe itself */
+    rt_fs_stage_t fail_stage; /* which step failed (see rt_fs_stage_name) */
     int      path_max;     /* platform PATH_MAX as reported by pathconf */
     int      path_max_measured;
     size_t   path_cap;     /* this implementation's own path buffer */
@@ -619,6 +1074,7 @@ static void phase02_measure_depth(const char *workdir, phase02_depth_probe_t *pr
     unsigned try_depth = 8u;
     size_t len = 0u;
     int err = 0;
+    rt_fs_stage_t stage = RT_FS_STAGE_NONE;
     rt_fs_limits_t limits;
 
     memset(probe, 0, sizeof(*probe));
@@ -629,7 +1085,7 @@ static void phase02_measure_depth(const char *workdir, phase02_depth_probe_t *pr
     }
 
     while (try_depth <= PHASE02_DEEP_HARD_CAP) {
-        if (rt_fs_deep_paths(workdir, (size_t)try_depth, &len, &err) == 0) {
+        if (rt_fs_deep_paths_ex(workdir, (size_t)try_depth, &len, &err, &stage) == 0) {
             low = try_depth;
             low_len = len;
             try_depth *= 2u;
@@ -642,7 +1098,7 @@ static void phase02_measure_depth(const char *workdir, phase02_depth_probe_t *pr
 
     while (high > low + 1u) {
         unsigned middle = low + (high - low) / 2u;
-        if (rt_fs_deep_paths(workdir, (size_t)middle, &len, &err) == 0) {
+        if (rt_fs_deep_paths_ex(workdir, (size_t)middle, &len, &err, &stage) == 0) {
             low = middle;
             low_len = len;
         } else {
@@ -655,21 +1111,26 @@ static void phase02_measure_depth(const char *workdir, phase02_depth_probe_t *pr
     probe->deepest_len = low_len;
     probe->first_fail = high;
     probe->fail_errno = high_errno;
+    probe->fail_stage = stage;
 }
 
-/* Semantic outcome of the measurement — the three cases the report must separate:
- *   PASS    the platform supports a measurable depth, and the boundary is the
- *           platform's own documented limit (ENAMETOOLONG), reported as such;
- *   PASS    no ceiling inside the probed cap: reported as "not reached", which is
- *           NOT the same as "unlimited";
- *   BLOCKED the platform refused for a permission/resource reason: capability not
- *           measurable here, and the real errno is what gets recorded;
- *   FAIL    the boundary error is something else: an implementation defect. */
+/* Semantic outcome of the measurement — the cases the report must separate:
+ *   PASS     the platform supports a measurable depth and the boundary is the platform's own
+ *            documented limit (ENAMETOOLONG), reported as such;
+ *   PASS     no ceiling inside the probed cap: "not reached", which is NOT "unlimited";
+ *   BLOCKED  the platform refused for a permission/resource reason (capability not granted
+ *            here) or the ceiling is this probe's own path buffer — capacity beyond it was
+ *            not measurable, and saying otherwise would be a guess;
+ *   FAIL     a defect: a boundary error with a real errno that is neither of the above, or —
+ *            as in IPHONE13_PHYSICAL_RUN_01 — an error whose errno was not preserved, which
+ *            tells us nothing about the platform and must never be read as PASS or as a
+ *            platform limit.
+ * The verdict comes from phase02_classify_fs_depth_error(), which is a pure function and is
+ * exercised by the unit tests with the exact device inputs. */
 static void phase02_fs_deep_paths_record(phase02_log_t *log, const char *workdir)
 {
-    static const char *const refusal_hint =
-        "platform refused before the limit was reached; capacity not measurable here";
     phase02_depth_probe_t probe;
+    rt_status_t status;
 
     phase02_measure_depth(workdir, &probe);
 
@@ -677,9 +1138,10 @@ static void phase02_fs_deep_paths_record(phase02_log_t *log, const char *workdir
         char short_path[40];
         phase02_log_record(log, "fs.deep_paths", RT_BLOCKED,
                            "no depth measurable from workdir=%s (len=%zu): first failure at "
-                           "depth=%u errno=%d (%s); PATH_MAX=%d[%s] cap=%zu",
+                           "depth=%u stage=%s errno=%d (%s); PATH_MAX=%d[%s] cap=%zu",
                            phase02_short_path(workdir, short_path, sizeof(short_path)),
-                           strlen(workdir), probe.first_fail, probe.fail_errno,
+                           strlen(workdir), probe.first_fail,
+                           rt_fs_stage_name(probe.fail_stage), probe.fail_errno,
                            strerror(probe.fail_errno), probe.path_max,
                            probe.path_max_measured ? "pathconf" : "limits.h", probe.path_cap);
         return;
@@ -696,30 +1158,85 @@ static void phase02_fs_deep_paths_record(phase02_log_t *log, const char *workdir
         return;
     }
 
-    if (probe.fail_errno == ENAMETOOLONG) {
+    status = phase02_classify(
+        phase02_classify_fs_depth_error((int)probe.fail_stage, probe.fail_errno,
+                                        (int)probe.deepest_len, probe.path_max,
+                                        probe.path_max_measured),
+        RT_BLOCKED);
+
+    if (status == RT_PASS && probe.fail_stage != RT_FS_STAGE_PATH_CAP &&
+        probe.fail_stage != RT_FS_STAGE_LEAF_JOIN) {
+        /* The boundary is the platform's documented limit: reaching it IS the finding. */
         phase02_log_record(log, "fs.deep_paths", RT_PASS,
-                           "capacity: depth up to %u (%zu chars) created and removed; ceiling at "
-                           "depth=%u with errno=%d (File name too long) - the platform limit, "
+                           "capacity: depth up to %u (%zu chars) created and removed; ceiling "
+                           "at depth=%u, stage=%s, errno=%d (%s) - the platform limit, "
                            "correctly reported (PATH_MAX=%d[%s] cap=%zu)",
-                           probe.deepest_ok, probe.deepest_len, probe.first_fail, probe.fail_errno,
-                           probe.path_max, probe.path_max_measured ? "pathconf" : "limits.h",
-                           probe.path_cap);
+                           probe.deepest_ok, probe.deepest_len, probe.first_fail,
+                           rt_fs_stage_name(probe.fail_stage), probe.fail_errno,
+                           strerror(probe.fail_errno), probe.path_max,
+                           probe.path_max_measured ? "pathconf" : "limits.h", probe.path_cap);
         return;
     }
 
-    if (probe.fail_errno == EPERM || probe.fail_errno == EACCES || probe.fail_errno == ENOSPC ||
-        probe.fail_errno == EDQUOT || probe.fail_errno == EROFS) {
+    if (status == RT_PASS) {
+        /* Capacity demonstrated; the ceiling that stopped the probe is its own path buffer.
+         * PASS states exactly that, and claims nothing about the platform beyond the depth
+         * that was actually created and removed. */
+        phase02_log_record(log, "fs.deep_paths", RT_PASS,
+                           "capacity measured: depth up to %u (%zu chars) created and removed; "
+                           "the ceiling at depth=%u (stage=%s, errno=%d) is this probe's own "
+                           "path buffer (cap=%zu), NOT the platform's (PATH_MAX=%d[%s]): depth "
+                           "beyond it was not probed and is not claimed",
+                           probe.deepest_ok, probe.deepest_len, probe.first_fail,
+                           rt_fs_stage_name(probe.fail_stage), probe.fail_errno,
+                           probe.path_cap, probe.path_max,
+                           probe.path_max_measured ? "pathconf" : "limits.h");
+        return;
+    }
+
+    if (status == RT_BLOCKED) {
+        const char *why = (probe.fail_stage == RT_FS_STAGE_PATH_CAP ||
+                           probe.fail_stage == RT_FS_STAGE_LEAF_JOIN)
+                              ? "limit is this probe's own path buffer, not the platform's"
+                              : "platform refused before the limit was reached; capacity not "
+                                "measurable here";
         phase02_log_record(log, "fs.deep_paths", RT_BLOCKED,
-                           "deepest ok=%u (%zu chars); %s at depth=%u errno=%d (%s)",
-                           probe.deepest_ok, probe.deepest_len, refusal_hint, probe.first_fail,
-                           probe.fail_errno, strerror(probe.fail_errno));
+                           "deepest ok=%u (%zu chars); %s at depth=%u stage=%s errno=%d (%s); "
+                           "PATH_MAX=%d[%s] cap=%zu",
+                           probe.deepest_ok, probe.deepest_len, why, probe.first_fail,
+                           rt_fs_stage_name(probe.fail_stage), probe.fail_errno,
+                           strerror(probe.fail_errno), probe.path_max,
+                           probe.path_max_measured ? "pathconf" : "limits.h", probe.path_cap);
+        return;
+    }
+
+    if (status == RT_UNTESTED) {
+        phase02_log_record(log, "fs.deep_paths", RT_UNTESTED,
+                           "deepest ok=%u (%zu chars); failure at depth=%u stage=%s could not "
+                           "be attributed: cause undetermined, so this is neither PASS nor FAIL",
+                           probe.deepest_ok, probe.deepest_len, probe.first_fail,
+                           rt_fs_stage_name(probe.fail_stage));
+        return;
+    }
+
+    if (probe.fail_errno == 0) {
+        /* The case physical run #1 printed as "unexpected errno=0 (Undefined error: 0)". */
+        phase02_log_record(log, "fs.deep_paths", RT_FAIL,
+                           "error returned with errno=0 at depth=%u (deepest ok=%u, %zu chars, "
+                           "stage=%s): the failing call did not preserve errno - a defect of "
+                           "the error path, not a platform limit (it is not read as PASS and "
+                           "not as a capability)",
+                           probe.first_fail, probe.deepest_ok, probe.deepest_len,
+                           rt_fs_stage_name(probe.fail_stage));
         return;
     }
 
     phase02_log_record(log, "fs.deep_paths", RT_FAIL,
-                       "unexpected errno=%d (%s) at depth=%u (deepest ok=%u, %zu chars)",
+                       "unexpected errno=%d (%s) at depth=%u (deepest ok=%u, %zu chars, "
+                       "stage=%s): neither the platform limit nor a refusal",
                        probe.fail_errno, strerror(probe.fail_errno), probe.first_fail,
-                       probe.deepest_ok, probe.deepest_len);
+                       probe.deepest_ok, probe.deepest_len,
+                       rt_fs_stage_name(probe.fail_stage));
 }
 
 static rt_status_t phase02_suite_fs(phase02_log_t *log, const char *workdir)
@@ -790,8 +1307,63 @@ static rt_status_t phase02_suite_ipc(phase02_log_t *log, const char *workdir)
                        "file descriptor passed with SCM_RIGHTS and used (errno=%d)", err);
     phase02_log_record(log, "ipc.pipe", (rt_ipc_pipe(&err) == 0) ? RT_PASS : RT_FAIL,
                        "pipe round trip (errno=%d)", err);
-    phase02_log_record(log, "ipc.posix_shm", (rt_ipc_shm(&err) == 0) ? RT_PASS : RT_FAIL,
-                       "shared memory object mapped twice and compared (errno=%d)", err);
+    /* POSIX shared memory, with the failing syscall named. Physical run #1 reported
+     * "shared memory object mapped twice and compared (errno=1)" — an errno without a
+     * stage cannot distinguish "the sandbox refuses shm_open" from "it refuses the second
+     * mmap", which are different findings. The stage is part of every record now, and the
+     * verdict comes from phase02_classify_shm_error(): a measured refusal is a capability
+     * this process was not granted, an absent mechanism is UNSUPPORTED, and two views of
+     * the same object disagreeing is a defect of our own mapping. */
+    {
+        rt_ipc_stage_t shm_stage = RT_IPC_STAGE_NONE;
+        int shm_rc = rt_ipc_shm_ex(&err, &shm_stage);
+        if (shm_rc == 0 && shm_stage == RT_IPC_STAGE_UNLINK) {
+            phase02_log_record(log, "ipc.posix_shm", RT_PASS,
+                               "shared memory object created, mapped twice, written through one "
+                               "view and read through the other (%zu bytes match) - probe "
+                               "succeeded; cleanup: %s failed errno=%d (%s), the object may "
+                               "outlive this process",
+                               sizeof("phase02-ipc-pattern") - 1u,
+                               rt_ipc_stage_name(shm_stage), err, strerror(err));
+        } else if (shm_rc == 0) {
+            phase02_log_record(log, "ipc.posix_shm", RT_PASS,
+                               "shared memory object created, mapped twice (stage=%s), written "
+                               "through one view and read through the other (%zu bytes match)",
+                               rt_ipc_stage_name(shm_stage), sizeof("phase02-ipc-pattern") - 1u);
+        } else {
+            rt_status_t shm_status = phase02_classify(
+                phase02_classify_shm_error((int)shm_stage, err), RT_BLOCKED);
+            if (err == 0) {
+                phase02_log_record(log, "ipc.posix_shm", RT_FAIL,
+                                   "stage=%s returned an error with errno=0 (errno not "
+                                   "preserved): defect of the error path, not a platform "
+                                   "answer", rt_ipc_stage_name(shm_stage));
+            } else if (shm_status == RT_BLOCKED) {
+                phase02_log_record(log, "ipc.posix_shm", RT_BLOCKED,
+                                   "stage=%s refused errno=%d (%s): the mechanism exists and "
+                                   "this process/sandbox was not granted it (%s) - capability "
+                                   "not available here, not a defect of the runtime",
+                                   rt_ipc_stage_name(shm_stage), err, strerror(err),
+                                   phase02_dependency_note(PHASE02_DEP_POSIX_SHM));
+            } else if (shm_status == RT_UNSUPPORTED) {
+                phase02_log_record(log, "ipc.posix_shm", RT_UNSUPPORTED,
+                                   "stage=%s errno=%d (%s): no POSIX shared-memory mechanism "
+                                   "on this platform", rt_ipc_stage_name(shm_stage), err,
+                                   strerror(err));
+            } else if (shm_stage == RT_IPC_STAGE_COMPARE) {
+                phase02_log_record(log, "ipc.posix_shm", RT_FAIL,
+                                   "stage=%s: every syscall was accepted and the two views of "
+                                   "the same object disagreed (errno=%d): defect of this "
+                                   "mapping, never a platform property",
+                                   rt_ipc_stage_name(shm_stage), err);
+            } else {
+                phase02_log_record(log, "ipc.posix_shm", RT_FAIL,
+                                   "stage=%s errno=%d (%s): neither a refusal nor an absent "
+                                   "mechanism", rt_ipc_stage_name(shm_stage), err,
+                                   strerror(err));
+            }
+        }
+    }
 
     if (rt_ipc_sun_path_limit(&sun_limit, &err) == 0) {
         phase02_log_record(log, "ipc.sun_path_limit", RT_PASS,
@@ -824,8 +1396,22 @@ static rt_status_t phase02_suite_loader(phase02_log_t *log, const char *workdir)
     rt_loader_error_t loader_err = RT_LOADER_OK;
     rt_status_t status;
     rt_module_header_t header;
+    int os_err = 0;
+    int loader_map_jit = 0;
+    int jit_probe_err = 0;
+    rt_status_t jit_map_jit_status;
+    void *jit_probe_addr = NULL;
 
     (void)workdir;
+
+    /* Measure the capability this suite depends on, in this same process, so the detail of
+     * a blocked execution can name an observed dependency instead of an assumption. */
+    if (phase02_platform_has(RT_CAP_MAP_JIT) != 0) {
+        jit_map_jit_status = (rt_jit_probe_map_jit(&jit_probe_addr, &jit_probe_err) == 0)
+                                 ? RT_PASS : RT_BLOCKED;
+    } else {
+        jit_map_jit_status = RT_UNSUPPORTED;
+    }
 
     image_len = rt_loader_build_return_image(image, sizeof(image), 7u);
     if (image_len == 0u) {
@@ -835,16 +1421,44 @@ static rt_status_t phase02_suite_loader(phase02_log_t *log, const char *workdir)
     }
     phase02_log_record(log, "loader.build_image", RT_PASS, "%zu-byte RTM1 image", image_len);
 
-    status = rt_loader_run(image, image_len, &value, &loader_err, &fault);
+    status = rt_loader_run_ex(image, image_len, &value, &loader_err, &fault, &os_err,
+                              &loader_map_jit);
     if (status == RT_PASS) {
         phase02_log_record(log, "loader.run_valid_module", RT_PASS,
                            "module executed, entry returned %u (expected 7)", value);
-    } else if (status == RT_BLOCKED) {
+    } else if (loader_err == RT_LOADER_ERR_JIT_UNAVAILABLE) {
+        /* Valid module, refused executable arena: the same capability jit.map_jit_probe
+         * measures. Physical run #1 printed "rejected: OK" here — a rejection with a
+         * success reason — because the reason was never written and the errno was lost. */
         phase02_log_record(log, "loader.run_valid_module", RT_BLOCKED,
-                           "module valid but execution blocked (si_addr=%p)", fault);
+                           "image validated and accepted, but execution is not possible here: "
+                           "%s errno=%d (%s) with MAP_JIT attempted=%s while jit.map_jit_probe "
+                           "reports %s — %s, not a rejection of the module",
+                           rt_loader_error_name(loader_err), os_err, strerror(os_err),
+                           (loader_map_jit != 0) ? "yes" : "no",
+                           rt_status_name(jit_map_jit_status),
+                           phase02_dependency_note(PHASE02_DEP_JIT_MAP));
+    } else if (loader_err == RT_LOADER_ERR_EXEC_FAULT) {
+        phase02_log_record(log, "loader.run_valid_module", RT_BLOCKED,
+                           "%s: the module validated and was mapped, and its entry point "
+                           "faulted (si_addr=%p) — executable-memory permission missing",
+                           rt_loader_error_name(loader_err), fault);
+    } else if (phase02_classify_loader_result(status, loader_err, loader_map_jit,
+                                              jit_map_jit_status, os_err) ==
+               PHASE02_OUTCOME_OK) {
+        /* A rejection that names its reason is the loader doing its job. This suite feeds a
+         * valid image, so reaching here means the image was judged invalid — say it plainly,
+         * with the reason, and never without one. */
+        phase02_log_record(log, "loader.run_valid_module", RT_FAIL,
+                           "image rejected by validation: %s (errno=%d)",
+                           rt_loader_error_name(loader_err), os_err);
     } else {
-        phase02_log_record(log, "loader.run_valid_module", RT_FAIL, "rejected: %s",
-                           rt_loader_error_name(loader_err));
+        /* Unreachable by contract; kept so that no combination can print a rejection with a
+         * success reason. */
+        phase02_log_record(log, "loader.run_valid_module", RT_FAIL,
+                           "loader returned %s with reason %s and errno=%d: inconsistent "
+                           "status/reason pairing - defect of the status propagation",
+                           rt_status_name(status), rt_loader_error_name(loader_err), os_err);
     }
 
     /* Negative cases: each must be rejected by pure validation. */

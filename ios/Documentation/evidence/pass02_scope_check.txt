@@ -1,0 +1,68 @@
+== pass 02 scope ==
+changed files (behaviour): 19
+ok   .github/workflows/ios-runtime-poc.yml  [pass 02 delivery]  +1/-1
+       concept: step 4h keeps the audit and controls gated with the new counts (18/18)
+       why    : a control that is not gated in CI cannot protect the next run.
+ok   Diagnostics/src/phase02_log.c  [S-014]  +10/-0
+       concept: phase02_log_summary_line(): same truncation marker
+       why    : the summary line is what the CI gates on; a silent cut would hide counts.
+ok   Documentation/PHASE02_IOS_ERROR_LEDGER.md  [pass 02 delivery]  +158/-20
+       concept: S-009 closed, S-010..S-017 registered, counts updated
+       why    : the ledger is the round's inventory.
+ok   Documentation/PHASE02_IOS_STABILIZATION_PASS_01.pointer.md  [pass 02 delivery]  +13/-8
+       concept: points at the pass-02 report as well
+       why    : the in-tree pointer must not send a reader to a stale report.
+ok   Documentation/RELATORIO_FASE_02_RECONSTRUIDA.md  [pass 02 delivery]  +97/-0
+       concept: section 17: the round's narrative
+       why    : the technical report must reflect the state after the round.
+ok   RuntimeCore/src/runtime_context.c  [S-014]  +10/-0
+       concept: rt_context_describe(): same truncation marker
+       why    : same defect in the second summary composer.
+ok   RuntimeCore/src/runtime_cpu_abi.c  [S-014]  +10/-0
+       concept: rt_cpu_facts_summary(): a summary that does not fit its buffer is marked
+       why    : a silently truncated summary is evidence with a hole in it (same rule as the DETAIL marker).
+ok   RuntimeCore/src/runtime_filesystem.c  [S-010, S-011, S-012]  +35/-11
+       concept: rt_fs_links_and_modes(): the errno captured by rt_fs_write_pattern is no longer overwritten; lstat/stat results are checked separately from the type of what they returned. rt_fs_temp_file(): a short write reports EIO instead of a stale errno
+       why    : errno was published from a later read (possibly 0 or unrelated) - the same defect class that produced 'errno=0 (Undefined error: 0)' in IPHONE13_PHYSICAL_RUN_01.
+ok   RuntimeCore/src/runtime_ipc.c  [S-013]  +17/-8
+       concept: rt_ipc_scm_rights(): the short write/read of the transferred descriptor report EIO
+       why    : a short transfer is not an errno-producing failure; the raw errno read could publish 0. The pair round trip in the same file already did it correctly.
+ok   RuntimeCore/src/runtime_memory.c  [S-017]  +10/-0
+       concept: rt_mem_protect(): the len > SIZE_MAX - page guard
+       why    : the same guard rt_mem_reserve already had: without it the rounding wraps, the call protects a sliver and reports success.
+ok   RuntimeCore/src/runtime_signals.c  [S-015]  +26/-10
+       concept: rt_signal_roundtrip(): every failure carries an errno, and the restore of the previous disposition is honoured instead of being discarded and reported as PASS
+       why    : a return -1 left *err_out untouched (errno=0 in the report) and a failed restore was invisible in a PASS record.
+ok   RuntimeCore/src/runtime_threads.c  [S-016]  +50/-5
+       concept: the five round trips report EILSEQ when their observed value disagrees with the expected one
+       why    : a mismatch returned -1 with *err_out = 0, so a real failure was reported with the errno of a success.
+ok   RuntimePoC/ContentView.swift  [S-009]  +9/-1
+       concept: save(): the destination of the saved report
+       why    : the report was written into tmp/, which file sharing never exposes: the evidence could not be recovered from the device. The SwiftUI body is untouched (frozen by tools/ui_surface.snapshot.txt).
+ok   Tests/test_runtime_core.c  [S-010, S-011, S-012, S-014, S-015, S-016, S-017]  +149/-0
+       concept: three regression tests (overflow refusal, failure-carries-an-errno contracts, truncation markers) and the fcntl.h include they need
+       why    : every fixed defect gets a regression; no existing check was removed or weakened.
+ok   tools/audit_ios_stabilization.py  [S-010, S-011, S-012, S-013, S-014, S-015, S-016, S-017]  +186/-1
+       concept: four new rules (ERRNO_CAPTURED_NOW, PROTECT_OVERFLOW, TRUNCATION_MARKED, PAGE_SIZE_MEASURED) on top of the eleven from pass 01
+       why    : each defect must be impossible to reintroduce without the audit failing.
+ok   tools/collect_evidence.sh  [pass 02 delivery]  +5/-1
+       concept: runs the scope report and the UI-surface check with the round's own wording
+       why    : the evidence bundle must carry the proof, not just the claim.
+ok   tools/pass02_scope_report.py  [pass 02 delivery]  +272/-0
+       concept: new tool: this report
+       why    : the round must prove that it changed exactly what the defects required, and nothing else.
+ok   tools/stabilization_negative_controls.py  [S-010, S-011, S-012, S-013, S-014, S-015, S-016, S-017]  +124/-1
+       concept: seven new controls (L-R) that put each new defect back and require detection
+       why    : a rule that cannot fail proves nothing: every rule is exercised against its defect.
+ok   tools/ui_surface.snapshot.txt  [S-009]  +58/-0
+       concept: the frozen SwiftUI body, extracted from the pass-01 commit
+       why    : so the interface cannot drift while the save destination is corrected.
+
+regenerated evidence files: 17 (no behaviour, listed in the bundle)
+out-of-scope changes: 0
+
+PASS02_SCOPE_OUT_OF_SCOPE=0
+UI_VISUAL_CHANGES=0 (enforced by the UI_SURFACE_FROZEN rule)
+FILES_DELETED=0 (missing from the tree: 0)
+PHASE04_FUNCTIONAL_CHANGES=0
+PHASE05_STARTED=NO

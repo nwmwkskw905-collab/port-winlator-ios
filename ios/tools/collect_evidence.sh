@@ -41,6 +41,41 @@ python3 "$ROOT/tools/platform_composition_negative_control.py" \
 echo "[evidence] object-level link audit (AArch64 objects; the Apple link stays UNTESTED)"
 sh "$ROOT/tools/audit_link_symbols.sh" 2>&1 | tee "$EVIDENCE/link_symbol_audit.txt" | tail -6
 
+echo "[evidence] Fix 06 contract audit (loader reason, stages, errno 0, MAP_JIT order)"
+python3 "$ROOT/tools/audit_fix06_contracts.py" 2>&1 | tee "$EVIDENCE/fix06_contracts_audit.txt" | tail -3
+
+echo "[evidence] pass 01 scope (Fase 04 byte-intact, zero interface change, baseline untouched)"
+{
+  echo "== iOS stabilization pass 01 — scope check =="
+  echo "-- Fase 04 (must be empty):"
+  git -C "$ROOT/.." diff --stat -- ios/box64-registers | sed 's/^/   /'
+  echo "-- interface/app layer RuntimePoC/ (pass 02: only the S-009 save destination;"
+  echo "   the visible surface is frozen by tools/ui_surface.snapshot.txt):"
+  git -C "$ROOT/.." diff --stat -- ios/RuntimePoC | sed 's/^/   /'
+  echo "-- physical baseline IPHONE13_PHYSICAL_RUN_01.md (must be empty: immutable):"
+  git -C "$ROOT/.." diff --stat -- ios/Documentation/IPHONE13_PHYSICAL_RUN_01.md | sed 's/^/   /'
+  echo "-- files changed by this pass:"
+  git -C "$ROOT/.." diff --name-only | sed 's/^/   /'
+} 2>&1 | tee "$EVIDENCE/pass01_scope_check.txt" | tail -3
+
+echo "[evidence] pass 02 scope (every change mapped to the defect that required it)"
+python3 "$ROOT/tools/pass02_scope_report.py" 2>&1 | tee "$EVIDENCE/pass02_scope_check.txt" | tail -3
+
+echo "[evidence] iOS stabilization audit (JIT results, arena, guard, dual map, shm, log)"
+python3 "$ROOT/tools/audit_ios_stabilization.py" 2>&1 | tee "$EVIDENCE/ios_stabilization_audit.txt" | tail -3
+
+echo "[evidence] stabilization negative controls"
+python3 "$ROOT/tools/stabilization_negative_controls.py" \
+    2>&1 | tee "$EVIDENCE/ios_stabilization_negative_controls.txt" | tail -3
+
+echo "[evidence] Fix 06 negative controls (every run #1 defect must be caught)"
+python3 "$ROOT/tools/fix06_negative_controls.py" \
+    2>&1 | tee "$EVIDENCE/fix06_negative_controls.txt" | tail -3
+
+echo "[evidence] entitlement levels (1-2 repository facts, 3 needs a signed product on macOS)"
+sh "$ROOT/tools/inspect_entitlements.sh" "$ROOT/build/host/phase02_poc" \
+    2>&1 | tee "$EVIDENCE/entitlement_levels.txt" | head -3
+
 echo "[evidence] xcode project structure"
 python3 "$ROOT/tools/generate_xcodeproj.py" > "$EVIDENCE/ios_generate.log"
 python3 "$ROOT/tools/validate_xcodeproj.py" > "$EVIDENCE/ios_validate.log" || true

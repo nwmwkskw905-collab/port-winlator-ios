@@ -210,6 +210,14 @@ static int linux_random_bytes(void *buffer, size_t length, int *err_out)
             }
             return -1;
         }
+        if (got == 0) {
+            /* getrandom(2) never returns 0 for a non-zero length; a source that answers
+             * "nothing" would spin this loop forever. Reported, never looped on. */
+            if (err_out != NULL) {
+                *err_out = EIO;
+            }
+            return -1;
+        }
         filled += (size_t)got;
     }
     if (err_out != NULL) {

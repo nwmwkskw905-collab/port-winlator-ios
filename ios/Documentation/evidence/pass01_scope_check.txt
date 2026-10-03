@@ -1,0 +1,16 @@
+== iOS stabilization pass 01 — scope check ==
+-- Fase 04 (must be empty):
+-- interface/app layer RuntimePoC/ (pass 02: only the S-009 save destination;
+   the visible surface is frozen by tools/ui_surface.snapshot.txt):
+-- physical baseline IPHONE13_PHYSICAL_RUN_01.md (must be empty: immutable):
+-- files changed by this pass:
+   gladio
+   ios/Documentation/evidence/aarch64_build.log
+   ios/Documentation/evidence/aarch64_phase02_report.txt
+   ios/Documentation/evidence/aarch64_suite_stdout.log
+   ios/Documentation/evidence/host_phase02_report.txt
+   ios/Documentation/evidence/host_suite_stdout.log
+   ios/Documentation/evidence/inventory_sha256.txt
+   ios/Documentation/evidence/pass01_scope_check.txt
+   ios/tools/pass02_scope_report.py
+   vortek

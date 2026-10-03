@@ -72,11 +72,56 @@ def control(label: str, path: Path, transform, expect: str) -> bool:
     return code != 0
 
 
+CI5_PATH = "ios/RuntimeCore/src/linux_platform.c"
+
+
+def reappears_under_audit(revision: str) -> bool:
+    """True when putting that revision's file in place makes the audit report the CI #5 rule.
+
+    The audit itself is the judge: asking it is the only honest way to pick the revision,
+    because the run #5 shape is defined by the composition rule, not by a text pattern.
+    """
+    path = ROOT / "RuntimeCore" / "src" / "linux_platform.c"
+    original = path.read_text(encoding="utf-8")
+    show = subprocess.run(["git", "show", f"{revision}:{CI5_PATH}"],
+                          capture_output=True, text=True, cwd=str(ROOT.parent))
+    if show.returncode != 0:
+        return False
+    path.write_text(show.stdout, encoding="utf-8")
+    try:
+        _code, output = run_audit(ROOT)
+    finally:
+        path.write_text(original, encoding="utf-8")
+    for line in summary(output).splitlines():
+        if line.startswith("APPLE_FORBIDDEN_SYMBOLS="):
+            return not line.startswith("APPLE_FORBIDDEN_SYMBOLS=0")
+    return False
+
+
+def ci5_revision() -> str:
+    """Find the revision whose linux_platform.c still has the CI run #5 shape.
+
+    The default cannot be plain HEAD: once the fix is committed, HEAD *is* the fixed file and
+    the control would silently test nothing. Walking back a few revisions keeps the control
+    meaningful in any clone, and reports honestly when the history does not contain it.
+    """
+    for candidate in ["HEAD"] + [f"HEAD~{n}" for n in range(1, 9)]:
+        if reappears_under_audit(candidate):
+            return candidate
+    return ""
+
+
 def control_a_source(revision: str) -> tuple[bool, str]:
     """Control A uses the file exactly as CI run #5 built it, straight from git."""
     path = ROOT / "RuntimeCore" / "src" / "linux_platform.c"
     original = path.read_text(encoding="utf-8")
-    show = subprocess.run(["git", "show", f"{revision}:ios/RuntimeCore/src/linux_platform.c"],
+    if revision in ("", "auto"):
+        revision = ci5_revision()
+        if not revision:
+            print("---- control A: UNTESTED (no revision in this clone still has the run #5 "
+                  "shape); the audit rule itself is exercised by the other controls\n")
+            return True, ""
+    show = subprocess.run(["git", "show", f"{revision}:{CI5_PATH}"],
                           capture_output=True, text=True, cwd=str(ROOT.parent))
     if show.returncode != 0:
         return False, f"git show failed: {show.stderr.strip()}"
@@ -116,8 +161,9 @@ def control_d() -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--revision", default="HEAD",
-                        help="git revision whose linux_platform.c is the CI #5 one (default HEAD)")
+    parser.add_argument("--revision", default="auto",
+                        help="git revision whose linux_platform.c is the CI #5 one; 'auto' "
+                             "(default) walks back from HEAD until it finds that shape")
     arguments = parser.parse_args()
 
     print("== negative controls for the platform composition audit ==")

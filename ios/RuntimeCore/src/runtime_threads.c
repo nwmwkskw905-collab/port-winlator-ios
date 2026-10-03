@@ -63,10 +63,19 @@ int rt_thread_roundtrip(uint64_t *value_out, int *err_out)
     if (value_out != NULL) {
         *value_out = observed;
     }
+    if (observed != expected) {
+        /* A mismatch means this round trip failed. Returning -1 with *err_out = 0 printed
+         * "errno=0" in the report, which is never a platform answer: the project's convention
+         * for disagreeing values is EILSEQ (the fs/ipc compares do the same). */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        return -1;
+    }
     if (err_out != NULL) {
         *err_out = 0;
     }
-    return (observed == expected) ? 0 : -1;
+    return 0;
 }
 
 /* ---------------------------------------------------------------------- TLS */
@@ -139,10 +148,19 @@ int rt_thread_tls_roundtrip(uint64_t *value_out, int *err_out)
     if (value_out != NULL) {
         *value_out = observed;
     }
+    if (observed != expected) {
+        /* A mismatch means this round trip failed. Returning -1 with *err_out = 0 printed
+         * "errno=0" in the report, which is never a platform answer: the project's convention
+         * for disagreeing values is EILSEQ (the fs/ipc compares do the same). */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        return -1;
+    }
     if (err_out != NULL) {
         *err_out = 0;
     }
-    return (observed == expected) ? 0 : -1;
+    return 0;
 }
 
 /* ------------------------------------------------------------------- mutex */
@@ -198,10 +216,19 @@ int rt_thread_mutex_counter(uint64_t *value_out, int *err_out)
     if (value_out != NULL) {
         *value_out = box.counter;
     }
+    if (box.counter != expected) {
+        /* A mismatch means this round trip failed. Returning -1 with *err_out = 0 printed
+         * "errno=0" in the report, which is never a platform answer: the project's convention
+         * for disagreeing values is EILSEQ (the fs/ipc compares do the same). */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        return -1;
+    }
     if (err_out != NULL) {
         *err_out = 0;
     }
-    return (box.counter == expected) ? 0 : -1;
+    return 0;
 }
 
 /* -------------------------------------------------------------- condition */
@@ -260,10 +287,19 @@ int rt_thread_condition_pingpong(uint64_t *value_out, int *err_out)
     if (value_out != NULL) {
         *value_out = box.tokens;
     }
+    if (box.tokens != expected) {
+        /* A mismatch means this round trip failed. Returning -1 with *err_out = 0 printed
+         * "errno=0" in the report, which is never a platform answer: the project's convention
+         * for disagreeing values is EILSEQ (the fs/ipc compares do the same). */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        return -1;
+    }
     if (err_out != NULL) {
         *err_out = 0;
     }
-    return (box.tokens == expected) ? 0 : -1;
+    return 0;
 }
 
 /* ------------------------------------------------------------------ atomics */
@@ -307,8 +343,17 @@ int rt_thread_atomics_roundtrip(uint64_t *value_out, int *err_out)
     if (value_out != NULL) {
         *value_out = observed;
     }
+    if (observed != expected) {
+        /* A mismatch means this round trip failed. Returning -1 with *err_out = 0 printed
+         * "errno=0" in the report, which is never a platform answer: the project's convention
+         * for disagreeing values is EILSEQ (the fs/ipc compares do the same). */
+        if (err_out != NULL) {
+            *err_out = EILSEQ;
+        }
+        return -1;
+    }
     if (err_out != NULL) {
         *err_out = 0;
     }
-    return (observed == expected) ? 0 : -1;
+    return 0;
 }

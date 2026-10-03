@@ -833,3 +833,355 @@ backend — e então declara `APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAI
 * Não prova nada sobre o iPhone 13: `IPHONE_VALIDATION_PENDING` permanece. JIT no aparelho continua
   dependendo de assinatura/entitlements, e a suíte responde `NOT_APPLICABLE`/`BLOCKED` com o motivo
   real — nunca `PASS` por otimismo.
+
+## 15. Correção 06 — validação física no iPhone 13 (execução `IPHONE13_PHYSICAL_RUN_01`)
+
+### 15.1 A execução física
+
+Primeira execução real em `ios-device` (iPhone 13), documentada integralmente em
+`Documentation/IPHONE13_PHYSICAL_RUN_01.md` e **imutável**:
+
+```
+platform=darwin page_size=16384 isa=aarch64 apple_target=ios-device
+records=52 assertions=0 pass=42 fail=4 blocked=1 unsupported=1 untested=1 not_applicable=3 summary=FAIL
+PHASE_02_PHYSICAL_VALIDATION=FAIL
+```
+
+A IPA foi compilada para `iphoneos`, empacotada, assinada e instalada; o aplicativo abriu e
+percorreu todas as suítes. Quatro `FAIL`. Nenhum deles foi convertido em `PASS`, nenhum foi
+simplesmente rebaixado para `BLOCKED`, e cada um recebeu causa-raiz individual **no código que
+produziu a linha**.
+
+### 15.2 `jit.alloc` — a mesma capacidade que o probe, agora provada
+
+`rt_jit_alloc()` falhava com `errno=1` vindo do `mmap(MAP_JIT)`, mas `*map_jit_attempted_out` só
+era escrito **em caso de sucesso** — a arena recusada ficava sem qualquer ligação com o probe
+`BLOCKED` e aparecia como defeito independente. Correções:
+
+* `runtime_jit.c`: `*map_jit_attempted_out = 1` **antes** do `mmap`, inclusive na recusa;
+* `runtime_loader.c`/harness: o status e o errno do probe são passados a `phase02_jit_microtest()`;
+* `phase02_classify_jit_alloc(attempted, probe_status, probe_errno, alloc_errno)` devolve
+  `DEPENDENCY_BLOCKED` **apenas** quando a tentativa ocorreu, o probe mediu `BLOCKED` e
+  `alloc_errno == probe_errno != 0`. Qualquer outra combinação (errno diferente, errno perdido,
+  probe `PASS`) continua sendo defeito. `phase02_classify(DEPENDENCY_BLOCKED, RT_PASS)` devolve
+  `FAIL`, ou seja, se a capacidade tiver sido oferecida o resultado volta a ser defeito.
+
+### 15.3 `fs.deep_paths` — o `errno=0` era um `errno` lido antes de ser escrito
+
+`rt_fs_deep_paths()` calculava `failure = (err_out != NULL) ? *err_out : EIO`, lendo o
+parâmetro de saída do **próprio chamador** antes de qualquer escrita: o motivo real era descartado
+e o registro imprimia `errno=0 (Undefined error: 0)`. Correções:
+
+* `rt_fs_write_pattern(path, err_out)` captura o errno **no ponto da falha**; a leitura de volta
+  captura antes do `close()`;
+* `rt_fs_deep_paths_ex(..., rt_fs_stage_t *stage_out)` reporta a etapa (`mkdir`, `leaf-path-join`,
+  `leaf-write`, `leaf-read`, `leaf-compare`, `leaf-unlink`, `errno-lost`);
+* invariante: uma falha **nunca** sai com errno 0 — se algum caminho futuro quebrar isso, o
+  registro traz `RT_FS_STAGE_ERRNO_LOST` com `EIO` em vez de um zero enganoso;
+* `phase02_classify_fs_depth_error`: `ENAMETOOLONG` na etapa da plataforma → `PASS` (limite
+  documentado); teto do **próprio buffer** (`PATH_CAP`/`LEAF_JOIN`) → `PASS` com a proveniência do
+  teto declarada (`OK_PROBE_LIMIT`), nunca “limite da plataforma”; `EPERM/EACCES/ENOSPC/EDQUOT/EROFS`
+  → `BLOCKED`; `errno=0` → defeito (`FAIL`).
+
+No host o teto é o buffer do probe: `depth up to 224 (2035 chars) ... the ceiling at depth=225
+(stage=leaf-path-join, errno=36) is this probe's own path buffer (cap=2048), NOT the platform's
+(PATH_MAX=4096[pathconf])`.
+
+### 15.4 `ipc.posix_shm` — o errno sem a syscall
+
+`errno=1` sozinho não distingue “o sandbox recusa `shm_open`” de “recusa o segundo `mmap`”. Agora
+`rt_ipc_shm_ex(&err, &stage)` reporta `RT_IPC_STAGE_*` (`shm_open`, `ftruncate`, `mmap(first view)`,
+`mmap(second view)`, `compare`, `unlink`) com o errno capturado imediatamente, e
+`phase02_classify_shm_error(stage, err)` decide: `EPERM/EACCES` → capacidade não concedida
+(`BLOCKED`); `ENOSYS/ENOTSUP` → `UNSUPPORTED`; divergência entre as duas visões com **todas** as
+syscalls aceitas → defeito do nosso mapeamento; `errno=0` → defeito do caminho de erro. A
+classificação segue a etapa medida, nunca o conhecimento externo sobre a plataforma. A
+infraestrutura existente (`rt_dual_map_create`) já usa a mesma interface — nenhuma arquitetura nova
+foi criada.
+
+### 15.5 `loader.run_valid_module` — `rejected: OK`
+
+`rt_loader_run()` retornava `RT_FAIL` quando `rt_jit_alloc()` falhava **sem escrever o motivo**
+(`*loader_err_out` ficava em `RT_LOADER_OK`) e sem reportar errno: daí `rejected: OK`. Agora
+`rt_loader_run_ex(..., &os_err, &map_jit_attempted)`:
+
+* retorna `RT_BLOCKED` com `RT_LOADER_ERR_JIT_UNAVAILABLE` + errno quando a arena executável é
+  recusada (módulo válido, execução inviável);
+* `RT_LOADER_ERR_EXEC_FAULT` com `si_addr` quando o módulo foi mapeado e a entrada falhou;
+* `RT_LOADER_ERR_INTERNAL` quando o passo que falhou é nosso;
+* `RT_FAIL` fica reservado à **recusa por validação**, e a invariante é: todo retorno diferente de
+  `RT_PASS` carrega um motivo ≠ `RT_LOADER_OK`;
+* o wrapper `rt_loader_run()` continua existindo (compatibilidade) e o harness usa
+  `phase02_classify_loader_result()` — um `RT_FAIL` com motivo `OK` é classificado como defeito, e
+  a combinação física (imagem válida + arena recusada + probe bloqueado + errno igual) como
+  dependência do `jit.map_jit_probe`.
+
+### 15.6 Semântica de resultados (incremento mínimo, sem regra genérica)
+
+`phase02_harness.h` documenta a tabela `outcome → status`; nada de “FAIL→BLOCKED” automático:
+
+| Outcome | Status | Quando |
+| --- | --- | --- |
+| `OK` | `PASS` | sucesso observado |
+| `OK_PROBE_LIMIT` | `PASS` | capacidade medida; o teto é do probe e está declarado |
+| `RUNTIME_DEFECT` | `FAIL` | defeito nosso (inclui errno 0 e motivo ausente) |
+| `CAPABILITY_MISSING` | `BLOCKED` | a plataforma recusou o que o teste precisa |
+| `DEPENDENCY_BLOCKED` | `BLOCKED` | dependência medida não é `PASS`; se a dependência passou → `FAIL` |
+| `UNSUPPORTED` | `UNSUPPORTED` | não existe no alvo |
+| `NOT_APPLICABLE` | `NOT_APPLICABLE` | o alvo não pode chamar a API |
+| `UNDETERMINED` | `UNTESTED` | causa não estabelecida — nunca `PASS`, nunca `FAIL` |
+
+### 15.7 Entitlements — quatro níveis, nenhum presumido
+
+1. **pedido no projeto** — `RuntimePoC/WinlatorPhase02.entitlements` contém
+   `com.apple.security.cs.allow-jit`, e o projeto **não** o liga a `CODE_SIGN_ENTITLEMENTS`: nada é
+   aplicado por si só;
+2. **presente antes de assinar** — pertence ao passo de assinatura (fora do repositório; sem
+   credenciais);
+3. **concedido à assinatura** — só se lê no produto construído, com
+   `tools/inspect_entitlements.sh` (novo; imprime **apenas nomes de chaves e booleanos**, nunca
+   certificado, team id ou UDID; em produto não assinado responde `UNSIGNED_IPA`; em host não-Darwin
+   responde `UNTESTED REASON=NO_MACOS_HOST`), executado no CI como diagnóstico que não falha o build;
+4. **observado em execução** — o que a suíte mediu (`MAP_JIT *`), agora acompanhado de uma linha
+   `[PHASE02] NOTE=jit.entitlement_levels` que separa os quatro níveis e não altera contagem alguma.
+
+A suíte física #1 não prova, em momento algum, que o JIT está concedido — e a Correção 06 não
+afirma que esteja.
+
+### 15.8 Auditoria estática e controles negativos (novos)
+
+`tools/audit_fix06_contracts.py` — sete regras, cada uma nascida de uma linha física:
+`LOADER_REASON` (nenhum retorno não-`PASS` sem motivo), `SHM_STAGE`, `DEPTH_STAGE` (o ramo de falha
+não pode zerar o errno), `ERRNO_ZERO_DEFECT`, `JIT_ATTEMPT_ORDER`, `COMPAT_SURFACE`,
+`PHYSICAL_BASELINE` (o run #1 existe, verbatim, e continua `FAIL`).
+
+`tools/fix06_negative_controls.py` — seis controles que reintroduzem cada defeito e verificam o
+detector; restauração conferida por SHA-256 e reconstrução verde no fim:
+
+| Controle | Defeito reintroduzido | Detectado por |
+| --- | --- | --- |
+| A | loader perde o motivo → volta o `rejected: OK` | auditoria + testes |
+| B | o probe de profundidade deixa de preservar o errno | auditoria + testes |
+| C | tentativa de MAP_JIT registrada só após sucesso | auditoria (em Linux não é observável) |
+| D | registro de shm sem a etapa que falhou | auditoria (o host concede POSIX shm) |
+| E | baseline física reescrita para `PASS` | auditoria |
+| F | `errno=0` aceito como veredito (falha silenciosa como `PASS`) | auditoria + testes |
+
+`FIX06_NEGATIVE_CONTROLS=6/6` (no CI, em modo estático, 6/6 pelos quatro primeiros + E/F).
+
+### 15.9 Regressão após a Correção 06
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | **0 warnings / 0 errors** · ctest **2/2** · **207 checks, 0 falhas** · suíte `records=56 pass=52 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (cross + qemu), rebuild limpo | **0 warnings** · **198 checks, 0 falhas** · `pass=53 fail=0 unsupported=2 not_applicable=1 summary=PASS` |
+| Regressão da condição física (host) | `RLIMIT_AS` reduzido e **provado eficaz** por probe: `rt_loader_run_ex` devolve `BLOCKED` + `JIT_UNAVAILABLE` + errno ≠ 0; sob `qemu-user`, que ignora `RLIMIT_AS`, o teste imprime `skip` com o motivo em vez de fingir |
+| Classificadores puros (rodam em todo host) | combinação física de run #1, `errno=0`, estágios de shm e de profundidade, motivo ausente: todos verificados |
+| Auditoria Fix 06 (nova) | `FIX06_CONTRACTS_AUDIT=0` (7/7 regras) |
+| Controles negativos Fix 06 (novos) | `FIX06_NEGATIVE_CONTROLS=6/6`, restauração byte-idêntica |
+| Composição de alvos (Correção 05) | `TARGET_COMPOSITION=0` · `APPLE_FORBIDDEN_SYMBOLS=0` · `LINUX_FORBIDDEN_SYMBOLS=0` · `BACKEND_SELECTION=OK` · `UNDECIDED_CONDITIONS=0` · `PLATFORM_COMPOSITION_AUDIT=0` |
+| Controle negativo da composição | `PLATFORM_COMPOSITION_NEGATIVE_CONTROL=PASS` (controle A agora **seleciona sozinho** a revisão com a forma do CI #5, perguntando à própria auditoria) |
+| Link | `LINK_SYMBOL_AUDIT=PASS` · `APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN` |
+| Includes / APIs / interfaces / bridge | `UNGUARDED_LINUX_INCLUDES=0` · `UNGUARDED_MACOS_ONLY_APIS=0` · `INTERFACE_AUDIT=0` · `BRIDGE_SYNTAX=PASS` 0/0 |
+| `.xcodeproj` | `PLIST_SYNTAX=PASS` · preflight **62 checagens, 0 falhas** |
+| Entitlements | `ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_MACOS_HOST` (nível 3 exige produto assinado em macOS) |
+| Fase 04 | `git diff -- ios/box64-registers` **vazio** · nenhum arquivo de `Tests/` ou `RuntimePoC/` alterado fora do previsto |
+| Inventário | 54 entradas, todas válidas |
+| Correções 01–05 | intactas: nenhum teste removido, nenhum `PASS` comprado, `sys_icache_invalidate` no Apple, Linux icache inerte fora de Linux |
+
+### 15.10 O que a Correção 06 **não** prova
+
+* Não prova que o iPhone passa: `PHASE_02_PHYSICAL_VALIDATION=FAIL` permanece até existir a
+  `IPHONE13_PHYSICAL_RUN_02`. Nenhum resultado físico foi fabricado aqui.
+* Não prova que o JIT funciona no aparelho, nem que o entitlement foi concedido: sem assinatura com
+  JIT, o resultado honesto continua `BLOCKED`.
+* Não transforma `UNSUPPORTED`/`BLOCKED`/`UNTESTED`/`NOT_APPLICABLE` em `PASS` — inclusive
+  `memory.dual_mapping_rw_rx = UNSUPPORTED` e `jit.write_protect_np = NOT_APPLICABLE`.
+* Não corrige `ipc.posix_shm` “no escuro”: se o sandbox iOS recusar `shm_open`, a resposta correta
+  passa a ser `BLOCKED` **com a syscall nomeada**; se recusar o segundo `mmap`, a resposta nomeia
+  isso.
+
+## 16. Rodada de estabilização iOS — pass 01 (pacote `phase02-ios-stabilization-pass-01`)
+
+Base: Correção 06 (`e50db04`) preservada integralmente. Objetivo único: **corrigir todos os
+defeitos demonstráveis da Fase 02 nos caminhos que o iPhone executa**, sem tocar em interface,
+sem remover nada e sem transformar `FAIL` em `PASS`. Inventário completo em
+`Documentation/PHASE02_IOS_ERROR_LEDGER.md`; relatório de entrega com o SHA-256 em
+`PHASE02_IOS_STABILIZATION_PASS_01.md` (raiz do workspace).
+
+### 16.1 O que foi auditado
+
+Caminho JIT completo (entrada → probe de capacidade → `MAP_JIT` → alocação → escrita → emissão
+ARM64 → proteção → sincronização de icache → execução → retorno → reescrita → nova
+sincronização → segunda execução → liberação), entitlements em quatro níveis, memória/W^X/dual
+mapping, POSIX shm, filesystem (profundidade, limites, buffers, errno, limpeza), loader RTM1
+ponta a ponta, CPU/ABI (auditoria sem alteração), threads/sinais (auditoria de interação),
+IPC (sem tocar nos `PASS`), backends de plataforma, e o build Apple por análise estática
+(compiler, bridge ObjC, Swift, headers, availability, target conditionals, linker, símbolos
+indefinidos/duplicados, pertencimento de fontes, frameworks, entitlements, Info.plist,
+pbxproj, build settings) — sem inventar resultado de Xcode: `APPLE_*` locais continuam
+`UNTESTED REASON=NO_APPLE_TOOLCHAIN`.
+
+### 16.2 Oito defeitos de código encontrados e corrigidos
+
+| ID | Defeito | Correção | Regressão |
+| --- | --- | --- | --- |
+| S-001 | janela de escrita e flush de icache chamados com `(void)` no microteste; escrita em arena `MAP_JIT` sem janela (crash fora do guard) e icache não sincronizado em silêncio | janela conferida nas duas escritas; novo passo reportado `jit.icache_sync` (`PASS` / `NOT_APPLICABLE` / `FAIL` que impede a execução) | testes + auditoria `DISCARDED_RESULTS`/`ICACHE_REPORTED` + controle A |
+| S-002 | arena dimensionada por `(first_len > second_len) ? first_len : first_len` (expressão morta) e reescrita "clampada" em silêncio | dois buffers de payload emitidos antes da alocação, `arena_len = max(...)`, checagem de capacidade e recusa explícita | `test_jit_payload_capacity` + `ARENA_SIZING` + controle B |
+| S-003 | "guard não instalável" (`-2`) reportado como fault com `si_addr=(nil)` (loader e microteste) | `-2` ⇒ `RT_LOADER_ERR_INTERNAL` + errno; no harness ⇒ `UNTESTED` com a causa | `test_loader_guard_unavailable_is_not_a_fault` + `GUARD_VS_FAULT` + controle C |
+| S-004 | `rt_jit_execution_allowed` escrevia sem janela, ignorava o icache e convertia `-2` em "não" | janela conferida, flush honrado, `-2` ⇒ "não determinado" | `DISCARDED_RESULTS` + suíte JIT |
+| S-005 | dual mapping presumia *qual* operação falhou e classificava `EPERM/EACCES` como `UNSUPPORTED`, divergindo do probe de shm | `rt_dual_stage_t` + nome da etapa em cada caminho; classificação por etapa+errno com o vocabulário do shm | `test_dual_mapping_stage_and_classification` + `DUAL_MAP_STAGE`/`CAPABILITY_WORDS` + controles D/E |
+| S-006 | `shm_unlink` final descartado e `RT_IPC_STAGE_UNLINK` documentado mas inexistente | etapa `UNLINK` criada, nomeada e conferida; falha de limpeza reportada como fato de limpeza (nunca como veredito) | `test_ipc_shm_cleanup_stage` + `SHM_CLEANUP` + controle F |
+| S-007 | `getrandom()` devolvendo 0 giraria o laço para sempre | `got == 0` ⇒ `EIO` | `RANDOM_PROGRESS` + controle G |
+| S-008 | `DETAIL` truncado em 512 chars e relatório truncado pela capacidade, ambos em silêncio | marcadores explícitos de truncamento | `test_log_detail_truncation_is_marked` + `LOG_INTEGRITY` + controle H |
+
+Um defeito adicional foi **introduzido e detectado dentro da própria correção** (S-002: os dois
+payloads no mesmo buffer faziam a primeira execução devolver 4242) — a suíte o pegou antes de
+qualquer commit, e ele está registrado no ledger por honestidade.
+
+Um defeito **não** foi corrigido, por estar fora do escopo desta rodada (regra de UI):
+`S-009` — "Save report" grava o relatório em `tmp`, enquanto o `Info.plist` habilita
+compartilhamento de `Documents`; a correção de uma linha está proposta no ledger e a
+recuperação por **Copy/Share** (usada na run #1) continua funcionando.
+
+### 16.3 Correções 01–06 preservadas (conferido)
+
+`sys_icache_invalidate` segue sendo o caminho Apple; `linux_icache_flush` continua Linux-only;
+`pthread_jit_write_protect_np` continua ausente no iOS (e o bit de capacidade também);
+`MAP_JIT` continua um probe de runtime; o bridge continua sem declaração ad hoc; a
+classificação causal `jit.alloc → jit.map_jit_probe` e o motivo obrigatório do loader
+continuam na íntegra; nenhum teste foi removido; nenhum `PASS` foi comprado.
+
+### 16.4 Regressão após a rodada
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, rebuild limpo | **0 warnings / 0 errors** · ctest **2/2** · **237 checks, 0 falhas** · suíte `records=58 pass=54 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=2 summary=PASS` |
+| AArch64 (cross + qemu) | **0 warnings** · **228 checks, 0 falhas** · `records=58 pass=55 fail=0 … summary=PASS` |
+| Caminho JIT completo, agora auditável no relatório | `jit.icache_sync` (x2), `jit.alloc`, `jit.make_executable`, `jit.execute_return_42`, `jit.rewrite_payload`, `jit.execute_return_4242`, `jit.execution_allowed` — todos presentes e verdes no host |
+| Nova auditoria | `IOS_STABILIZATION_AUDIT=0` (9 regras) |
+| Novos controles negativos | `STABILIZATION_NEGATIVE_CONTROLS=8/8`, restauração byte-idêntica |
+| Auditorias anteriores | `FIX06_CONTRACTS_AUDIT=0` · `FIX06_NEGATIVE_CONTROLS=6/6` · `PLATFORM_COMPOSITION_AUDIT=0` (+ controle `PASS`) · `LINK_SYMBOL_AUDIT=PASS` · `APPLE_LINK_AUDIT=UNTESTED REASON=NO_APPLE_TOOLCHAIN` · `INTERFACE_AUDIT=0` · `BRIDGE_SYNTAX=PASS` · `UNGUARDED_LINUX_INCLUDES=0` · `UNGUARDED_MACOS_ONLY_APIS=0` |
+| `.xcodeproj` | `PLIST_SYNTAX=PASS` · preflight **62 checagens, 0 falhas** |
+| Entitlements | `ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_MACOS_HOST` (nível 3 exige produto assinado em macOS) |
+| Fase 04 | `git diff -- ios/box64-registers` **vazio** |
+| Interface/UI | **zero** arquivos de `RuntimePoC/` alterados (`.swift`, `.m`, `.h`, `.plist`, `.entitlements`, `main.c`) |
+
+### 16.5 Estados, ao fim da rodada
+
+* **JIT:** caminho completo instrumentado e verificado; `MAP_JIT` continua dependendo de
+  entitlement (capacidade externa); nenhum fallback RWX; nenhuma transformação de flush em
+  no-op; a execução só acontece com o icache sincronizado ou com a arquitetura declarada
+  incoerente por natureza (x86).
+* **Entitlements:** os quatro níveis continuam separados; o projeto **pede** a entitlement e
+  não a liga ao `CODE_SIGN_ENTITLEMENTS` (decisão documentada); o CI inspeciona o produto; a
+  concessão é externa.
+* **Shared memory:** `shm_open`/`ftruncate`/`mmap`×2/`compare`/`unlink` com etapa e errno;
+  recusa do sandbox ⇒ `BLOCKED` com a syscall nomeada; ausência ⇒ `UNSUPPORTED`.
+* **Loader:** `RT_PASS` só com execução observada; `BLOCKED` + motivo + errno quando a
+  capacidade falta; `INTERNAL` para defeito nosso (inclusive guard indisponível); `FAIL` só
+  para imagem recusada pela validação.
+* **Filesystem:** profundidade medida com etapa e errno reais; teto do próprio buffer
+  declarado como tal; `errno=0` é defeito.
+* **Backends:** `linux_platform.c` e `darwin_platform.c` intactos na arquitetura; nenhuma API
+  Linux alcançável no Apple e nenhum símbolo Apple no Linux
+  (`APPLE_FORBIDDEN_SYMBOLS=0`, `LINUX_FORBIDDEN_SYMBOLS=0`, `BACKEND_SELECTION=OK`).
+* **Fase 04:** intacta, byte a byte.
+* **Fase 05:** não iniciada.
+
+## 17. Rodada de estabilização iOS — pass 02 (rodada de fechamento)
+
+Base: Correção 06 (`e50db04`) + pass 01 (`631ded6`), ambos preservados. Objetivo único desta
+rodada: **zerar os defeitos de código conhecidos da Fase 02 antes do Apple CI real**.
+Inventário em `Documentation/PHASE02_IOS_ERROR_LEDGER.md`; relatório de entrega com o SHA-256
+em `PHASE02_IOS_STABILIZATION_PASS_02.md` (raiz do workspace).
+
+### 17.1 S-009 — o relatório salvo agora vai para onde o aparelho o expõe
+
+Causa confirmada por inspeção: `save()` montava a URL a partir do **mesmo** `workdir` das
+suítes (`NSTemporaryDirectory()`), enquanto `Info.plist` declara `UIFileSharingEnabled` +
+`LSSupportsOpeningDocumentsInPlace` — o compartilhamento de arquivos expõe `Documents/`, não
+`tmp/`. Correção mínima, uma função:
+
+* destino passa a ser `FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first`
+  (com falha explícita se não existir);
+* o `workdir` das suítes continua `tmp` (mover isso mudaria o comportamento da suíte de
+  filesystem, que é um caminho `PASS`);
+* o nome do arquivo continua vindo de `Phase02Bridge.reportFileName()`;
+* a gravação continua `try report.write(to:atomically:encoding:)` com os dois desfechos
+  reportados em `status`.
+
+**Nenhuma linha da interface foi tocada:** o bloco `body:` (rótulos, ordem, layout, botões,
+cores) é comparado byte a byte com `tools/ui_surface.snapshot.txt`, extraído do commit
+`631ded6` da pass 01 — a regra `UI_SURFACE_FROZEN` falha se ele mudar.
+
+### 17.2 Varredura final — sete defeitos reais a mais (S-010 … S-016) e S-017
+
+| ID | Defeito | Correção | Regressão |
+| --- | --- | --- | --- |
+| S-010 | `rt_fs_links_and_modes` sobrescrevia, com um `errno` lido depois, o errno já capturado por `rt_fs_write_pattern` | atribuição redundante removida | `ERRNO_CAPTURED_NOW` + controle M |
+| S-011 | `lstat`/`stat` conferidos em condição composta: `errno` publicado quando a syscall **funcionou** e o tipo era outro (inclusive 0) | syscall e tipo conferidos separadamente; `EINVAL` para tipo inesperado | `ERRNO_CAPTURED_NOW` + teste de contrato |
+| S-012 | `rt_fs_temp_file` reportava escrita curta com `errno` cru | `(written < 0) ? errno : EIO` | `ERRNO_CAPTURED_NOW` + controle N |
+| S-013 | `rt_ipc_scm_rights` reportava transferência curta com `errno` cru (nos dois sentidos) | `EIO` na transferência curta | `ERRNO_CAPTURED_NOW` + teste |
+| S-014 | três compositores de resumo truncavam em silêncio quando o buffer era pequeno | marcador ` [SUMMARY TRUNCATED]` | `TRUNCATION_MARKED` + `test_summaries_mark_truncation` + controle P |
+| S-015 | `rt_signal_roundtrip`: falha devolvia −1 sem errno; falha ao **restaurar** a disposição era descartada e virava `PASS` | errno em toda falha; restauração honrada | `test_failure_carries_and_success_clears_errno` + controle Q |
+| S-016 | os cinco round trips de threads devolviam −1 com `*err_out = 0` em divergência | `EILSEQ` na divergência | teste de cada round trip + controle O (quebra os cinco sítios) |
+| S-017 | `rt_mem_protect` sem a guarda de overflow que `rt_mem_reserve` tem | guarda `len > SIZE_MAX - page` + `EOVERFLOW` | `test_mem_protect_rejects_overflow` + `PROTECT_OVERFLOW` + controle L |
+
+Todos os sete novos defeitos têm a mesma assinatura do defeito que a execução física
+encontrou (`errno=0` / errno não relacionado à chamada que falhou): é a família que a Fase 02
+mais precisa manter fechada, porque é ela que faz uma falha de plataforma parecer um defeito do
+port e vice-versa.
+
+### 17.3 Auditoria que impede o retorno de cada defeito
+
+`tools/audit_ios_stabilization.py` passou de 11 para **15 regras**:
+
+`DISCARDED_RESULTS`, `ICACHE_REPORTED`, `ARENA_SIZING`, `GUARD_VS_FAULT`, `DUAL_MAP_STAGE`,
+`CAPABILITY_WORDS`, `SHM_CLEANUP`, `RANDOM_PROGRESS`, `LOG_INTEGRITY`, `SAVE_REPORT_TARGET`,
+`UI_SURFACE_FROZEN`, **`ERRNO_CAPTURED_NOW`** (o errno da chamada que falhou é o que vale — sem
+sobrescrita depois da captura, sem `errno` de escrita curta, sem falha sem errno),
+**`PROTECT_OVERFLOW`**, **`TRUNCATION_MARKED`**, **`PAGE_SIZE_MEASURED`** (o tamanho de página
+vem do `sysconf` do backend; `16384` não pode aparecer escrito no código).
+
+`tools/stabilization_negative_controls.py` passou de 8 para **18 controles**: cada regra é
+exercitada contra o seu próprio defeito, e cada controle exige a detecção e restaura o arquivo
+conferindo o SHA-256 (A–K da rodada 01, L–R desta rodada).
+
+### 17.4 Estado físico e o que continua externo
+
+`IPHONE13_PHYSICAL_RUN_01` continua **imutável** (`pass=42 fail=4 blocked=1 unsupported=1
+untested=1 not_applicable=3 summary=FAIL`): as correções não transformam retroativamente aquela
+execução. O que depende de fora continua registrado como depende de fora:
+
+* concessão da entitlement de JIT (`com.apple.security.cs.allow-jit`) — assinatura/provisioning
+  no aparelho; nenhum fallback foi criado, nenhuma capability foi "concedida" no código;
+* confirmação em Darwin (Apple CI real) e no iPhone: `APPLE_*` locais seguem
+  `UNTESTED REASON=NO_APPLE_TOOLCHAIN` e `ENTITLEMENT_INSPECTION=UNTESTED REASON=NO_MACOS_HOST`.
+
+### 17.5 Regressão desta rodada
+
+| Verificação | Resultado |
+| --- | --- |
+| Host x86-64, build limpo | **0 warnings / 0 errors** · **274 checks, 0 falhas** (era 237) · ctest 2/2 |
+| AArch64 (cross + qemu) | **0 warnings · 265 checks, 0 falhas** (era 228) |
+| Suíte completa, host e AArch64 | `records=58 assertions=0 pass=54/55 fail=0 blocked=0 unsupported=2 summary=PASS` |
+| Auditoria nova | `IOS_STABILIZATION_AUDIT=0` (15 regras) |
+| Controles negativos novos | `STABILIZATION_NEGATIVE_CONTROLS=18/18`, restauração byte-idêntica, árvore verde depois |
+| Correção 06 | `FIX06_CONTRACTS_AUDIT=0` · `FIX06_NEGATIVE_CONTROLS=6/6` |
+| Plataforma / link / interface | `PLATFORM_COMPOSITION_AUDIT=0` (+ controle `PASS`) · `LINK_SYMBOL_AUDIT=PASS` · `INTERFACE_AUDIT=0` · `BRIDGE_SYNTAX=PASS` · `UNGUARDED_LINUX_INCLUDES=0` · `UNGUARDED_MACOS_ONLY_APIS=0` |
+| `.xcodeproj` | `PLIST_SYNTAX=PASS` · preflight **62 checagens, 0 falhas** |
+| Escopo | `PASS02_SCOPE_OUT_OF_SCOPE=0` · `UI_VISUAL_CHANGES=0` · `FILES_DELETED=0` · `PHASE04_FUNCTIONAL_CHANGES=0` · `PHASE05_STARTED=NO` |
+| Fase 04 | `git diff -- ios/box64-registers` **vazio** |
+
+### 17.6 Contagem final da campanha
+
+```
+KNOWN_CODE_DEFECTS_BEFORE_PASS_02 = 2
+NEW_CODE_DEFECTS_FOUND_PASS_02    = 7
+CODE_DEFECTS_FIXED_PASS_02        = 9
+KNOWN_UNFIXED_CODE_DEFECTS        = 0
+APPLE_CI_RETEST_REQUIRED          = 9
+IPHONE_RETEST_REQUIRED            = 5
+EXTERNAL_CAPABILITY_BLOCKED       = 1
+```

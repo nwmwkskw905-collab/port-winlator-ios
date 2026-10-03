@@ -8,15 +8,12 @@
 [ 42%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_signals.c.o
 [ 47%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_filesystem.c.o
 [ 52%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_ipc.c.o
-[ 57%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_context.c.o
-[ 63%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_loader.c.o
-[ 68%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_log.c.o
-[ 73%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_harness.c.o
-[ 78%] Linking C static library libphase02_runtime_core.a
+[ 57%] Building C object CMakeFiles/phase02_runtime_core.dir/RuntimeCore/src/runtime_loader.c.o
+[ 63%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_log.c.o
+[ 68%] Building C object CMakeFiles/phase02_runtime_core.dir/Diagnostics/src/phase02_harness.c.o
+[ 73%] Linking C static library libphase02_runtime_core.a
 [ 78%] Built target phase02_runtime_core
-[ 89%] Building C object CMakeFiles/phase02_unit_tests.dir/Tests/test_runtime_core.c.o
-[ 89%] Building C object CMakeFiles/phase02_poc.dir/RuntimePoC/main.c.o
-[ 94%] Linking C executable phase02_poc
+[ 84%] Linking C executable phase02_poc
+[ 89%] Linking C executable phase02_unit_tests
 [ 94%] Built target phase02_poc
-[100%] Linking C executable phase02_unit_tests
 [100%] Built target phase02_unit_tests

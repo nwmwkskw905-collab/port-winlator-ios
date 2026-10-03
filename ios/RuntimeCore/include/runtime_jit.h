@@ -47,7 +47,16 @@ uint32_t rt_jit_call_u32(const void *code);
  * Without MAP_JIT the arena is a plain anonymous mapping that the caller must
  * flip with rt_mem_protect(); the write-window calls then return -1/ENOTSUP.
  */
-void *rt_jit_alloc(size_t len, int *err_out, int *used_map_jit_out);
+/* Executable arena.
+ *
+ * map_jit_attempted_out reports whether the MAP_JIT path was TAKEN — it is 1 even when
+ * that mmap() was refused, because that is precisely the fact a caller needs to explain a
+ * failure: on iOS a refusal here is the same missing capability the MAP_JIT probe measures,
+ * not a second, independent defect (physical run #1 classified it as one because the
+ * information was not available). It is 0 when the allocation did not use MAP_JIT at all.
+ *
+ * On failure *err_out is the errno of the failing mmap(2), captured immediately. */
+void *rt_jit_alloc(size_t len, int *err_out, int *map_jit_attempted_out);
 int   rt_jit_free(void *addr, size_t len);
 int   rt_jit_begin_write(void *addr, size_t len, int *err_out);
 int   rt_jit_end_write(void *addr, size_t len, int *err_out);

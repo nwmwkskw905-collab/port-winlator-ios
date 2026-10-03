@@ -210,6 +210,16 @@ int rt_mem_protect(void *addr, size_t len, rt_prot_t prot, int *err_out)
         }
         return -1;
     }
+    /* The same overflow guard rt_mem_reserve() already had: without it, len + page - 1
+     * wraps and the rounded length becomes tiny, so the call would protect far fewer bytes
+     * than it was asked to while reporting success — a silent protection shortfall on the
+     * caller's assumption that the whole region changed. */
+    if (len > SIZE_MAX - page) {
+        if (err_out != NULL) {
+            *err_out = EOVERFLOW;
+        }
+        return -1;
+    }
     rounded = ((len + page - 1u) / page) * page;
     return platform->mem_protect(addr, rounded, prot, err_out);
 }

@@ -61,8 +61,26 @@ void phase02_log_line(phase02_log_t *log, const char *fmt, ...)
         return;
     }
     if ((size_t)written >= ((size_t)PHASE02_LOG_CAP - log->len)) {
-        log->len = PHASE02_LOG_CAP - 1u; /* truncated: keep the log well-formed */
-        log->text[log->len] = '\0';
+        /* The line did not fit. Marking it is the difference between "evidence with a
+         * visible hole" and "evidence that silently lost a record": a report that grew past
+         * the capacity must say so, because the summary line and the counts below it are
+         * used as evidence. The partial text is cut back to the last complete line first. */
+        size_t cut = log->len;
+        static const char marker[] = "[PHASE02] NOTE=log-capacity-reached (line truncated: "
+                                     "the report above is incomplete)";
+        while (cut > 0u && log->text[cut - 1u] != '\n') {
+            cut--;
+        }
+        if ((size_t)sizeof(marker) + cut + 2u < (size_t)PHASE02_LOG_CAP) {
+            memcpy(log->text + cut, marker, sizeof(marker) - 1u);
+            log->len = cut + sizeof(marker) - 1u;
+            log->text[log->len] = '\n';
+            log->len++;
+            log->text[log->len] = '\0';
+        } else {
+            log->len = cut;
+            log->text[log->len] = '\0';
+        }
         return;
     }
     log->len += (size_t)written;
@@ -100,6 +118,13 @@ void phase02_log_record(phase02_log_t *log, const char *test, rt_status_t status
         va_end(args);
         if (written < 0) {
             detail[0] = '\0';
+        } else if ((size_t)written >= sizeof(detail)) {
+            /* A truncated DETAIL must never look like a complete one: the stage and the
+             * errno are usually at the end of the message, which is exactly what a silent
+             * cut removes. The marker is part of the line, so a reader can tell. */
+            static const char marker[] = " [DETAIL TRUNCATED at 512 chars]";
+            size_t room = sizeof(detail) - sizeof(marker) - 1u;
+            memcpy(detail + room, marker, sizeof(marker));
         }
     }
     log->counts[phase02_status_index(status)]++;
@@ -210,6 +235,16 @@ const char *phase02_log_summary_line(char *buf, size_t cap, const phase02_log_t 
                        rt_status_name(phase02_log_summary(log)));
     if (written < 0) {
         buf[0] = '\0';
+    } else if ((size_t)written >= cap) {
+        /* snprintf reports what it would have needed: a summary that does not fit is marked,
+         * never silently cut — the report is evidence (same rule as the DETAIL marker). */
+        static const char truncation[] = " [SUMMARY TRUNCATED]";
+        if (cap > sizeof(truncation)) {
+            size_t room = cap - sizeof(truncation);
+            memcpy(buf + room, truncation, sizeof(truncation));
+        } else {
+            buf[cap - 1u] = '\0';
+        }
     }
     return buf;
 }

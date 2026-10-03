@@ -1,28 +1,31 @@
 # PHASE_02_RECONSTRUCTED_POC - runtime PoC diagnostics
 # platform=linux page_size=4096 apple_target=none
-# host: platform=linux page_size=4096 isa=aarch64 apple_target=none workdir=/tmp/phase02_f8ryMn
+# host: platform=linux page_size=4096 isa=aarch64 apple_target=none workdir=/tmp/phase02_htZjKG
 # note: host results are NOT iOS results; physical-device validation stays pending.
 
 == SUITE memory: memory protection matrix, W^X and dual mapping ==
 [PHASE02] TEST=memory.reserve_rw STATUS=PASS DETAIL=mapped one page read-write (page_size=4096)
 [PHASE02] TEST=memory.read_rw STATUS=PASS DETAIL=read 4096 bytes from the RW mapping
 [PHASE02] TEST=memory.rw_to_r_transition STATUS=PASS DETAIL=mprotect to R accepted
-[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7f1c6180a000
+[PHASE02] TEST=memory.write_to_r_faults STATUS=PASS DETAIL=write to read-only page faulted, si_addr=0x7f77c23fe000
 [PHASE02] TEST=memory.r_to_rw_transition STATUS=PASS DETAIL=write after mprotect(RW) completed
 [PHASE02] TEST=memory.rw_to_rx_transition STATUS=PASS DETAIL=mprotect to R-X accepted (execution is tested by the jit suite)
 [PHASE02] TEST=memory.rx_to_rw_transition STATUS=PASS DETAIL=mprotect back to RW accepted
 [PHASE02] TEST=memory.wx_policy STATUS=PASS DETAIL=RWX granted by this kernel (recorded; the port still prefers W^X)
 [PHASE02] TEST=memory.release STATUS=PASS DETAIL=munmap accepted
-[PHASE02] TEST=memory.dual_mapping_rw_rx STATUS=PASS DETAIL=RW and R-X views are aliasing the same memory (len=4096)
+[PHASE02] TEST=memory.dual_mapping_rw_rx STATUS=PASS DETAIL=RW and R-X views are aliasing the same memory (len=4096, stage=none)
 
 == SUITE jit: MAP_JIT, write-protect hook, generated-code microtest ==
 [PHASE02] TEST=jit.map_jit_probe STATUS=UNSUPPORTED DETAIL=platform 'linux' has no MAP_JIT (capability bit absent, target=none)
+[PHASE02] NOTE=jit.entitlement_levels requested_in_repo=com.apple.security.cs.allow-jit (RuntimePoC/WinlatorPhase02.entitlements exists but is NOT wired to CODE_SIGN_ENTITLEMENTS: nothing is applied by itself) present_before_signing=external to this process (the signing step; no key material or provisioning profile is in the repository) granted_to_signature=NOT observable in-process: read it on the built product with tools/inspect_entitlements.sh (key names only, never certificate data) observed_at_runtime=MAP_JIT refused with errno 0 (defect) (target=none)
 [PHASE02] TEST=jit.write_protect_np STATUS=UNSUPPORTED DETAIL=platform 'linux' has no pthread_jit_write_protect_np (target=none, capability bit absent)
 [PHASE02] TEST=jit.emit_payload STATUS=PASS DETAIL=ISA=aarch64 emitted 8 bytes for 'return 42'
 [PHASE02] TEST=jit.alloc STATUS=PASS DETAIL=arena of 8 bytes (MAP_JIT=no)
+[PHASE02] TEST=jit.icache_sync STATUS=PASS DETAIL=8 bytes flushed through the linux backend hook after the first write
 [PHASE02] TEST=jit.make_executable STATUS=PASS DETAIL=payload is in executable memory (mprotect R-X)
 [PHASE02] TEST=jit.execute_return_42 STATUS=PASS DETAIL=generated function returned 42 (expected 42)
-[PHASE02] TEST=jit.rewrite_payload STATUS=PASS DETAIL=payload rewritten and icache synchronised (8 bytes)
+[PHASE02] TEST=jit.icache_sync STATUS=PASS DETAIL=8 bytes flushed through the linux backend hook after the rewrite
+[PHASE02] TEST=jit.rewrite_payload STATUS=PASS DETAIL=payload rewritten (8 bytes), write window closed and instruction cache synchronised
 [PHASE02] TEST=jit.execute_return_4242 STATUS=PASS DETAIL=rewritten generated function returned 4242 (expected 4242)
 [PHASE02] TEST=jit.execution_allowed STATUS=PASS DETAIL=this process executed memory it wrote
 
@@ -49,18 +52,18 @@
 [PHASE02] TEST=signals.suite_survived STATUS=PASS DETAIL=suite continued after the controlled fault
 
 == SUITE fs: POSIX filesystem semantics ==
-[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_f8ryMn
-[PHASE02] TEST=fs.deep_paths STATUS=PASS DETAIL=capacity: depth up to 224 (2035 chars) created and removed; ceiling at depth=225 with errno=36 (File name too long) - the platform limit, correctly reported (PATH_MAX=4096[pathconf] cap=2048)
+[PHASE02] TEST=fs.roundtrip STATUS=PASS DETAIL=create/write/read/rename/read/unlink inside /tmp/phase02_htZjKG
+[PHASE02] TEST=fs.deep_paths STATUS=PASS DETAIL=capacity measured: depth up to 224 (2035 chars) created and removed; the ceiling at depth=225 (stage=leaf-path-join, errno=36) is this probe's own path buffer (cap=2048), NOT the platform's (PATH_MAX=4096[pathconf]): depth beyond it was not probed and is not claimed
 [PHASE02] TEST=fs.links_and_modes STATUS=PASS DETAIL=symlink followed, chmod 0640 observed
-[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_9DwEA2
-[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=959275008 bytes on the workdir fs
+[PHASE02] TEST=fs.temp_file STATUS=PASS DETAIL=mkstemp+unlink-while-open at /tmp/rt_tmp_jKI46S
+[PHASE02] TEST=fs.capacity STATUS=PASS DETAIL=free=911884288 bytes on the workdir fs
 
 == SUITE ipc: AF_UNIX, SCM_RIGHTS, pipe, shm, kqueue/epoll ==
 [PHASE02] TEST=ipc.socketpair STATUS=PASS DETAIL=AF_UNIX SOCK_STREAM socketpair round trip (errno=0)
-[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_f8ryMn (errno=0)
+[PHASE02] TEST=ipc.unix_stream STATUS=PASS DETAIL=AF_UNIX stream server/client in /tmp/phase02_htZjKG (errno=0)
 [PHASE02] TEST=ipc.scm_rights STATUS=PASS DETAIL=file descriptor passed with SCM_RIGHTS and used (errno=0)
 [PHASE02] TEST=ipc.pipe STATUS=PASS DETAIL=pipe round trip (errno=0)
-[PHASE02] TEST=ipc.posix_shm STATUS=PASS DETAIL=shared memory object mapped twice and compared (errno=0)
+[PHASE02] TEST=ipc.posix_shm STATUS=PASS DETAIL=shared memory object created, mapped twice (stage=none), written through one view and read through the other (19 bytes match)
 [PHASE02] TEST=ipc.sun_path_limit STATUS=PASS DETAIL=usable sockaddr_un.sun_path = 107 bytes on this platform
 [PHASE02] TEST=ipc.mux STATUS=PASS DETAIL=readiness reported by epoll
 
@@ -75,4 +78,4 @@
 [PHASE02] TEST=loader.reject_truncated STATUS=PASS DETAIL=8-byte image rejected as too small
 [PHASE02] TEST=loader.reject_code_overlapping_header STATUS=PASS DETAIL=code_off inside the header rejected
 
-# records=56 assertions=0 pass=53 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=1 summary=PASS
+# records=58 assertions=0 pass=55 fail=0 blocked=0 unsupported=2 untested=0 not_applicable=1 summary=PASS
